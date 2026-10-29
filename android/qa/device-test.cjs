@@ -50,10 +50,33 @@ setTimeout(() => {
   const step = async (name, fn) => {
     const t0 = Date.now();
     try {
-      if (page && page.isClosed()) await attach();
+      if (page && page.isClosed()) {
+        // The app may have been closed by Android between steps: reopen it, as a phone would.
+        if (!(await sh(`pidof ${PKG}`).catch(() => '')).trim()) await sh(`am start -W -n ${activity}`);
+        await attach();
+      }
       // A step that hangs fails on its own instead of stalling the whole run.
-      let timer;
-      const detail = await Promise.race([fn(), new Promise((_, no) => { timer = setTimeout(() => no(new Error('step timed out after 3 minutes')), 180_000); })]).finally(() => clearTimeout(timer));
+      const run = () => {
+        let timer;
+        return Promise.race([fn(), new Promise((_, no) => { timer = setTimeout(() => no(new Error('step timed out after 3 minutes')), 180_000); })]).finally(() => clearTimeout(timer));
+      };
+      let detail;
+      try {
+        detail = await run();
+      } catch (e) {
+        // On a slow emulator Android sometimes kills Google Play services (an ANR), and with it
+        // every app using its providers — the WebView uses its font provider. That's Android, not
+        // the app: reopen the app as a phone would and retry the step once, saying why.
+        const killed = (await sh('logcat -d -t 3000').catch(() => '')).split('\n').find((l) => l.includes(`Killing`) && l.includes(PKG) && /depends on provider|dying proc/.test(l));
+        const alive = (await sh(`pidof ${PKG}`).catch(() => '')).trim();
+        if (!killed || alive) throw e;
+        console.log(`NOTE  ${name}: Android killed the app (${killed.replace(/^.*Killing/, 'Killing').slice(0, 200)}); reopening and retrying once`);
+        await sh(`am start -W -n ${activity}`);
+        await attach();
+        await page.waitForTimeout(2000);
+        if (await page.getByLabel('What should I call you?').count()) await setup();
+        detail = `${(await run()) ?? ''} (retried once: Android killed the app with Google Play services)`;
+      }
       results.push({ name, ok: true, ms: Date.now() - t0, detail: detail ?? '' });
       console.log(`PASS  ${name}${detail ? ' — ' + detail : ''}`);
     } catch (e) {
@@ -87,7 +110,8 @@ setTimeout(() => {
     await shot('01-setup');
     return `WebView at ${page.url()}`;
   });
-  await step('Setup through the app’s screens, using Android networking to reach the AI service', async () => {
+  /** Onboarding through the app's screens (also re-run if Android killed the app before it saved). */
+  async function setup() {
     await page.getByLabel('What should I call you?').fill('Herbert');
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByRole('button', { name: 'Next' }).click();
@@ -102,6 +126,9 @@ setTimeout(() => {
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByRole('button', { name: /Let’s go/ }).click();
     await page.waitForTimeout(2000);
+  }
+  await step('Setup through the app’s screens, using Android networking to reach the AI service', async () => {
+    if (await page.getByLabel('What should I call you?').count()) await setup();
     return 'model list fetched and test reply received over Android HTTP';
   });
   await step('Chat reply streams in through Android’s HTTP bridge', async () => {
