@@ -1,13 +1,10 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { randomBytes } from 'node:crypto';
 import type { AppEnv } from '../context.ts';
 import { HttpError } from '../context.ts';
-import { sha256 } from '../auth.ts';
 import { rateLimit } from '../middleware.ts';
-import { complete, recordUsage } from '../ai/agent.ts';
+import { recordUsage } from '../ai/agent.ts';
 import { ProviderError } from '../ai/types.ts';
-import { SearchUnavailableError } from '../services/search.ts';
 
 /** AI connection test and notification subscriptions. */
 export function miscRoutes() {

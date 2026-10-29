@@ -37,7 +37,7 @@ export class OpenAICompatProvider implements AIProvider {
   }
 
   async chat(req: ChatRequest): Promise<ChatResult> {
-    const { baseUrl, apiKey, model } = this.opts;
+    const { baseUrl, model } = this.opts;
     if (!baseUrl || !model) throw new ProviderError('not_configured', 'The OpenAI-compatible provider is not configured on the server.');
     const body: Record<string, unknown> = {
       model,

@@ -3,16 +3,14 @@ import { AnthropicProvider } from '../server/ai/anthropic.ts';
 
 /** Exercises the Claude adapter against a stubbed HTTP layer (no network, no real key). */
 function provider(responses: ((body: any) => Response)[], seen: any[]) {
-  const p = new AnthropicProvider({ apiKey: 'sk-test', model: 'claude-haiku-5-5' });
-  (p as any).client = new (Object.getPrototypeOf((p as any).client).constructor)({
-    apiKey: 'sk-test', maxRetries: 0,
-    fetch: async (_url: string, init: any) => {
+  return new AnthropicProvider({
+    apiKey: 'sk-test', model: 'claude-haiku-5-5', maxRetries: 0,
+    fetch: (async (_url: string, init: any) => {
       const body = JSON.parse(init.body);
       seen.push(body);
       return responses.shift()!(body);
-    },
+    }) as typeof fetch,
   });
-  return p;
 }
 
 const sseResponse = (text: string) => {

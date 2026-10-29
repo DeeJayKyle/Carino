@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import type Anthropic from '@anthropic-ai/sdk';
 import type { AIProvider, ChatRequest, ChatResult, ProviderInfo, Block, StopReason } from './types.ts';
 import { ProviderError } from './types.ts';
 
@@ -14,16 +14,36 @@ export const ANTHROPIC_MODELS = Object.keys(PRICING);
 
 export type Effort = 'low' | 'medium' | 'high';
 
+type Sdk = typeof Anthropic;
+let sdk: Promise<Sdk> | null = null;
+/**
+ * The Claude SDK is large, and the phone app doesn't offer Claude (only an existing setup keeps
+ * working), so it's loaded the first time Claude is actually used.
+ */
+const loadSdk = () => (sdk ??= import('@anthropic-ai/sdk').then((m) => m.default));
+
 export class AnthropicProvider implements AIProvider {
-  private client: Anthropic | null;
+  private apiKey?: string;
+  /** Shared with copies made by withSettings, so there's only ever one client. */
+  private shared: { client?: Promise<Anthropic> };
+  private clientOpts: { maxRetries: number; fetch?: typeof fetch };
   private model: string;
   private effort: Effort;
 
-  constructor(opts: { apiKey?: string; model: string; effort?: Effort }) {
-    // The phone app runs this code inside the app itself (mobile/engine.ts), with the user's own key.
-    this.client = opts.apiKey ? new Anthropic({ apiKey: opts.apiKey, maxRetries: 2, dangerouslyAllowBrowser: typeof window !== 'undefined' }) : null;
+  constructor(opts: { apiKey?: string; model: string; effort?: Effort; maxRetries?: number; fetch?: typeof fetch }) {
+    this.apiKey = opts.apiKey;
+    this.shared = {};
+    this.clientOpts = { maxRetries: opts.maxRetries ?? 2, fetch: opts.fetch };
     this.model = opts.model;
     this.effort = opts.effort ?? 'medium';
+  }
+
+  private client(): Promise<Anthropic> {
+    // The phone app runs this code inside the app itself (mobile/engine.ts), with the user's own key.
+    return (this.shared.client ??= loadSdk().then((A) => new A({
+      apiKey: this.apiKey, maxRetries: this.clientOpts.maxRetries, dangerouslyAllowBrowser: typeof window !== 'undefined',
+      ...(this.clientOpts.fetch ? { fetch: this.clientOpts.fetch } : {}),
+    })));
   }
 
   withSettings(model?: string, effort?: Effort): AnthropicProvider {
@@ -38,15 +58,15 @@ export class AnthropicProvider implements AIProvider {
       id: 'anthropic',
       label: 'Claude (Anthropic)',
       model: this.model,
-      configured: !!this.client,
+      configured: !!this.apiKey,
       capabilities: { tools: true, streaming: true, local: false, vision: true },
       pricing: PRICING[this.model],
-      note: this.client ? undefined : 'Set ANTHROPIC_API_KEY on the server to enable Claude.',
+      note: this.apiKey ? undefined : 'Set ANTHROPIC_API_KEY on the server to enable Claude.',
     };
   }
 
   async chat(req: ChatRequest): Promise<ChatResult> {
-    if (!this.client) throw new ProviderError('not_configured', 'Claude is not configured on the server (ANTHROPIC_API_KEY is missing).');
+    if (!this.apiKey) throw new ProviderError('not_configured', 'Claude is not configured on the server (ANTHROPIC_API_KEY is missing).');
     const base = {
       model: this.model,
       max_tokens: req.maxTokens ?? 32000,
@@ -85,10 +105,11 @@ export class AnthropicProvider implements AIProvider {
 
   /** If a replayed thinking block is rejected (e.g. history changed), retry with thinking blocks removed. */
   private async runWithHistoryRepair(params: any, req: ChatRequest): Promise<ChatResult> {
+    const A = await loadSdk();
     try {
       return await this.run(params, req);
     } catch (err) {
-      if (err instanceof Anthropic.BadRequestError && /thinking/i.test(err.message)) {
+      if (err instanceof A.BadRequestError && /thinking/i.test(err.message)) {
         const stripped = req.messages.map((m) => ({
           ...m,
           content: m.content.filter((b) => b.type !== 'thinking' && b.type !== 'redacted_thinking'),
@@ -96,15 +117,15 @@ export class AnthropicProvider implements AIProvider {
         try {
           return await this.run({ ...params, messages: stripped }, req);
         } catch (e2) {
-          throw mapError(e2);
+          throw mapError(A, e2);
         }
       }
-      throw mapError(err);
+      throw mapError(A, err);
     }
   }
 
   private async run(params: any, req: ChatRequest): Promise<ChatResult> {
-    const stream = this.client!.beta.messages.stream(params, { signal: req.signal });
+    const stream = (await this.client()).beta.messages.stream(params, { signal: req.signal });
     stream.on('text', (delta: string) => req.onText?.(delta));
     const msg: any = await stream.finalMessage();
     const stop: StopReason = ['end_turn', 'tool_use', 'max_tokens', 'refusal', 'pause_turn'].includes(msg.stop_reason)
@@ -124,7 +145,7 @@ export class AnthropicProvider implements AIProvider {
   }
 }
 
-function mapError(err: unknown): Error {
+function mapError(Anthropic: Sdk, err: unknown): Error {
   if (err instanceof ProviderError) return err;
   if (err instanceof Anthropic.APIUserAbortError) return new ProviderError('aborted', 'Response cancelled.');
   if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError)

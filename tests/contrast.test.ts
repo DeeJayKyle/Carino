@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-// Adobe Leonardo (from Awesome Design Tools): WCAG 2 contrast ratios.
-import { contrast } from '@adobe/leonardo-contrast-colors';
 
 const css = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
 
@@ -12,8 +10,19 @@ function tokens(selector: string): Record<string, string> {
   const body = css.slice(start, css.indexOf('}', start));
   return Object.fromEntries([...body.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})\b/g)].map((m) => [m[1], m[2]]));
 }
-const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
-const ratio = (fg: string, bg: string) => Math.abs(contrast(rgb(fg), rgb(bg)));
+/**
+ * WCAG 2 contrast ratio. (Checked against Adobe Leonardo's results, from Awesome Design Tools: they
+ * match to 4 decimals. Leonardo itself isn't a dependency because it pulls in a vulnerable library.)
+ */
+const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+const lum = (hex: string) => {
+  const [r, g, b] = rgb(hex).map((c) => (c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const ratio = (fg: string, bg: string) => {
+  const [a, b] = [lum(fg), lum(bg)];
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+};
 
 // Merged in cascade order, as the app applies them (a midnight dark page also has the dark rules).
 const light = tokens(':root');

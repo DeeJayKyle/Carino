@@ -117,7 +117,7 @@ export default function Onboarding() {
   ];
 
   return (
-    <div className="onboarding">
+    <div className="onboarding" role="main">
       <div className="ob-card card pad">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <Avatar size={64} state={step === steps.length - 1 ? 'speaking' : 'idle'} />
@@ -125,7 +125,7 @@ export default function Onboarding() {
         </div>
         <div style={{ marginTop: 18 }}>{steps[step]}</div>
         <div className="row" style={{ marginTop: 22 }}>
-          <div className="ob-dots grow" aria-label={`Step ${step + 1} of ${steps.length}`}>{steps.map((_, i) => <span key={i} className={i === step ? 'on' : ''} />)}</div>
+          <div className="ob-dots grow" role="img" aria-label={`Step ${step + 1} of ${steps.length}`}>{steps.map((_, i) => <span key={i} className={i === step ? 'on' : ''} />)}</div>
           {step > 0 && <button className="btn" disabled={busy} onClick={() => setStep(step - 1)}>Back</button>}
           {step < steps.length - 1
             ? <button className="btn primary" disabled={(step === 0 && !you.trim()) || (step === 1 && !assistant.trim())} onClick={() => setStep(step + 1)}>Next</button>

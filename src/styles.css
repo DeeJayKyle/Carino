@@ -833,3 +833,7 @@ p a:not(.btn), li a:not(.btn), .desc a:not(.btn), .hint a:not(.btn), .callout a:
 .speed-row:last-child { border-bottom: 0; }
 .speed-row.failed { color: var(--text-2); }
 .speed-row .tiny { white-space: nowrap; }
+
+/* A list item wrapping a button or link, so the control keeps its own role for screen readers. */
+.li-wrap { display: flex; min-width: 0; }
+.li-wrap > .discover-card, .li-wrap > .chip { flex: 1 1 auto; }

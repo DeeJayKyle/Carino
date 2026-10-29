@@ -129,7 +129,7 @@ public class MainActivity extends Activity {
     /** A page to open from a notification or the widget, if any. */
     private static String startPath(Intent intent) {
         String path = intent == null ? null : intent.getStringExtra("path");
-        return path != null && path.startsWith("/") ? path : "/";
+        return isAppPath(path) ? path : "/";
     }
 
     @Override
@@ -138,10 +138,30 @@ public class MainActivity extends Activity {
         setIntent(intent);
         if (bridge.captureShare(intent)) bridge.emit("window.__hn && __hn.shared()");
         String path = intent.getStringExtra("path");
-        if (path != null && path.startsWith("/")) bridge.emit("window.__hn && __hn.open(" + NativeBridge.quote(path) + ")");
+        if (isAppPath(path)) bridge.emit("window.__hn && __hn.open(" + NativeBridge.quote(path) + ")");
+    }
+
+    /** A page inside the app ("/tasks"), never "//host" or anything with a scheme. */
+    static boolean isAppPath(String path) {
+        return path != null && path.startsWith("/") && !path.startsWith("//") && !path.contains("\\");
+    }
+
+    private static final String[] ALLOWED_SCHEMES = {"https", "http", "mailto", "tel", "sms", "geo"};
+
+    /** The only kinds of link the app hands to other apps: web, email, phone, SMS and maps. */
+    static boolean isAllowedExternal(Uri url) {
+        String s = url == null ? null : url.getScheme();
+        if (s == null) return false;
+        s = s.toLowerCase(java.util.Locale.ROOT);
+        for (String ok : ALLOWED_SCHEMES) if (ok.equals(s)) return true;
+        return false;
     }
 
     void openExternal(Uri url) {
+        if (!isAllowedExternal(url)) {
+            Log.w(TAG, "Not opening link with scheme " + (url == null ? "null" : url.getScheme()));
+            return;
+        }
         try {
             startActivity(new Intent(Intent.ACTION_VIEW, url).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } catch (Exception e) {

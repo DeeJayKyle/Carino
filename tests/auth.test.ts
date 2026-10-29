@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createAccount, NO_PASSWORD } from '../server/routes/auth.ts';
 import { setup, signup, Client, type TestCtx } from './helpers.ts';
 import { hashPassword, verifyPassword } from '../server/auth.ts';
 
@@ -159,5 +160,17 @@ describe('request protections', () => {
     const c = await signup(ctx);
     const r = await c.post('/api/notes', { title: 'big', body: 'x'.repeat(3 * 1024 * 1024) });
     expect(r.status).toBe(413);
+  });
+});
+
+describe('accounts without a password (the phone app)', () => {
+  it('can never be signed into with a password, not even an empty one', async () => {
+    for (const guess of ['', NO_PASSWORD, '!no-password', 'password', 'scrypt']) expect(await verifyPassword(guess, NO_PASSWORD)).toBe(false);
+    const u = createAccount(ctx.services.db, { email: 'me@this-phone.app', name: 'Friend' }, NO_PASSWORD);
+    expect(u.id).toBeTruthy();
+    const c = (await signup(ctx, 'Someone else'));
+    void c;
+    const r = await ctx.app.request('/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-hailey': '1', 'x-carino': '1', origin: 'http://localhost' }, body: JSON.stringify({ email: 'me@this-phone.app', password: NO_PASSWORD }) });
+    expect(r.status).toBe(401);
   });
 });

@@ -1,5 +1,4 @@
 import Papa from 'papaparse';
-import ExcelJS from 'exceljs';
 
 export type Cell = string | number | null;
 export interface Sheet {
@@ -20,6 +19,9 @@ export function parseCsv(text: string): Sheet {
 
 /** Reads cell values only — formulas are not evaluated and macros are never run. */
 export async function parseXlsx(buf: Buffer): Promise<Sheet[]> {
+  // Loaded on first use (large, and only needed when a spreadsheet is opened).
+  const mod = await import('exceljs');
+  const ExcelJS: typeof mod.default = (mod as any).default ?? mod;
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buf as any);
   const sheets: Sheet[] = [];

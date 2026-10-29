@@ -14,9 +14,9 @@ function enoent(p: string) {
 
 /** Loads the file list and the small files. Called once when the app starts. */
 export async function loadFiles() {
-  for (const [path, size] of await idbEntries<number>('sizes')) files.set(path, null);
-  const small = [...files.keys()];
   const sizes = new Map(await idbEntries<number>('sizes'));
+  for (const path of sizes.keys()) files.set(path, null);
+  const small = [...files.keys()];
   await Promise.all(small.filter((p) => (sizes.get(p) ?? 0) <= EAGER_MAX).map(async (p) => {
     const data = await idbGet<Uint8Array>('files', p);
     if (data) files.set(p, data);

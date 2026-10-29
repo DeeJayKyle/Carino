@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { join, extname, resolve } from 'node:path';
-import mammoth from 'mammoth';
 import type { Db, Row } from '../db/index.ts';
 import { addToIndex } from './indexer.ts';
 import { parseCsv, parseXlsx, sheetToText, type Sheet } from './spreadsheet.ts';
@@ -105,7 +104,9 @@ export async function extract(kind: DocKind, buf: Buffer): Promise<Extracted> {
       chunks = chunkText(buf.toString('utf8'), '');
       break;
     case 'docx': {
-      const { value } = await mammoth.extractRawText({ buffer: buf });
+      // Loaded on first use (only needed when a Word file is read).
+      const m: any = await import('mammoth');
+      const { value } = await (m.default ?? m).extractRawText({ buffer: buf });
       chunks = chunkText(value, '');
       break;
     }

@@ -48,13 +48,13 @@ export default function Discover() {
             </div>
             <div className="discover-grid" role="list">
               {shown.map((c) => (
-                <button key={c.id} className="card discover-card" role="listitem" onClick={() => openCard(c)}>
+                <div key={c.id} role="listitem" className="li-wrap"><button className="card discover-card" onClick={() => openCard(c)}>
                   <span className="qi"><Icon name={c.icon} /></span>
                   <span className="tiny faint">{c.category}</span>
                   <span className="dc-title">{c.title}</span>
                   <span className="small muted grow">{c.blurb}</span>
                   <span className="dc-go">{ACTION_LABEL[c.action]} <Icon name="send" size={14} /></span>
-                </button>
+                </button></div>
               ))}
             </div>
           </>

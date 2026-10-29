@@ -15,12 +15,11 @@ import * as channels from '../services/channels.ts';
 import { connectTelegram } from '../services/telegram.ts';
 import { connectWhatsApp, webhookUrl } from '../services/whatsapp.ts';
 import { transcriptionConfigured } from '../services/transcribe.ts';
-import { complete } from '../ai/agent.ts';
 import { getSettings, updateSettings } from '../services/settings.ts';
 import { buildOverview, briefingText, suggestions } from '../services/briefing.ts';
 import { searchIndex } from '../services/indexer.ts';
 import { localDate, startOfLocalDay, addDays, safeTimeZone, localClock, parseWhen, formatLocal } from '../services/time.ts';
-import { approveAction, rejectAction, TOOLS, executeTool, makeContext } from '../tools/registry.ts';
+import { approveAction, rejectAction, TOOLS } from '../tools/registry.ts';
 import { rateLimit } from '../middleware.ts';
 
 const page = z.object({ limit: z.coerce.number().int().min(1).max(500).default(100), offset: z.coerce.number().int().min(0).default(0) });
@@ -191,12 +190,6 @@ export function dataRoutes() {
     return c.json({ cancelled: true });
   });
 
-  // ---------- Links between notes, documents, tasks and projects ----------
-  const linkInput = z.object({
-    from_type: z.enum(['note', 'document', 'task', 'project']), from_id: z.string().max(64),
-    to_type: z.enum(['note', 'document', 'task', 'project']), to_id: z.string().max(64),
-  });
-  const TABLE: Record<string, string> = { note: 'notes', document: 'documents', task: 'tasks', project: 'projects' };
   // ---------- Memories ----------
   r.get('/memories', (c) => {
     const { status, category, q } = c.req.query();
@@ -373,14 +366,4 @@ export function dataRoutes() {
   });
 
   return r;
-}
-
-function resolveLinks(d: any, userId: string, links: any[], selfType: string, selfId: string) {
-  const TABLE: Record<string, [string, string]> = { note: ['notes', 'title'], document: ['documents', 'filename'], task: ['tasks', 'title'], project: ['projects', 'name'] };
-  return links.map((l) => {
-    const [type, id] = l.from_type === selfType && l.from_id === selfId ? [l.to_type, l.to_id] : [l.from_type, l.from_id];
-    const [table, col] = TABLE[type];
-    const row = d.getOwned(table, userId, id);
-    return { link_id: l.id, type, id, title: row?.[col] ?? '(deleted)' };
-  });
 }

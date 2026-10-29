@@ -4,7 +4,7 @@ import { Icon } from '../components/Icon';
 import { TaskItem } from '../components/TaskItem';
 import { Empty, ErrorBox, Loading, Modal, StaleNote, Switch, useConfirm, useToast } from '../components/ui';
 import { useData, useDebounced } from '../lib/hooks';
-import { del, patch, post, get, isOffline } from '../lib/api';
+import { del, post, get, isOffline } from '../lib/api';
 import { isQueued, writeOrQueue } from '../lib/sync';
 import { navigate, useLocation } from '../lib/router';
 import { fmtDateTime, fromLocalInput, localDay, toLocalInput, getPrefs } from '../lib/format';

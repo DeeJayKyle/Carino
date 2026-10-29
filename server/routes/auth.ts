@@ -1,3 +1,4 @@
+import type { Db } from '../db/index.ts';
 import { Hono } from 'hono';
 import { setCookie, deleteCookie } from 'hono/cookie';
 import { z } from 'zod';
@@ -48,16 +49,7 @@ export function authRoutes() {
     if (!config.allowSignup || users >= config.MAX_USERS) throw new HttpError(403, 'New sign-ups are closed on this Carino server.', 'signup_closed');
     if (db.get('SELECT 1 FROM users WHERE email = ?', input.email)) throw new HttpError(409, 'An account with this email already exists.', 'conflict');
     const hash = await hashPassword(input.password);
-    const user = db.tx(() => {
-      const u = db.insert('users', { email: input.email, name: input.name, password_hash: hash });
-      db.insert('routines', { user_id: u.id, kind: 'morning_briefing', time_local: '07:00', enabled: 0 });
-      db.insert('routines', { user_id: u.id, kind: 'evening_review', time_local: '19:00', enabled: 0 });
-      updateSettings(db, u.id, {
-        profile: { displayName: input.name },
-        regional: { timeZone: safeTimeZone(input.timeZone), locale: input.locale?.match(/^[a-z]{2}(-[A-Z]{2})?$/) ? input.locale : 'en-GB' },
-      });
-      return u;
-    });
+    const user = createAccount(db, input, hash);
     const { token, expires } = createSession(db, user.id, c.req.header('user-agent'), now());
     setSessionCookie(c, token, expires);
     return c.json({ user: { id: user.id, email: user.email, name: user.name } }, 201);
@@ -137,3 +129,23 @@ export function authRoutes() {
 
   return r;
 }
+
+/**
+ * Creates an account with its default routines and settings. The PC server passes a scrypt hash;
+ * the phone app passes NO_PASSWORD (it signs in with its own device session).
+ */
+export function createAccount(db: Db, input: { email: string; name: string; timeZone?: string; locale?: string }, passwordHash: string) {
+  return db.tx(() => {
+    const u = db.insert('users', { email: input.email, name: input.name, password_hash: passwordHash });
+    db.insert('routines', { user_id: u.id, kind: 'morning_briefing', time_local: '07:00', enabled: 0 });
+    db.insert('routines', { user_id: u.id, kind: 'evening_review', time_local: '19:00', enabled: 0 });
+    updateSettings(db, u.id, {
+      profile: { displayName: input.name },
+      regional: { timeZone: safeTimeZone(input.timeZone), locale: input.locale?.match(/^[a-z]{2}(-[A-Z]{2})?$/) ? input.locale : 'en-GB' },
+    });
+    return u;
+  });
+}
+
+/** A password hash that never matches, for accounts that don't sign in with a password. */
+export const NO_PASSWORD = '!no-password';

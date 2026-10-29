@@ -115,7 +115,7 @@ export function Shell({ title, actions, children, bare }: { title?: ReactNode; a
         </div>
       </aside>
 
-      <div className="main">
+      <div className="main" role="main">
         {(!online || offlineSession) && (
           <div className="banner offline" role="status"><Icon name="wifiOff" size={16} /> You’re offline. To-dos, reminders and chats you opened before are available. New tasks and edits to tasks and notes are kept on this device and sync when you reconnect; AI, research and reminders need a connection.</div>
         )}
@@ -226,24 +226,32 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
 function useSwUpdate() {
   const [reg, setReg] = useState<ServiceWorkerRegistration | null>(null);
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+    // The phone app has no service worker (its files are on the phone).
+    if (import.meta.env.VITE_MOBILE || !('serviceWorker' in navigator)) return;
     const check = (r?: ServiceWorkerRegistration) => {
       if (r?.waiting && navigator.serviceWorker.controller) setReg(r);
     };
+    let registration: ServiceWorkerRegistration | undefined;
+    const onUpdate = () => registration?.installing?.addEventListener('statechange', () => check(registration));
     navigator.serviceWorker.getRegistration().then((r) => {
       if (!r) return;
+      registration = r;
       check(r);
-      r.addEventListener('updatefound', () => {
-        r.installing?.addEventListener('statechange', () => check(r));
-      });
+      r.addEventListener('updatefound', onUpdate);
     });
     let reloaded = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const onControllerChange = () => {
       if (!reloaded) {
         reloaded = true;
         location.reload();
       }
-    });
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    // Every screen mounts its own Shell, so remove these again or they pile up one per page.
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+      registration?.removeEventListener('updatefound', onUpdate);
+    };
   }, []);
   return { available: !!reg, apply: () => reg?.waiting?.postMessage({ type: 'SKIP_WAITING' }) };
 }

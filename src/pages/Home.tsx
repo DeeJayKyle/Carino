@@ -38,7 +38,7 @@ export function Home() {
               ['bell', 'Remind me…', '/chat/new?q=' + encodeURIComponent('Remind me ')],
               ['speaker', 'Just talk', '/chat/new?voice=1'],
               ['phone', 'Help me call', '/chat/new?q=' + encodeURIComponent('Help me make a phone call: ')],
-            ].map(([icon, label, to]) => <Link key={label} to={to} className="chip" role="listitem"><Icon name={icon} size={15} />{label}</Link>)}
+            ].map(([icon, label, to]) => <span key={label} role="listitem" className="li-wrap"><Link to={to} className="chip"><Icon name={icon} size={15} />{label}</Link></span>)}
           </div>
         </div>
         <StaleNote savedAt={stale} />
