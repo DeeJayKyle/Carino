@@ -125,13 +125,16 @@ export function dataRoutes() {
     const q = c.req.query();
     const tz = tzOf(c);
     const today = localDate(c.var.services.now(), tz);
-    return c.json({
-      tasks: tasks.listTasks(db(c), uid(c), {
-        view: (q.view as tasks.TaskView) ?? 'all', q: q.q, project_id: q.project_id, tag: q.tag,
-        priority: q.priority ? Number(q.priority) : undefined, sort: q.sort,
-        dayStart: startOfLocalDay(today, tz), dayEnd: startOfLocalDay(addDays(today, 1), tz), now: c.var.services.now(),
-      }),
-    });
+    const opts = {
+      view: (q.view as tasks.TaskView) ?? 'all', q: q.q, project_id: q.project_id, tag: q.tag,
+      priority: q.priority ? Number(q.priority) : undefined, sort: q.sort,
+      dayStart: startOfLocalDay(today, tz), dayEnd: startOfLocalDay(addDays(today, 1), tz), now: c.var.services.now(),
+      limit: q.limit ? Math.max(1, Math.min(Number(q.limit) || 500, 5000)) : undefined,
+    };
+    const list = tasks.listTasks(db(c), uid(c), opts);
+    // The full count only when the page is full, so the usual short list costs nothing extra.
+    const total = list.length >= (opts.limit ?? 500) ? tasks.countTasks(db(c), uid(c), opts) : list.length;
+    return c.json({ tasks: list, total });
   });
   r.post('/tasks', async (c) => c.json(tasks.createTask(db(c), uid(c), await body(c)), 201));
   /** Parses a natural-language request into a task draft for the user to confirm. Nothing is saved. */

@@ -5,6 +5,7 @@ import { api, post } from '../lib/api';
 import { useSession } from '../lib/session';
 import { openExternal } from '../../mobile/native';
 
+interface SpeedResult { model: string; ok: boolean; firstMs?: number; totalMs?: number; error?: string }
 interface FreeModel { id: string; label: string; family?: string; vision?: boolean }
 interface Preset { id: string; label: string; free: string; baseUrl: string; model: string; models: FreeModel[]; vision: boolean; keyUrl: string; hidden?: boolean; ownAddress?: boolean; transcribe?: { model: string } }
 
@@ -25,6 +26,9 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
   /** What the service said this key can use; null until checked. */
   const [live, setLive] = useState<{ provider: string; ids: string[]; error?: string } | null>(null);
   const [typing, setTyping] = useState(false);
+  /** Speed test results for this service, fastest first; null until run. */
+  const [speed, setSpeed] = useState<{ provider: string; results: SpeedResult[] } | null>(null);
+  const [timing, setTiming] = useState(false);
 
   useEffect(() => {
     api<any>('/device/config').then((r) => {
@@ -64,6 +68,28 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
       setBusy(false);
     }
   };
+
+  const runSpeed = async () => {
+    setTiming(true);
+    setSpeed(null);
+    try {
+      // Only models the key can use (if checked), else the whole free list.
+      const models = liveIds ? [...p.models.map((m) => m.id).filter((id) => liveIds.has(id)), ...extra].slice(0, 8) : undefined;
+      const r = await api<{ results: SpeedResult[] }>('/device/speedtest', { method: 'POST', body: { provider: p.id, apiKey: form.apiKey, baseUrl: form.baseUrl, models } });
+      setSpeed({ provider: p.id, results: r.results });
+      const best = r.results.find((x) => x.ok);
+      if (best) {
+        set({ model: best.model });
+        setTyping(false);
+      }
+    } catch (e: any) {
+      toast(e.message, 'error');
+    } finally {
+      setTiming(false);
+    }
+  };
+  const label = (id: string) => p.models.find((m) => m.id === id)?.label.replace(/ — .*/, '') ?? id;
+  const secs = (ms?: number) => (ms === undefined ? '' : `${(ms / 1000).toFixed(1)} s`);
 
   const save = async () => {
     setBusy(true);
@@ -126,12 +152,28 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
               <option value={OTHER}>Type a model name…</option>
             </select>
           )}
-          <div className="row" style={{ marginTop: 6 }}>
-            <button type="button" className="btn sm" disabled={busy || (!form.apiKey && !p.ownAddress)} onClick={check}><Icon name="refresh" size={14} />Check my key</button>
+          <div className="row wrap" style={{ marginTop: 6 }}>
+            <button type="button" className="btn sm" disabled={busy || timing || (!form.apiKey && !p.ownAddress)} onClick={check}><Icon name="refresh" size={14} />Check my key</button>
+            <button type="button" className="btn sm" disabled={busy || timing || (!form.apiKey && !p.ownAddress)} onClick={runSpeed}><Icon name="clock" size={14} />{timing ? 'Timing each model…' : 'Test speed'}</button>
             {live?.provider === p.id && (
               <span className="tiny muted">{live.error ?? (live.ids.length ? `${p.models.filter((m) => works(m.id)).length + extra.length} free model(s) available to this key` : 'The service didn’t list its models; the list above is used as is.')}</span>
             )}
           </div>
+          {speed?.provider === p.id && (
+            <div className="speed-results" role="status" aria-live="polite">
+              {speed.results.length === 0 ? <p className="tiny muted">Nothing to time.</p> : (
+                <ol className="list">
+                  {speed.results.map((r, i) => (
+                    <li key={r.model} className={`speed-row ${r.ok ? '' : 'failed'}`}>
+                      <span className="grow ellipsis">{label(r.model)}{i === 0 && r.ok ? <span className="badge success" style={{ marginLeft: 6 }}>Fastest · chosen</span> : null}</span>
+                      <span className="tiny muted">{r.ok ? `starts in ${secs(r.firstMs)} · done in ${secs(r.totalMs)}` : r.error}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <p className="faint tiny">Timed from this phone just now. Speeds change during the day; tap Save and test to keep the choice.</p>
+            </div>
+          )}
           {!p.ownAddress && <p className="faint tiny">If a model is retired, busy or over its free limit, Carino switches to the next one in this list on its own.</p>}
         </div>
       )}

@@ -279,9 +279,14 @@ export function listTasks(
        (SELECT MIN(remind_at) FROM reminders r WHERE r.task_id = t.id AND r.status = 'scheduled') AS next_reminder
      FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
      WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT ?`,
-    ...params, Math.min(opts.limit ?? 500, 1000),
+    ...params, Math.min(opts.limit ?? 500, 5000),
   );
   return rows.map(presentTask);
+}
+
+/** How many tasks match a list's filters, so the page can say "500 of 1,240" and offer more. */
+export function countTasks(db: Db, userId: string, opts: Parameters<typeof listTasks>[2]): number {
+  return listTasks(db, userId, { ...opts, limit: 5000 }).length;
 }
 
 // ---------- Dependencies & workload ----------

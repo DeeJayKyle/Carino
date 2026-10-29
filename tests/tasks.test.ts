@@ -9,6 +9,19 @@ beforeEach(() => (ctx = setup()));
 afterEach(() => ctx.cleanup());
 
 describe('tasks', () => {
+  it('says how many tasks there are when the list is longer than one page, and loads more', async () => {
+    const c = await signup(ctx);
+    for (let i = 0; i < 520; i++) ctx.services.db.insert('tasks', { user_id: (await c.get('/api/auth/me')).data.user.id, title: `Bulk ${i}`, status: 'open' } as any);
+    const first = (await c.get('/api/tasks?view=all')).data;
+    expect(first.tasks).toHaveLength(500);
+    expect(first.total).toBe(520);
+    const more = (await c.get('/api/tasks?view=all&limit=1000')).data;
+    expect(more.tasks).toHaveLength(520);
+    expect(more.total).toBe(520);
+    const short = (await c.get('/api/tasks?view=inbox&q=Bulk%201')).data;
+    expect(short.total).toBe(short.tasks.length);
+  });
+
   it('creates, edits, completes, reopens and deletes a task with history', async () => {
     const c = await signup(ctx);
     const t = (await c.post('/api/tasks', { title: 'Review budget', priority: 1, tags: ['finance'], due_at: '2026-10-16T12:00:00Z' })).data;

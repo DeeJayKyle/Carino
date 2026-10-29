@@ -37,8 +37,8 @@ describe.each(themes)('colour contrast: %s theme', (_name, t) => {
   it.each(body)('%s on %s reaches 4.5:1', (fg, bg) => {
     expect(ratio(t[fg], t[bg]), `${fg} ${t[fg]} on ${bg} ${t[bg]}`).toBeGreaterThanOrEqual(4.5);
   });
-  it('hints and placeholders (text-3) reach 3:1 against the page and cards', () => {
-    expect(ratio(t['text-3'], t.bg)).toBeGreaterThanOrEqual(3);
-    expect(ratio(t['text-3'], t.surface)).toBeGreaterThanOrEqual(3);
+  it('hints and small grey text (text-3) reach 4.5:1 against the page and cards', () => {
+    expect(ratio(t['text-3'], t.bg)).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(t['text-3'], t.surface)).toBeGreaterThanOrEqual(4.5);
   });
 });

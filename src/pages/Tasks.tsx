@@ -25,12 +25,15 @@ export default function Tasks() {
   const [q, setQ] = useState('');
   const [priority, setPriority] = useState('');
   const [sort, setSort] = useState('due');
+  /** How many to show; grows by 500 with "Show more" (long lists stay quick to open). */
+  const [limit, setLimit] = useState(500);
   const [editing, setEditing] = useState<any | null>(null);
   const dq = useDebounced(q);
   const apiView = view === 'calendar' ? 'all' : view === 'all' ? 'all' : view;
   const params = new URLSearchParams({ view: apiView, sort });
   if (dq) params.set('q', dq);
   if (priority) params.set('priority', priority);
+  if (limit > 500) params.set('limit', String(limit));
   const { data, error, loading, stale, reload, setData } = useData<any>(`/tasks?${params}`, { cache: true });
   const load = useData<any>('/tasks/workload?days=7');
   const focus = query.get('focus');
@@ -85,7 +88,16 @@ export default function Tasks() {
             </ul>
           </div>
         )}
-        {data && view !== 'calendar' && <p className="faint small" style={{ marginTop: 10 }}>{topLevel.length} task{topLevel.length === 1 ? '' : 's'}</p>}
+        {data && view !== 'calendar' && (
+          <div className="row wrap" style={{ marginTop: 10 }}>
+            <p className="faint small grow">
+              {(data.total ?? topLevel.length) > data.tasks.length
+                ? `Showing ${data.tasks.length.toLocaleString()} of ${data.total.toLocaleString()} to-dos`
+                : `${topLevel.length} to-do${topLevel.length === 1 ? '' : 's'}`}
+            </p>
+            {(data.total ?? 0) > data.tasks.length && <button className="btn sm" onClick={() => setLimit((n) => n + 500)}>Show more</button>}
+          </div>
+        )}
       </div>
       {editing && <TaskEditor task={editing} onClose={() => { setEditing(null); if (focus) navigate('/tasks', { replace: true }); }} onSaved={() => reload()} />}
     </Shell>

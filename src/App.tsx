@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { Component, lazy, Suspense, type ReactNode } from 'react';
 import { SessionProvider, useSession } from './lib/session';
 import { ToastProvider, ConfirmProvider, Spinner } from './components/ui';
 import { match, useLocation, useSwNavigation } from './lib/router';
@@ -54,7 +54,7 @@ function Router() {
   ];
   for (const [pattern, render] of routes) {
     const params = match(pattern, pathname);
-    if (params) return <Suspense fallback={<Centered><Spinner lg /></Centered>}>{render(params)}</Suspense>;
+    if (params) return <PageBoundary key={pathname}><Suspense fallback={<Centered><Spinner lg /></Centered>}>{render(params)}</Suspense></PageBoundary>;
   }
   return <Home />;
 }
@@ -72,4 +72,30 @@ export function App() {
       </ConfirmProvider>
     </ToastProvider>
   );
+}
+
+/**
+ * If a screen can't load (for example its code couldn't be fetched while offline in the web
+ * version), say so and offer a retry instead of leaving a blank page.
+ */
+class PageBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(err: unknown) {
+    console.warn('[page]', err);
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <Centered>
+        <div className="empty" role="alert">
+          <h3>This screen couldn’t open</h3>
+          <p>Check your connection, then try again. Your data is safe.</p>
+          <button className="btn primary" onClick={() => location.reload()}>Try again</button>
+        </div>
+      </Centered>
+    );
+  }
 }

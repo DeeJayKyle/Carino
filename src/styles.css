@@ -14,7 +14,7 @@
   --border-strong: #d3cde8;
   --text: #1d1b2e;
   --text-2: #55536a;
-  --text-3: #85839a;
+  --text-3: #67657d;
   --brand: #5b45dd;
   --brand-hover: #4a35c4;
   --brand-soft: #ece8fd;
@@ -68,7 +68,7 @@
     --border-strong: #403b58;
     --text: #f1eeec;
     --text-2: #b7b3b8;
-    --text-3: #8a8690;
+    --text-3: #96929c;
     --brand: #a796ff;
     --brand-hover: #bcafff;
     --brand-soft: #2a2350;
@@ -99,7 +99,7 @@
   --border-strong: #403b58;
   --text: #f1eeec;
   --text-2: #b7b3b8;
-  --text-3: #8a8690;
+  --text-3: #96929c;
   --brand: #a796ff;
   --brand-hover: #bcafff;
   --brand-soft: #2a2350;
@@ -131,7 +131,7 @@
   --border-strong: #c8d2e0;
   --text: #0B1220;
   --text-2: #475569;
-  --text-3: #64748b;
+  --text-3: #5b6a80;
   --brand: #0f766e;
   --brand-hover: #115e59;
   --brand-soft: #e0f5f2;
@@ -152,7 +152,7 @@
     --border-strong: #33465f;
     --text: #F8FAFC;
     --text-2: #94A3B8;
-    --text-3: #8291a7;
+    --text-3: #8a99ae;
     --brand: #14B8A6;
     --brand-hover: #2dd4bf;
     --brand-soft: #0f2e33;
@@ -174,7 +174,7 @@
   --border-strong: #33465f;
   --text: #F8FAFC;
   --text-2: #94A3B8;
-  --text-3: #8291a7;
+  --text-3: #8a99ae;
   --brand: #14B8A6;
   --brand-hover: #2dd4bf;
   --brand-soft: #0f2e33;
@@ -272,6 +272,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .mobile-only { display: inline-flex !important; }
   select.mobile-only { display: block !important; }
   .desktop-only { display: none !important; }
+  /* A button's text label hides on phones, but screen readers still read it. */
+  .btn .desktop-only, a .desktop-only {
+    display: inline !important; position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
   .bottom-nav {
     display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
     background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--border);
@@ -459,15 +463,16 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .md pre:hover .copy-code, .copy-code:focus { opacity: 1; }
 
 /* ---------- Chat ---------- */
-.chat-layout { display: grid; grid-template-columns: 290px 1fr; height: calc(100vh - var(--topbar)); height: calc(100dvh - var(--topbar)); }
+.chat-layout { display: grid; grid-template-columns: 290px 1fr; grid-template-rows: minmax(0, 1fr); height: calc(100vh - var(--topbar)); height: calc(100dvh - var(--topbar)); }
 .chat-list { border-right: 1px solid var(--border); overflow-y: auto; padding: 12px 10px; background: var(--surface-2); }
 .chat-list .conv { display: block; padding: 8px 10px; border-radius: 10px; color: var(--text); text-decoration: none; }
 .chat-list .conv:hover { background: var(--bg-sunken); text-decoration: none; }
 .chat-list .conv.active { background: var(--brand-soft); }
 .chat-list .conv .t { font-weight: 600; font-size: 0.9em; }
 .chat-list .conv .p { font-size: 0.78em; color: var(--text-3); }
-.chat-main { display: flex; flex-direction: column; min-width: 0; height: 100%; }
-.chat-scroll { flex: 1; overflow-y: auto; padding: 24px 20px 12px; }
+.chat-main { display: flex; flex-direction: column; min-width: 0; height: 100%; min-height: 0; }
+/* min-height: 0 lets the thread shrink and scroll, so the message box always stays on screen. */
+.chat-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 20px 12px; }
 .chat-thread { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
 .msg { display: flex; gap: 12px; animation: fadeUp 0.2s var(--ease); }
 .msg.user { justify-content: flex-end; }
@@ -817,3 +822,14 @@ html.kb-open .page { padding-bottom: 16px; }
 
 /* Long lists render only what is on screen (content-visibility skips layout and paint below the fold). */
 .list > li, .task-list > *, .chat-list .conv { content-visibility: auto; contain-intrinsic-size: auto 56px; }
+
+/* Links inside sentences are underlined, so they don't rely on colour alone (WCAG 1.4.1). */
+p a:not(.btn), li a:not(.btn), .desc a:not(.btn), .hint a:not(.btn), .callout a:not(.btn), .sub a:not(.btn), .md a { text-decoration: underline; text-underline-offset: 2px; }
+/* Grid and flex children may shrink below their content (wide content scrolls inside its box instead of widening the page). */
+.page > *, .card { min-width: 0; }
+.speed-results { margin-top: 8px; }
+.speed-results .list { border: 1px solid var(--border); border-radius: var(--r-sm); }
+.speed-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; min-height: 40px; border-bottom: 1px solid var(--border); }
+.speed-row:last-child { border-bottom: 0; }
+.speed-row.failed { color: var(--text-2); }
+.speed-row .tiny { white-space: nowrap; }

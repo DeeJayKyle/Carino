@@ -177,6 +177,8 @@ function turnContext(services: Services, ctx: ToolContext, conv: Row, userText: 
  * Runs one user turn: stores the message, calls the model, executes tools under the
  * permission policy, loops until the model finishes, and stores everything.
  */
+const STOPPED_NOTE = '\n\n_You stopped this reply._';
+
 export async function runTurn(
   services: Services,
   user: SessionUser,
@@ -230,10 +232,34 @@ export async function runTurn(
   let totalOut = 0;
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const result = await provider.chat({
-      system, messages, tools, signal: opts.signal,
-      onText: (delta) => opts.emit({ type: 'text', delta }),
-    });
+    let streamed = '';
+    let result;
+    try {
+      result = await provider.chat({
+        system, messages, tools, signal: opts.signal,
+        onText: (delta) => { streamed += delta; opts.emit({ type: 'text', delta }); },
+      });
+    } catch (err) {
+      // Stop pressed: keep what the person has already read instead of throwing it away.
+      const sofar = finalText + (finalText && streamed ? '\n\n' : '') + streamed;
+      if (!(err instanceof ProviderError && err.kind === 'aborted') || !sofar.trim()) throw err;
+      const content = sofar + STOPPED_NOTE;
+      const row = db.insert('messages', {
+        user_id: user.id, conversation_id: conversationId, role: 'assistant', content,
+        api_content: JSON.stringify([{ type: 'text', text: sofar }]),
+        meta: JSON.stringify({ provider: info.id, model: info.model, stopped: true, tools: toolEvents }),
+      });
+      db.run(
+        "UPDATE messages SET meta = json_set(meta, '$.hidden', 1) WHERE conversation_id = ? AND role = 'assistant' AND created_at >= ? AND id != ?",
+        conversationId, userMsg.created_at, row.id,
+      );
+      indexEntity(db, user.id, 'message', row.id, conv.title, content);
+      db.run('UPDATE conversations SET updated_at = ? WHERE id = ?', nowIso(), conversationId);
+      const message = { ...row, content, meta: { provider: info.id, model: info.model, stopped: true, tools: toolEvents } };
+      opts.emit({ type: 'message', message });
+      opts.emit({ type: 'done' });
+      return { userMessage: userMsg, message };
+    }
     totalIn += result.usage.inputTokens;
     totalOut += result.usage.outputTokens;
     recordUsage(services, user.id, info.id, result.model, result.usage, info.pricing);

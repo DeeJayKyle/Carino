@@ -64,7 +64,9 @@ export function createApp(services: Services) {
 
   const api = new Hono<AppEnv>();
   api.use('*', csrfGuard);
-  api.use('*', rateLimit({ name: 'api', windowMs: 60_000, max: 600, key: clientIp }));
+  // Protects the PC server from floods over the network. The phone app's engine serves a single
+  // person in-process, so it doesn't limit itself (bulk actions there must not hit a 429).
+  if (!services.deviceSession) api.use('*', rateLimit({ name: 'api', windowMs: 60_000, max: 600, key: clientIp }));
   api.use('/documents', bodyLimit({ maxSize: (services.config.MAX_UPLOAD_MB + 1) * 1024 * 1024, onError: (c) => c.json({ error: `File is too large. The limit is ${services.config.MAX_UPLOAD_MB} MB.`, code: 'too_large' }, 413) }));
   api.use('*', async (c, next) => {
     if (c.req.path.endsWith('/documents') && c.req.method === 'POST') return next();

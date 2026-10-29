@@ -26,6 +26,30 @@ describe('conversations', () => {
     expect((await c.get(`/api/conversations/${conv.id}`)).status).toBe(404);
   });
 
+  it('keeps the words already shown when Stop is pressed mid-reply', async () => {
+    const c = await signup(ctx);
+    const conv = (await c.post('/api/conversations', {})).data;
+    ctx.provider.steps.push((req) => {
+      req.onText?.('First, check the stock list. ');
+      throw new ProviderError('aborted', 'Response cancelled.');
+    });
+    const { events } = await send(c, conv.id, { text: 'Plan my week' });
+    expect(events.map((e) => e.event)).toEqual(['start', 'text', 'message', 'done']);
+    const saved = (await c.get(`/api/conversations/${conv.id}`)).data;
+    const reply = saved.messages.find((m: any) => m.role === 'assistant');
+    expect(reply.content).toContain('First, check the stock list.');
+    expect(reply.content).toContain('You stopped this reply');
+    expect(reply.meta.stopped).toBe(true);
+  });
+
+  it('still reports a cancel as an error when nothing had arrived yet', async () => {
+    const c = await signup(ctx);
+    const conv = (await c.post('/api/conversations', {})).data;
+    ctx.provider.steps.push(() => { throw new ProviderError('aborted', 'Response cancelled.'); });
+    const { events } = await send(c, conv.id, { text: 'Hello' });
+    expect(events.at(-1)!.event).toBe('error');
+  });
+
   it('streams a reply and persists both messages', async () => {
     const c = await signup(ctx);
     const conv = (await c.post('/api/conversations', {})).data;

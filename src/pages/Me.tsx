@@ -17,8 +17,8 @@ const ACCESSORIES: { id: Accessory | 'auto'; label: string }[] = [
   { id: 'headband', label: 'Sports headband' },
 ];
 
-const Bar = ({ value, goal }: { value: number; goal: number }) => (
-  <span className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={goal} aria-valuenow={value}><span style={{ width: `${Math.round((value / goal) * 100)}%` }} /></span>
+const Bar = ({ value, goal, label }: { value: number; goal: number; label: string }) => (
+  <span className="progress" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={goal} aria-valuenow={value}><span style={{ width: `${Math.round((value / goal) * 100)}%` }} /></span>
 );
 
 /** "Me": you, Carino's look, challenges, and the way into settings and inboxes. */
@@ -82,7 +82,7 @@ export default function Me() {
                   <div className="grow">
                     <div className="row"><b className="grow">{c.title}</b>{c.done ? <span className="badge success"><Icon name="trophy" size={12} />Done</span> : <span className="tiny faint">{c.progress}/{c.goal}</span>}</div>
                     <div className="small muted">{c.blurb}</div>
-                    {!c.done && <Bar value={c.progress} goal={c.goal} />}
+                    {!c.done && <Bar value={c.progress} goal={c.goal} label={`${c.title} progress`} />}
                   </div>
                 </li>
               ))}

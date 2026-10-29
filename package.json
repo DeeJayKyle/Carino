@@ -1,6 +1,6 @@
 {
   "name": "carino",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Carino — a personal AI assistant for Android that runs on your phone, with free AI services.",
   "type": "module",
@@ -36,6 +36,7 @@
     "@types/react-dom": "^19.2.0",
     "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^6.1.2",
+    "axe-core": "^4.14.0",
     "buffer": "^6.0.3",
     "docx": "^9.15.0",
     "dompurify": "^3.4.17",

@@ -10,6 +10,7 @@ import { flushFiles, loadFiles, preloadFiles, seedFile } from './shims/fs.ts';
 import { idbDeleteAll, idbGet, idbWrite } from './idb.ts';
 import { makeNetFetch, notify, setAlarms, isNative } from './native.ts';
 import { configToEnv, maskConfig, PRESETS, type DeviceConfig } from './presets.ts';
+import { speedTest } from './speedtest.ts';
 import { loadConfig } from '../server/config.ts';
 import { Db } from '../server/db/index.ts';
 import { createRegistry } from '../server/ai/providers.ts';
@@ -147,6 +148,18 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
     } catch {
       return json({ models: [], error: `Could not reach ${p.label}.` });
     }
+  }
+  if (path === '/api/device/speedtest' && req.method === 'POST') {
+    // Times each free model with this key, from this phone, and returns them fastest first.
+    const body = (await req.json().catch(() => ({}))) as Partial<DeviceConfig> & { models?: string[] };
+    const p = PRESETS.find((x) => x.id === (body.provider ?? device.provider));
+    if (!p || p.hidden) return json({ results: [] });
+    const masked = !body.apiKey || body.apiKey.startsWith('••••');
+    const key = (masked && body.provider === device.provider) || !body.provider ? device.apiKey : body.apiKey;
+    const base = (p.ownAddress ? (body.baseUrl || device.baseUrl) : p.baseUrl)?.replace(/\/$/, '');
+    if (!base) return json({ results: [] });
+    const models = (Array.isArray(body.models) && body.models.length ? body.models : p.models.map((m) => m.id)).map(String);
+    return json({ results: await speedTest(fetch, base, key, models) });
   }
   if (path === '/api/device/config' && req.method === 'PUT') {
     const body = (await req.json().catch(() => ({}))) as Partial<DeviceConfig>;

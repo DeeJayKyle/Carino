@@ -10,9 +10,12 @@ const render = () => listeners.forEach((l) => l());
  */
 const notify = () => {
   const reduce = document.documentElement.dataset.motion === 'reduce' || matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void> } };
   if (!doc.startViewTransition || reduce || document.visibilityState !== 'visible') return render();
-  doc.startViewTransition(() => flushSync(render));
+  const t = doc.startViewTransition(() => flushSync(render));
+  // The browser skips the animation if the screen changes size mid-way; the page still updates.
+  t.ready.catch(() => undefined);
+  t.finished.catch(() => undefined);
 };
 if (typeof window !== 'undefined') window.addEventListener('popstate', notify);
 
