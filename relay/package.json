@@ -1,0 +1,7 @@
+{
+  "name": "carino-whatsapp-relay",
+  "private": true,
+  "description": "Holds WhatsApp messages for the Carino phone app until it collects them.",
+  "scripts": { "deploy": "wrangler deploy" },
+  "devDependencies": { "wrangler": "^4.40.0" }
+}

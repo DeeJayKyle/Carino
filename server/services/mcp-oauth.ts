@@ -4,6 +4,7 @@ import { badRequest } from '../context.ts';
 import { parseJson } from '../db/index.ts';
 import { checkConnectorUrl, McpError } from './mcp.ts';
 import { encryptSecret, decryptSecret } from './secrets.ts';
+import { LOOPBACK_PORT } from './apps/providers.ts';
 
 /**
  * "Sign in with the app" for connected apps, following the MCP authorization spec: protected
@@ -46,7 +47,7 @@ async function discover(services: Services, mcpUrl: URL, allowPrivate: boolean) 
     const probe = await f(mcpUrl.href, {
       method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(15_000),
       headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'Carino', version: '1.2.0' } } }),
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'Carino', version: '1.3.0' } } }),
     });
     resourceMeta = probe.headers.get('www-authenticate')?.match(/resource_metadata="([^"]+)"/)?.[1] ?? null;
     await probe.body?.cancel().catch(() => undefined);
@@ -65,7 +66,10 @@ async function discover(services: Services, mcpUrl: URL, allowPrivate: boolean) 
   return { as, resource: prm?.resource ?? mcpUrl.href, scopes: (prm?.scopes_supported ?? as.scopes_supported) as string[] | undefined };
 }
 
-export const redirectUri = (services: Services) => `${services.config.PUBLIC_URL.replace(/\/$/, '')}/api/connectors/oauth/callback`;
+/** On the phone the browser brings sign-in back to the app's loopback listener (see My apps). */
+export const redirectUri = (services: Services) => services.deviceSession
+  ? `http://127.0.0.1:${LOOPBACK_PORT}/callback`
+  : `${services.config.PUBLIC_URL.replace(/\/$/, '')}/api/connectors/oauth/callback`;
 
 /** Starts sign-in: returns the app's authorization page to send the browser to. */
 export async function startOAuth(services: Services, userId: string, name: string, rawUrl: string) {
@@ -110,7 +114,7 @@ export async function startOAuth(services: Services, userId: string, name: strin
   auth.searchParams.set('code_challenge_method', 'S256');
   auth.searchParams.set('resource', resource);
   if (scopes?.length) auth.searchParams.set('scope', scopes.join(' '));
-  return { authorize_url: auth.href };
+  return { authorize_url: auth.href, loopback: !!services.deviceSession };
 }
 
 async function tokenRequest(services: Services, endpoint: string, params: Record<string, string | undefined>) {

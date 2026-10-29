@@ -1,0 +1,11 @@
+// Carino's WhatsApp relay: a free Cloudflare Worker that holds WhatsApp messages for your phone.
+// Deploy with the "Deploy to Cloudflare" button in docs/whatsapp.md, or `npx wrangler deploy` here.
+{
+  "name": "carino-whatsapp-relay",
+  "main": "worker.js",
+  "compatibility_date": "2025-09-01",
+  "durable_objects": {
+    "bindings": [{ "name": "INBOX", "class_name": "Inbox" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Inbox"] }]
+}

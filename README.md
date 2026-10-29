@@ -20,8 +20,8 @@ reminders, plans your day, remembers what matters, and does the small stuff you'
 | **Your stuff** | To-dos and reminders, routines, what Carino remembers (with "new things I learned"), connected apps and messaging. |
 | **Calls** | Carino prepares a call: a script with what to say, saved as a to-do with a tap-to-dial link. |
 | **Places** | Finds shops, restaurants and services nearby (OpenStreetMap). |
-| **Connected apps** | Gmail, Google Calendar, Outlook, Slack, Notion, Todoist and more, through free MCP connector services. |
-| **Messaging** | Chat with Carino from Telegram, including voice notes and family or team groups. |
+| **My apps** | Sign in with **Google** (Gmail, Calendar, Drive, Sheets, Docs), **Microsoft** (Outlook, Calendar, OneDrive, Word, Excel, PowerPoint), **Instagram**, **Facebook** Pages, **X**, **LinkedIn** and **TikTok**. Carino reads and acts for you; sending and posting always wait for your OK. More apps (Notion, Linear, Zapier…) through MCP. See [docs/my-apps.md](docs/my-apps.md). |
+| **Messaging** | Chat with Carino on **WhatsApp** (its own number, like Toqi, through a free relay Carino sets up on your Cloudflare account) or **Telegram**, including voice notes and family or team groups. |
 | **Challenges & stickers** | Weekly goals and challenges that earn Carino a crown, hats and a headband. Share Carino stickers to WhatsApp. |
 | **Privacy** | Sensitive memories wait for your OK, deletions need approval, and you can erase everything on the phone at any time. |
 

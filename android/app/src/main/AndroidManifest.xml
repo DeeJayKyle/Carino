@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Speech recognition and text-to-speech come from the phone's own services. -->
     <queries>
@@ -49,8 +51,28 @@
                 <data android:mimeType="text/markdown" />
                 <data android:mimeType="application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
                 <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                <data android:mimeType="video/mp4" />
+                <data android:mimeType="video/quicktime" />
+                <data android:mimeType="video/webm" />
+            </intent-filter>
+            <!-- The sign-in page sends the browser back here (carino://oauth) after My apps sign-in. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="carino" android:host="oauth" />
             </intent-filter>
         </activity>
+
+        <!-- Keeps WhatsApp and Telegram answered while Carino is in the background (ongoing notification). -->
+        <service
+            android:name=".Listening"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Answers the user's own WhatsApp and Telegram messages to their assistant while the app is in the background." />
+        </service>
 
         <!-- Reminders that ring while Carino is closed, re-armed after a restart or update. -->
         <receiver android:name=".Alarms" android:exported="false">

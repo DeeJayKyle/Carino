@@ -15,7 +15,7 @@ let shotN = 0;
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 400, height: 860 }, acceptDownloads: true, permissions: ['geolocation'], geolocation: { latitude: 0.35, longitude: 32.61 } });
-  const outside = { telegram: [], nominatim: 0, mcp: [], brave: 0 };
+  const outside = { telegram: [], nominatim: 0, mcp: [], brave: 0, google: [], relay: [], whatsapp: [] };
   // ---- Stand-ins for outside services --------------------------------------------------------
   const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' };
   await ctx.route('https://nominatim.openstreetmap.org/**', (r) => {
@@ -45,6 +45,41 @@ let shotN = 0;
     if (msg.method === 'tools/list') return reply({ tools: [{ name: 'order_status', description: 'Look up the delivery status of an order by its number', inputSchema: { type: 'object', properties: { order: { type: 'string' } }, required: ['order'] }, annotations: { readOnlyHint: true } }] });
     if (msg.method === 'tools/call') return reply({ content: [{ type: 'text', text: `Order ${msg.params?.arguments?.order}: shipped, arrives Friday` }] });
     reply({});
+  });
+
+  // Google (My apps), a WhatsApp relay and the WhatsApp Graph API (Carino).
+  const gj = (r, b, status = 200) => r.fulfill({ status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(b) });
+  // "No content" keeps the app on screen, as on the phone, where sign-in opens in the browser app.
+  await ctx.route('https://accounts.google.com/**', (r) => r.fulfill({ status: 204, body: '' }));
+  await ctx.route('https://oauth2.googleapis.com/token', (r) => { outside.google.push('token'); gj(r, { access_token: 'g-at', refresh_token: 'g-rt', expires_in: 3600 }); });
+  await ctx.route('https://openidconnect.googleapis.com/**', (r) => gj(r, { sub: 'g1', email: 'herbert@gmail.com' }));
+  await ctx.route('https://gmail.googleapis.com/**', (r) => {
+    const url = r.request().url();
+    outside.google.push(url.includes('/send') ? 'send' : 'read');
+    if (url.includes('/messages?')) return gj(r, { messages: [{ id: 'm1' }] });
+    gj(r, { id: 'm1', threadId: 't1', snippet: 'Delivery on Friday', payload: { headers: [{ name: 'From', value: 'Supplier <s@x.com>' }, { name: 'Subject', value: 'Your order' }] } });
+  });
+  const relayItems = [];
+  const cfCalls = [];
+  await ctx.route('https://api.cloudflare.com/**', (r) => {
+    const u = new URL(r.request().url());
+    cfCalls.push(`${r.request().method()} ${u.pathname.replace('/client/v4', '')}`);
+    if (u.pathname.endsWith('/accounts')) return gj(r, { success: true, result: [{ id: 'acc1' }] });
+    if (u.pathname.endsWith('/workers/subdomain')) return gj(r, { success: true, result: { subdomain: 'qa' } });
+    gj(r, { success: true, result: {} });
+  });
+  await ctx.route('https://carino-whatsapp-relay.qa.workers.dev/**', async (r) => {
+    const url = r.request().url();
+    outside.relay.push(url.split('/').pop());
+    if (url.endsWith('/setup')) return gj(r, { ok: true });
+    if (url.endsWith('/inbox')) return gj(r, { items: relayItems.splice(0) });
+    gj(r, { removed: 1 });
+  });
+  await ctx.route('https://graph.facebook.com/**', async (r) => {
+    const url = r.request().url();
+    if (url.includes('?fields=display_phone_number')) return gj(r, { display_phone_number: '+1 555 0100' });
+    if (url.endsWith('/messages')) { outside.whatsapp.push(JSON.parse(r.request().postData() || '{}').text?.body); return gj(r, { messages: [{ id: 'wamid.1' }] }); }
+    gj(r, {});
   });
 
   const page = await ctx.newPage();
@@ -399,6 +434,76 @@ let shotN = 0;
     await go('/settings#profile', 'Profile');
     return 'saved';
   });
+
+  // ---- My apps (Carino) ------------------------------------------------------------------------
+  if (CARINO) {
+    await step('My apps: WhatsApp, Google, Microsoft, Instagram, Facebook, X, LinkedIn, TikTok, Telegram', async () => {
+      await go('/apps', 'My apps');
+      const names = await page.locator('.app-item .app-name').allTextContents();
+      expect(names.length === 10, 'ten rows: ' + names.join(', '));
+      for (const n of ['WhatsApp', 'Google', 'Microsoft', 'Instagram', 'Facebook', 'X (Twitter)', 'LinkedIn', 'TikTok', 'Telegram']) expect(names.some((x) => x.startsWith(n)), 'missing ' + n);
+      expect(await page.getByText('Tap to connect').count() === 7, 'seven not connected');
+      await shot('my-apps');
+      return names.map((n) => n.replace('Beta', '')).join(', ');
+    });
+    await step('Google: one-time setup, sign-in in the browser, account connected', async () => {
+      await go('/apps/google', 'One-time setup');
+      const redirect = await page.locator('#redirect').inputValue();
+      expect(redirect === 'http://127.0.0.1:47823/callback', 'phone redirect: ' + redirect);
+      await page.locator('#client-id').fill('qa.apps.googleusercontent.com');
+      await page.locator('#client-secret').fill('GOCSPX-qa-secret');
+      await page.getByRole('button', { name: 'Save' }).click();
+      await page.getByText('Saved. Now sign in.').waitFor({ timeout: 8000 });
+      await shot('google-setup');
+      const opened = page.waitForRequest(/accounts\.google\.com/, { timeout: 10000 });
+      await page.getByRole('button', { name: 'Sign in with Google' }).click();
+      const u = new URL((await opened).url());
+      expect(u.searchParams.get('redirect_uri') === redirect && u.searchParams.get('code_challenge_method') === 'S256', 'PKCE + loopback');
+      // The phone's listener hands the browser's answer back to the app.
+      await page.waitForTimeout(500);
+      await page.evaluate((q) => window.__hn.oauth(q), `state=${u.searchParams.get('state')}&code=qa-code&scope=email`);
+      await page.getByText('herbert@gmail.com').first().waitFor({ timeout: 10000 });
+      await go('/apps', 'My apps');
+      expect(await page.locator('.app-item').filter({ hasText: 'Google' }).locator('.chip-sm').count() === 5, 'Gmail, Calendar, Drive, Sheets, Docs chips');
+      await shot('my-apps-connected');
+      return 'signed in as herbert@gmail.com through the loopback redirect';
+    });
+    await step('Chat uses Gmail; sending an email waits for approval', async () => {
+      await newChat();
+      await chat('TOOL gmail_search {"query":"is:unread"}');
+      expect(await page.locator('.msg.assistant').last().getByText(/Supplier/).count() > 0, 'search result in reply');
+      expect(outside.google.includes('read'), 'Gmail was read');
+      await chat('TOOL gmail_send {"to":"s@x.com","subject":"Re: Your order","body":"Friday is fine, thank you."}');
+      expect(!outside.google.includes('send'), 'not sent before approval');
+      await go('/actions', 'Send email');
+      await shot('gmail-approval');
+      await page.getByRole('button', { name: /Approve/ }).first().click();
+      await page.waitForTimeout(1500);
+      expect(outside.google.includes('send'), 'sent after approval');
+      return 'read inbox; email sent only after Approve';
+    });
+    await step('WhatsApp: connect, link the relay, and answer a message collected from it', async () => {
+      await go('/messaging#whatsapp', 'WhatsApp');
+      await page.getByLabel('Phone number ID').fill('5550100');
+      await page.getByLabel('Access token').fill('EAAG-qa-access-token-xxxxxxxx');
+      await page.getByLabel('App secret').fill('qa-app-secret-0123456789');
+      await page.getByRole('button', { name: 'Connect WhatsApp' }).click();
+      await page.getByLabel('Cloudflare API token').waitFor({ timeout: 10000 });
+      await page.getByLabel('Cloudflare API token').fill('cf-qa-token-0123456789abcdef');
+      await page.getByRole('button', { name: 'Create my relay' }).click();
+      await page.getByLabel('Callback URL').waitFor({ timeout: 15000 });
+      expect((await page.getByLabel('Callback URL').inputValue()) === 'https://carino-whatsapp-relay.qa.workers.dev/webhook', 'webhook address');
+      expect(cfCalls.includes('PUT /accounts/acc1/workers/scripts/carino-whatsapp-relay'), 'relay uploaded: ' + cfCalls.join(', '));
+      await shot('whatsapp-setup');
+      const ch = (await api('GET', '/channels')).data.channels.find((c) => c.kind === 'whatsapp');
+      const body = JSON.stringify({ entry: [{ changes: [{ value: { metadata: { phone_number_id: '5550100' }, contacts: [{ wa_id: '15550111', profile: { name: 'Herbert' } }], messages: [{ from: '15550111', id: 'w1', type: 'text', text: { body: ch.pairing_code } }] } }] }] });
+      const sig = 'sha256=' + require('crypto').createHmac('sha256', 'qa-app-secret-0123456789').update(body).digest('hex');
+      relayItems.push({ id: 1, at: Date.now(), sig, body });
+      for (let i = 0; i < 20 && !outside.whatsapp.length; i++) await page.waitForTimeout(500);
+      expect(/linked to your Carino/.test(outside.whatsapp[0] ?? ''), 'pairing reply sent: ' + outside.whatsapp[0]);
+      return 'relay created on Cloudflare, polled, pairing confirmed on WhatsApp';
+    });
+  }
   await step('Settings: dark theme and large text apply at once', async () => {
     await api('PATCH', '/settings', { appearance: { theme: 'dark', textSize: 'large' } });
     await go('/');

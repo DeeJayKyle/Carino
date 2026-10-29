@@ -26,7 +26,7 @@ export default function Stuff() {
     },
     { to: '/routines', icon: 'clock', title: 'Routines', main: plural(d.routines.active, 'routine') + ' on', sub: d.routines.custom ? plural(d.routines.custom, 'of your own', 'of your own') : 'Add your first one' },
     { to: '/memory', icon: 'brain', title: `What ${name} remembers`, main: plural(d.memories.active, 'memory', 'memories'), sub: d.memories.waiting ? `${d.memories.waiting} waiting for your OK` : 'You’re in control of all of it', warn: d.memories.waiting > 0 },
-    { to: '/connectors', icon: 'link', title: 'Connected apps', main: d.apps ? plural(d.apps, 'app') : 'None yet', sub: 'Email, calendar, chat and more' },
+    { to: '/apps', icon: 'link', title: 'My apps', main: d.apps ? plural(d.apps, 'account') : 'None yet', sub: 'Gmail, Outlook, Drive, Instagram and more' },
     { to: '/messaging', icon: 'send', title: 'Messaging', main: d.chats ? plural(d.chats, 'linked chat') : 'Not set up', sub: 'Telegram and WhatsApp' },
   ] : [];
 

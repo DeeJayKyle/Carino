@@ -13,9 +13,9 @@ import { getSettings } from './settings.ts';
  * (service conversations). Meta delivers messages to a webhook on Carino's public address,
  * signed with the app secret; Carino answers through the Graph API.
  */
-const GRAPH = 'https://graph.facebook.com/v21.0';
+const GRAPH = 'https://graph.facebook.com/v23.0';
 type Secret = { access_token: string; app_secret: string };
-export type WaConfig = { phone_number_id: string; verify_token: string; display_phone?: string; transcribe_voice?: boolean };
+export type WaConfig = { phone_number_id: string; verify_token: string; display_phone?: string; transcribe_voice?: boolean; /** Phone app: the user's relay (see whatsapp-relay.ts). */ relay_url?: string };
 
 export class WhatsAppError extends Error {}
 
@@ -47,14 +47,20 @@ export async function connectWhatsApp(services: Services, userId: string, i: { p
   } catch (e: any) {
     throw badRequest(e.message);
   }
-  const existing = services.db.get("SELECT config FROM channels WHERE user_id = ? AND kind = 'whatsapp'", userId);
-  const verify = parseJson<WaConfig | null>(existing?.config, null)?.verify_token ?? randomBytes(18).toString('base64url');
-  return saveChannel(services, userId, 'whatsapp', { access_token: i.access_token.trim(), app_secret: i.app_secret.trim() } satisfies Secret, {
+  const existing = services.db.get("SELECT config, secret FROM channels WHERE user_id = ? AND kind = 'whatsapp'", userId);
+  const prev = parseJson<WaConfig | null>(existing?.config, null);
+  const verify = prev?.verify_token ?? randomBytes(18).toString('base64url');
+  const relayKey = existing ? channelSecret<Secret & { relay_key?: string }>(services, existing as Row)?.relay_key : undefined;
+  return saveChannel(services, userId, 'whatsapp', { access_token: i.access_token.trim(), app_secret: i.app_secret.trim(), ...(relayKey ? { relay_key: relayKey } : {}) }, {
     phone_number_id: i.phone_number_id.trim(), verify_token: verify, display_phone: info.display_phone_number ?? '',
+    ...(prev?.relay_url ? { relay_url: prev.relay_url } : {}),
   } satisfies WaConfig);
 }
 
 export function webhookUrl(services: Services, ch: Row) {
+  const relay = parseJson<WaConfig>(ch.config, {} as WaConfig).relay_url;
+  if (relay) return `${relay}/webhook`;
+  if (services.deviceSession) return undefined;
   return `${services.config.PUBLIC_URL.replace(/\/$/, '')}/hooks/whatsapp/${ch.id}`;
 }
 

@@ -16,6 +16,8 @@ interface Bridge {
   shareText(text: string): void;
   takeShared(): string;
   openExternal(url: string): void;
+  oauthListen(): string;
+  keepListening(on: boolean): void;
   appInfo(): string;
 }
 
@@ -46,6 +48,10 @@ let speakDone: (() => void) | null = null;
   },
   open: (url: string) => window.dispatchEvent(new CustomEvent('carino-open', { detail: url })),
   shared: () => window.dispatchEvent(new Event('carino-shared')),
+  // A sign-in came back from the browser (query string from the loopback listener).
+  oauth: (query: string) => window.dispatchEvent(new CustomEvent('carino-oauth', { detail: query })),
+  // The background listener's nudge to collect new messages while the app is hidden.
+  tick: () => window.dispatchEvent(new Event('carino-tick')),
 };
 
 let seq = 0;
@@ -196,6 +202,26 @@ export function takeShared(): SharedItem | null {
 export function openExternal(url: string) {
   if (bridge) bridge.openExternal(url);
   else window.open(url, '_blank', 'noopener');
+}
+
+/**
+ * Opens a sign-in page in the phone's browser. The browser comes back to a loopback address the
+ * app listens on; the result arrives as a "carino-oauth" event. Returns an error message, if any.
+ */
+export function openSignIn(url: string): string | null {
+  if (!bridge) {
+    window.location.href = url;
+    return null;
+  }
+  const error = bridge.oauthListen();
+  if (error) return error;
+  bridge.openExternal(url);
+  return null;
+}
+
+/** Keeps answering WhatsApp and Telegram while the app is in the background (ongoing notification). */
+export function keepListening(on: boolean) {
+  bridge?.keepListening(on);
 }
 
 export function appInfo(): { version: string; flavor: string } {

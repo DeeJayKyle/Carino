@@ -73,7 +73,9 @@ class NativeBridge {
 
     /** Runs JavaScript in the page. Safe to call from any thread. */
     void emit(String js) {
-        main.post(() -> activity.web.evaluateJavascript(js, null));
+        main.post(() -> {
+            if (!activity.isDestroyed()) activity.web.evaluateJavascript(js, null);
+        });
     }
 
     // ---- HTTP --------------------------------------------------------------------------------
@@ -410,6 +412,19 @@ class NativeBridge {
     @JavascriptInterface
     public void openExternal(String url) {
         main.post(() -> activity.openExternal(Uri.parse(url)));
+    }
+
+    /** Gets ready to catch a sign-in coming back from the browser. Returns an error, or "". */
+    @JavascriptInterface
+    public String oauthListen() {
+        return SignInListener.start(this);
+    }
+
+    /** Keeps answering messages while the app is in the background (an ongoing notification). */
+    @JavascriptInterface
+    public void keepListening(boolean on) {
+        if (on == Listening.running) return;
+        main.post(() -> Listening.set(activity, on));
     }
 
     @JavascriptInterface

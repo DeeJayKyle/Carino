@@ -490,9 +490,12 @@ function Composer({ onSend, busy, onCancel, disabled, onVoice }: { onSend: (text
     setUploading(true);
     try {
       for (const original of [...list].slice(0, 5 - files.length)) {
-        // Videos become a few still frames, which any model that reads images can look at.
-        const parts = original.type.startsWith('video/') ? await videoFrames(original) : [original];
-        if (original.type.startsWith('video/')) toast(`Took ${parts.length} frames from the video for Carino to look at`);
+        // Videos become a few still frames, which any model that reads images can look at. The
+        // video itself is kept too (up to 50 MB), so Carino can pass it on, e.g. to TikTok.
+        const isVideo = original.type.startsWith('video/');
+        const parts = isVideo ? await videoFrames(original) : [original];
+        if (isVideo && original.size <= 50 * 1024 * 1024 && /^video\/(mp4|quicktime|webm)$/.test(original.type)) parts.unshift(original);
+        if (isVideo) toast(`Took ${parts.length - (parts[0] === original ? 1 : 0)} frames from the video for Carino to look at`);
         for (const f of parts) {
           const r = await upload(f);
           setFiles((x) => [...x, { id: r.document.id, filename: r.document.filename, kind: r.document.kind }]);

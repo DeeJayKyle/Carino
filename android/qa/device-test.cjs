@@ -178,6 +178,55 @@ fs.mkdirSync(OUT, { recursive: true });
     expect(fg.includes(PKG), 'app still in front after Back: ' + fg.trim());
     return 'went back a page, app stayed open';
   });
+  await step('Sign-in listener: the browser’s return on 127.0.0.1:47823 reaches the app', async () => {
+    const err = await page.evaluate(() => {
+      window.__oauthSeen = null;
+      // Records what arrived, and keeps the app's own handler from finishing a made-up sign-in.
+      window.addEventListener('carino-oauth', (e) => { window.__oauthSeen = e.detail; e.stopImmediatePropagation(); }, { once: true, capture: true });
+      return window.CarinoNative.oauthListen();
+    });
+    expect(err === '', 'listener ready: ' + err);
+    let answer = await sh(`printf 'GET /callback?state=qa-state&code=qa-code HTTP/1.0\\r\\n\\r\\n' | nc -w 3 127.0.0.1 47823`);
+    if (!answer.includes('200 OK')) {
+      // No nc on this image: reach the phone's loopback through adb instead.
+      require('child_process').execSync('adb forward tcp:47823 tcp:47823');
+      answer = await (await fetch('http://127.0.0.1:47823/callback?state=qa-state&code=qa-code')).text();
+    }
+    expect(/Signed in|Back to Carino/.test(answer), 'browser page: ' + answer.slice(0, 120));
+    for (let i = 0; i < 10 && !(await page.evaluate(() => window.__oauthSeen)); i++) await page.waitForTimeout(500);
+    const seen = await page.evaluate(() => window.__oauthSeen);
+    expect(seen === 'state=qa-state&code=qa-code', 'app got: ' + seen);
+    // The listener closes after one sign-in.
+    const again = await sh(`printf 'GET /callback HTTP/1.0\\r\\n\\r\\n' | nc -w 2 127.0.0.1 47823; echo "exit=$?"`);
+    expect(!again.includes('200 OK'), 'listener should be closed');
+    return 'code and state handed to the app; listener closed afterwards';
+  });
+  await step('carino://oauth (the sign-in page’s “Back to Carino”) brings the app forward', async () => {
+    await sh('input keyevent KEYCODE_HOME');
+    await page.waitForTimeout(1000);
+    await sh(`am start -a android.intent.action.VIEW -d "carino://oauth" ${PKG}`);
+    await page.waitForTimeout(2000);
+    const fg = await sh('dumpsys activity activities | grep -m1 -E "topResumedActivity|mResumedActivity"');
+    expect(fg.includes(PKG), 'app in front: ' + fg.trim());
+    return 'app in front again';
+  });
+  await step('Background listening: the “Carino is listening” service starts and stops', async () => {
+    await page.evaluate(() => window.CarinoNative.keepListening(true));
+    let svc = '';
+    for (let i = 0; i < 10 && !svc.includes('Listening'); i++) {
+      await page.waitForTimeout(500);
+      svc = await sh(`dumpsys activity services ${PKG}`);
+    }
+    expect(svc.includes('.Listening') && /isForeground=true/.test(svc), 'foreground service running');
+    const notes = await sh('dumpsys notification --noredact');
+    expect(notes.includes('Carino is listening') || notes.includes('channel=listening') || notes.includes('listening'), 'ongoing notification shown');
+    await shot('listening');
+    await page.evaluate(() => window.CarinoNative.keepListening(false));
+    await page.waitForTimeout(1500);
+    svc = await sh(`dumpsys activity services ${PKG}`);
+    expect(!svc.includes('.Listening'), 'service stopped');
+    return 'started as a foreground service with its notification, then stopped';
+  });
   await step('Home-screen widget is offered', async () => {
     const w = await sh('dumpsys appwidget');
     expect(w.includes(PKG), 'widget provider registered');

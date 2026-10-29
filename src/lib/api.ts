@@ -53,6 +53,7 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
 export const get = <T = any>(p: string) => api<T>(p);
 export const post = <T = any>(p: string, body?: unknown) => api<T>(p, { method: 'POST', body: body ?? {} });
 export const patch = <T = any>(p: string, body: unknown) => api<T>(p, { method: 'PATCH', body });
+export const put = <T = any>(p: string, body: unknown) => api<T>(p, { method: 'PUT', body });
 export const del = <T = any>(p: string) => api<T>(p, { method: 'DELETE' });
 
 /** POSTs and reads a Server-Sent Events stream, calling onEvent for each event. */

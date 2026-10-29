@@ -837,3 +837,31 @@ p a:not(.btn), li a:not(.btn), .desc a:not(.btn), .hint a:not(.btn), .callout a:
 /* A list item wrapping a button or link, so the control keeps its own role for screen readers. */
 .li-wrap { display: flex; min-width: 0; }
 .li-wrap > .discover-card, .li-wrap > .chip { flex: 1 1 auto; }
+
+/* ---- My apps -------------------------------------------------------------------------------- */
+.app-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.app-item {
+  display: flex; align-items: center; gap: 14px; padding: 12px 10px; border-radius: 14px; min-height: 64px;
+  color: var(--text); text-decoration: none; transition: background var(--dur-short) var(--ease-standard);
+}
+.app-item:hover { background: var(--bg-sunken); }
+li a.app-item, .app-item:hover { text-decoration: none; }
+.app-item:active { background: color-mix(in srgb, var(--text) var(--state-press), transparent); }
+.app-item > svg:last-child { color: var(--text-3); flex: none; }
+.app-name { display: flex; align-items: center; gap: 8px; font-weight: 650; font-size: 1.05rem; flex-wrap: wrap; }
+.app-status { display: flex; align-items: center; gap: 7px; color: var(--text-2); font-size: 0.9em; margin-top: 2px; min-width: 0; }
+.app-status.warn { color: var(--danger); }
+.app-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); flex: none; }
+.app-dot.ok { background: var(--success); }
+.app-parts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip-sm { display: inline-flex; padding: 2px 10px; border-radius: 99px; border: 1px solid var(--border-strong); font-size: 0.8em; color: var(--text-2); }
+.app-hero { display: flex; gap: 16px; align-items: flex-start; }
+.app-hero h1 { font-size: 1.3rem; display: flex; align-items: center; }
+.app-does { margin: 6px 0 0; padding-left: 18px; }
+.steps { padding-left: 20px; margin: 10px 0 0; }
+.steps > li { margin-bottom: 10px; line-height: 1.5; }
+.steps > li.done::marker { content: '✓  '; color: var(--success); font-weight: 700; }
+details.card > summary { cursor: pointer; list-style: none; }
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary::after { content: '▾'; float: right; color: var(--text-3); }
+details.card[open] > summary::after { content: '▴'; }

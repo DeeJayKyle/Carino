@@ -17,6 +17,7 @@ const Routines = lazy(() => import('./pages/Routines'));
 const Ramble = lazy(() => import('./pages/Ramble'));
 const Share = lazy(() => import('./pages/Share'));
 const Connectors = lazy(() => import('./pages/Connectors'));
+const Apps = lazy(() => import('./pages/Apps'));
 const Messaging = lazy(() => import('./pages/Messaging'));
 const Discover = lazy(() => import('./pages/Discover'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
@@ -30,7 +31,7 @@ function Router() {
   if (loading) return <Centered><Spinner lg /></Centered>;
   if (!me) return <Login />;
   // First run: a short setup. Shared items and sign-in returns are never interrupted by it.
-  if (!me.settings.onboarded && !pathname.startsWith('/share') && !pathname.startsWith('/connectors')) {
+  if (!me.settings.onboarded && !pathname.startsWith('/share') && !pathname.startsWith('/connectors') && !pathname.startsWith('/apps')) {
     return <Suspense fallback={<Centered><Spinner lg /></Centered>}><Onboarding /></Suspense>;
   }
 
@@ -47,6 +48,8 @@ function Router() {
     ['/ramble', () => <Ramble />],
     ['/share', () => <Share />],
     ['/connectors', () => <Connectors />],
+    ['/apps', () => <Apps />],
+    ['/apps/:id', (p) => <Apps id={p.id} />],
     ['/messaging', () => <Messaging />],
     ['/discover', () => <Discover />],
     ['/stuff', () => <Stuff />],

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../context.ts';
@@ -9,11 +10,15 @@ import * as routines from '../services/routines.ts';
 import { extractRamble, applyRamble, MAX_RAMBLE_CHARS } from '../services/ramble.ts';
 import * as connectors from '../services/connectors.ts';
 import { startOAuth, finishOAuth } from '../services/mcp-oauth.ts';
+import * as apps from '../services/apps/accounts.ts';
+import { APP_TOOLS } from '../services/apps/index.ts';
 import * as achievements from '../services/achievements.ts';
 import { DISCOVER } from '../services/discover.ts';
 import * as channels from '../services/channels.ts';
 import { connectTelegram } from '../services/telegram.ts';
 import { connectWhatsApp, webhookUrl } from '../services/whatsapp.ts';
+import { connectRelay, pollRelay } from '../services/whatsapp-relay.ts';
+import { deployRelay } from '../services/relay-deploy.ts';
 import { transcriptionConfigured } from '../services/transcribe.ts';
 import { getSettings, updateSettings } from '../services/settings.ts';
 import { buildOverview, briefingText, suggestions } from '../services/briefing.ts';
@@ -66,7 +71,7 @@ export function dataRoutes() {
       reminders: { upcoming: n("SELECT COUNT(*) AS n FROM reminders WHERE user_id = ? AND status = 'scheduled' AND remind_at >= ? AND remind_at < ?", nowIso, week), next: nextReminder ?? null },
       routines: { active: n("SELECT COUNT(*) AS n FROM routines WHERE user_id = ? AND enabled = 1"), custom: n("SELECT COUNT(*) AS n FROM routines WHERE user_id = ? AND kind = 'custom'") },
       memories: { active: n("SELECT COUNT(*) AS n FROM memories WHERE user_id = ? AND status = 'active'"), waiting: n("SELECT COUNT(*) AS n FROM memories WHERE user_id = ? AND status = 'proposed'") },
-      apps: n('SELECT COUNT(*) AS n FROM connectors WHERE user_id = ? AND enabled = 1'),
+      apps: n('SELECT (SELECT COUNT(*) FROM connectors WHERE user_id = ?1 AND enabled = 1) + (SELECT COUNT(*) FROM app_accounts WHERE user_id = ?1) AS n'),
       chats: n('SELECT COUNT(*) AS n FROM channel_chats WHERE user_id = ?'),
       approvals: n("SELECT COUNT(*) AS n FROM actions WHERE user_id = ? AND status = 'pending'"),
     });
@@ -250,11 +255,19 @@ export function dataRoutes() {
   r.post('/actions/:id/reject', (c) => c.json(rejectAction(c.var.services, uid(c), c.req.param('id'))));
   r.get('/tools', (c) => {
     const s = getSettings(db(c), uid(c));
+    const connected = apps.connectedProviders(c.var.services, uid(c));
     return c.json({
-      tools: TOOLS.map((t) => ({
-        name: t.name, description: t.description, risk: t.risk,
-        mode: s.permissions.tools[t.name] ?? (t.risk === 'consequential' ? 'ask' : t.risk === 'reversible' && !s.permissions.autoReversible ? 'ask' : 'auto'),
-      })),
+      tools: [
+        ...TOOLS.map((t) => ({
+          name: t.name, description: t.description, risk: t.risk,
+          mode: s.permissions.tools[t.name] ?? (t.risk === 'consequential' ? 'ask' : t.risk === 'reversible' && !s.permissions.autoReversible ? 'ask' : 'auto'),
+        })),
+        // Tools of the apps connected in My apps: changes ask first unless allowed here.
+        ...APP_TOOLS.filter((t) => connected.has(t.provider)).map((t) => ({
+          name: t.name, description: t.description, risk: t.risk,
+          mode: s.permissions.tools[t.name] ?? (t.risk === 'read' ? 'auto' : 'ask'),
+        })),
+      ],
     });
   });
 
@@ -300,6 +313,57 @@ export function dataRoutes() {
   r.patch('/connectors/:id', async (c) => c.json(connectors.updateConnector(c.var.services, uid(c), c.req.param('id'), await body(c))));
   r.delete('/connectors/:id', (c) => c.json(connectors.deleteConnector(db(c), uid(c), c.req.param('id'))));
 
+  // ---------- My apps (Google, Microsoft, Meta, X, LinkedIn, TikTok) ----------
+  const groupParam = (c: any) => {
+    const g = c.req.param('group');
+    if (!['google', 'microsoft', 'meta', 'x', 'linkedin', 'tiktok'].includes(g)) throw notFound('App');
+    return g as Parameters<typeof apps.saveClient>[2];
+  };
+  r.get('/apps', (c) => c.json({ apps: apps.presentApps(c.var.services, uid(c)) }));
+  r.put('/apps/clients/:group', connectLimit, async (c) => c.json(apps.saveClient(c.var.services, uid(c), groupParam(c), await body(c))));
+  r.delete('/apps/clients/:group', (c) => c.json(apps.deleteClient(c.var.services, uid(c), groupParam(c))));
+  r.post('/apps/:provider/start', connectLimit, (c) => c.json(apps.startSignIn(c.var.services, uid(c), c.req.param('provider'))));
+  r.delete('/apps/accounts/:id', (c) => c.json(apps.disconnect(c.var.services, uid(c), c.req.param('id'))));
+  /** The provider sends the browser back here after sign-in (PC; the phone uses /oauth/finish). */
+  r.get('/apps/callback', async (c) => {
+    const { code, state, error, error_description } = c.req.query();
+    const back = (q: Record<string, string>) => c.redirect(`/apps?${new URLSearchParams(q)}`, 302);
+    if (error || !code || !state) return back({ oauth_error: (error_description || error || 'Sign-in was cancelled.').slice(0, 200) });
+    try {
+      const done = await apps.finishSignIn(c.var.services, uid(c), state, code);
+      return back({ connected: done.account.label });
+    } catch (e: any) {
+      return back({ oauth_error: String(e?.message ?? 'Sign-in failed.').slice(0, 300) });
+    }
+  });
+  /**
+   * The phone app's sign-in listener hands over what the browser brought back. The state says
+   * whether it's a My apps account or a connected app (MCP).
+   */
+  r.post('/oauth/finish', connectLimit, async (c) => {
+    const i = z.object({ state: z.string().max(200).optional(), code: z.string().max(4000).optional(), error: z.string().max(500).optional(), error_description: z.string().max(500).optional() }).parse(await body(c));
+    if (!i.state) throw badRequest('Sign-in didn’t finish. Try again.');
+    const row = db(c).get('SELECT name FROM oauth_states WHERE state = ? AND user_id = ?', i.state, uid(c));
+    if (!row) throw badRequest('That sign-in has expired or was already used. Start again.');
+    const isApp = String(row.name).startsWith(apps.STATE_PREFIX);
+    if (i.error || !i.code) {
+      db(c).run('DELETE FROM oauth_states WHERE state = ?', i.state);
+      throw badRequest((i.error_description || i.error || 'Sign-in was cancelled.').slice(0, 300));
+    }
+    try {
+      if (isApp) {
+        const done = await apps.finishSignIn(c.var.services, uid(c), i.state, i.code);
+        return c.json({ kind: 'app', provider: done.provider, label: done.account.label });
+      }
+      const done = await finishOAuth(c.var.services, uid(c), i.state, i.code);
+      const conn = await connectors.addOAuthConnector(c.var.services, uid(c), done.name, done.url, done.tokens);
+      return c.json({ kind: 'connector', label: conn.name });
+    } catch (e: any) {
+      if (e?.status) throw e;
+      throw badRequest(String(e?.message ?? 'Sign-in failed.').slice(0, 300));
+    }
+  });
+
   // ---------- Messaging channels (Telegram, WhatsApp) ----------
   r.get('/channels', (c) => {
     const rows = db(c).all('SELECT * FROM channels WHERE user_id = ? ORDER BY kind', uid(c));
@@ -322,6 +386,32 @@ export function dataRoutes() {
     const fresh = db(c).get('SELECT * FROM channels WHERE id = ?', ch.id)!;
     return c.json({ ...channels.presentChannel(db(c), fresh, c.var.services.now()), webhook_url: webhookUrl(c.var.services, fresh) }, 201);
   });
+  /** Phone app: link WhatsApp to the user's own relay (see relay/ in the repository). */
+  r.post('/channels/whatsapp/relay', connectLimit, async (c) => {
+    const i = z.object({ url: z.string().trim().min(8).max(300) }).parse(await body(c));
+    const ch = await connectRelay(c.var.services, uid(c), i.url);
+    return c.json({ ...channels.presentChannel(db(c), ch, c.var.services.now()), webhook_url: webhookUrl(c.var.services, ch) });
+  });
+  /** Phone app: create the relay on the user's own Cloudflare account, then link it. */
+  r.post('/channels/whatsapp/relay/create', connectLimit, async (c) => {
+    const i = z.object({ token: z.string().trim().min(20).max(300) }).parse(await body(c));
+    if (!db(c).get("SELECT 1 FROM channels WHERE user_id = ? AND kind = 'whatsapp'", uid(c))) throw badRequest('Connect WhatsApp first (phone number ID, token and app secret).');
+    const key = randomBytes(24).toString('base64url');
+    const url = await deployRelay(c.var.services, i.token, key);
+    // A brand-new workers.dev address can take a few seconds to come online.
+    let ch;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        ch = await connectRelay(c.var.services, uid(c), url, key);
+        break;
+      } catch (e: any) {
+        if (attempt >= 7 || !/Could not reach|error 5\d\d|error 404/.test(String(e?.message))) throw e;
+        await new Promise((r) => setTimeout(r, c.var.services.config.NODE_ENV === 'test' ? 5 : 4000));
+      }
+    }
+    return c.json({ ...channels.presentChannel(db(c), ch, c.var.services.now()), webhook_url: webhookUrl(c.var.services, ch) });
+  });
+  r.post('/channels/whatsapp/poll', async (c) => c.json({ handled: await pollRelay(c.var.services) }));
   r.post('/channels/:id/pair', (c) => {
     const ch = channels.ownChannel(db(c), uid(c), c.req.param('id'));
     return c.json({ pairing_code: channels.newPairingCode(db(c), ch.id, c.var.services.now()), expires_in_minutes: channels.PAIRING_TTL_MS / 60_000 });

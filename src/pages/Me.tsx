@@ -32,7 +32,7 @@ export default function Me() {
     { to: '/notifications', icon: 'bell', label: 'Notifications', count: counts.unread },
     { to: '/actions', icon: 'shield', label: 'Waiting for your OK', count: counts.pendingActions },
     { to: '/messaging', icon: 'send', label: 'Chat on Telegram or WhatsApp' },
-    { to: '/connectors', icon: 'link', label: 'Connected apps' },
+    { to: '/apps', icon: 'link', label: 'My apps' },
     { to: '/settings#profile', icon: 'user', label: `You & ${name}` },
     { to: '/settings', icon: 'settings', label: 'Settings' },
   ];

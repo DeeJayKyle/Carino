@@ -25,8 +25,8 @@ function fakeNet() {
     if (url.startsWith('https://api.telegram.org/bot')) return json({ ok: false, description: 'Unauthorized' }, 401);
     if (url.startsWith(`https://api.telegram.org/file/bot${TOKEN}/`)) return new Response(new Uint8Array([1, 2, 3]));
     if (url.startsWith('http://stt.local/v1/audio/transcriptions')) return json({ text: 'remind me to buy milk tomorrow at 9am' });
-    if (url.startsWith('https://graph.facebook.com/v21.0/')) {
-      const path = url.slice('https://graph.facebook.com/v21.0/'.length);
+    if (url.startsWith('https://graph.facebook.com/v23.0/')) {
+      const path = url.slice('https://graph.facebook.com/v23.0/'.length);
       if (init.method === 'POST') {
         graphSent.push(JSON.parse(init.body));
         return json({ messages: [{ id: 'wamid.1' }] });

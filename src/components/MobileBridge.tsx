@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { navigate } from '../lib/router';
 import { downloadApi } from '../lib/device';
+import { post } from '../lib/api';
 import { openExternal, takeShared } from '../../mobile/native';
 import { useToast } from './ui';
 
@@ -38,11 +39,25 @@ export function MobileBridge() {
         openExternal(url.href);
       }
     };
+    // A sign-in (My apps or a connected app) came back from the browser.
+    const onOAuth = (e: Event) => {
+      const q = Object.fromEntries(new URLSearchParams((e as CustomEvent<string>).detail || ''));
+      post<{ kind: 'app' | 'connector'; label: string }>('/oauth/finish', q).then(
+        (r) => {
+          toast(`Connected ${r.label}`);
+          navigate(r.kind === 'app' ? '/apps' : '/connectors');
+          window.dispatchEvent(new Event('carino-apps-changed'));
+        },
+        (err) => toast(err.message, 'error'),
+      );
+    };
+    window.addEventListener('carino-oauth', onOAuth);
     window.addEventListener('carino-open', onOpen);
     window.addEventListener('carino-shared', onShared);
     document.addEventListener('click', onClick);
     onShared();
     return () => {
+      window.removeEventListener('carino-oauth', onOAuth);
       window.removeEventListener('carino-open', onOpen);
       window.removeEventListener('carino-shared', onShared);
       document.removeEventListener('click', onClick);

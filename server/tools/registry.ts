@@ -19,6 +19,7 @@ import { notify } from '../services/activity.ts';
 import { sha256 } from '../auth.ts';
 import { findConnectorTool, callConnectorTool, TOOL_PREFIX } from '../services/connectors.ts';
 import { McpError } from '../services/mcp.ts';
+import { APP_TOOLS, findAppTool, AppError } from '../services/apps/index.ts';
 
 export type Risk = 'read' | 'reversible' | 'consequential';
 
@@ -397,7 +398,7 @@ export const TOOLS: ToolDef[] = [
   }),
 ];
 
-for (const t of TOOLS) if (t.risk === 'consequential') CONSEQUENTIAL_GUARD.add(t.name);
+for (const t of [...TOOLS, ...APP_TOOLS]) if (t.risk === 'consequential') CONSEQUENTIAL_GUARD.add(t.name);
 
 export const TOOL_MAP = new Map(TOOLS.map((t) => [t.name, t]));
 
@@ -458,7 +459,7 @@ export function needsApproval(tool: ToolDef, settings: Settings, routineAllowed?
 
 /** Carino's own tools, or a tool from one of the user's connected apps. */
 export function findTool(services: Services, userId: string, name: string): ToolDef | undefined {
-  const own = TOOL_MAP.get(name);
+  const own = TOOL_MAP.get(name) ?? findAppTool(services, userId, name);
   if (own) return own;
   const found = findConnectorTool(services.db, userId, name);
   if (!found) return undefined;
@@ -537,7 +538,7 @@ async function runAction(ctx: ToolContext, tool: ToolDef, actionId: string, inpu
   } catch (err: any) {
     let msg = err instanceof ToolError || err instanceof HttpError ? err.message
       : err?.name === 'ZodError' ? `Invalid data: ${err.issues?.map((i: any) => i.message).join('; ')}`
-      : err?.constructor?.name === 'SearchUnavailableError' || err instanceof McpError ? err.message
+      : err?.constructor?.name === 'SearchUnavailableError' || err instanceof McpError || err instanceof AppError ? err.message
       : 'The action failed due to an internal error.';
     // Help the model recover when it guessed an id instead of looking it up.
     if (/^(Project|Workspace|Parent task|Task|Note|Document|Memory) not found$/.test(msg)) {

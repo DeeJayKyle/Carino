@@ -298,7 +298,7 @@ const findings = [];
     ids.note = (await api('POST', '/notes', { title: 'QA note', body: 'Body' })).data.id;
   }
   ids.chat = (await api('GET', '/conversations')).data.conversations?.[0]?.id;
-  const routes = ['/', '/chat', '/chat/new', `/chat/${ids.chat}`, '/tasks', '/memory', '/actions', '/notifications', '/settings', '/settings#ai', '/settings#privacy', '/routines', '/ramble', '/share', '/connectors', '/messaging', '/discover', '/stuff', '/me',
+  const routes = ['/', '/chat', '/chat/new', `/chat/${ids.chat}`, '/tasks', '/memory', '/actions', '/notifications', '/settings', '/settings#ai', '/settings#privacy', '/routines', '/ramble', '/share', '/connectors', '/apps', '/apps/google', '/apps/facebook', '/messaging', '/discover', '/stuff', '/me',
     ...(CARINO ? [] : ['/projects', `/projects/${ids.project}`, '/knowledge', `/knowledge/notes/${ids.note}`, '/research'])];
   const overflow = [];
   const errPages = [];

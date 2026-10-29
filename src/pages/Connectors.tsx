@@ -6,6 +6,7 @@ import { useData } from '../lib/hooks';
 import { del, patch, post } from '../lib/api';
 import { fmtDateTime } from '../lib/format';
 import { useLocation } from '../lib/router';
+import { openSignIn } from '../../mobile/native';
 
 /** Well-known MCP servers. Addresses can change; each app's own docs are authoritative. */
 const DIRECTORY = [
@@ -137,7 +138,8 @@ export default function Connectors() {
 async function signIn(name: string, url: string, toast: (t: string, k?: 'info' | 'error') => void) {
   try {
     const r = await post('/connectors/oauth/start', { name, url });
-    window.location.href = r.authorize_url;
+    const err = openSignIn(r.authorize_url);
+    if (err) toast(err, 'error');
   } catch (e: any) {
     toast(e.message, 'error');
   }

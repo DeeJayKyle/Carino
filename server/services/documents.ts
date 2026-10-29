@@ -6,7 +6,7 @@ import { addToIndex } from './indexer.ts';
 import { parseCsv, parseXlsx, sheetToText, type Sheet } from './spreadsheet.ts';
 import { badRequest, notFound } from '../context.ts';
 
-export type DocKind = 'pdf' | 'text' | 'markdown' | 'docx' | 'csv' | 'xlsx' | 'image';
+export type DocKind = 'pdf' | 'text' | 'markdown' | 'docx' | 'csv' | 'xlsx' | 'image' | 'video';
 
 /** Vision models accept images up to 5 MB; the app shrinks larger photos before uploading. */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -25,6 +25,10 @@ export const SUPPORTED: Record<string, { kind: DocKind; mime: string }> = {
   '.png': { kind: 'image', mime: 'image/png' },
   '.webp': { kind: 'image', mime: 'image/webp' },
   '.gif': { kind: 'image', mime: 'image/gif' },
+  // Videos are kept only to pass on (e.g. to TikTok); Carino doesn't watch them.
+  '.mp4': { kind: 'video', mime: 'video/mp4' },
+  '.mov': { kind: 'video', mime: 'video/quicktime' },
+  '.webm': { kind: 'video', mime: 'video/webm' },
 };
 
 /** Image type from its leading bytes, so a renamed file can't pass as another kind. */
@@ -40,7 +44,7 @@ function imageMime(buf: Buffer): string | null {
 export function detectKind(filename: string, buf: Buffer): { kind: DocKind; mime: string } {
   const ext = extname(filename).toLowerCase();
   const spec = SUPPORTED[ext];
-  if (!spec) throw badRequest(`Unsupported file type "${ext || 'none'}". Supported: PDF, TXT, MD, DOCX, CSV, XLSX, and images (JPG, PNG, WebP, GIF).`);
+  if (!spec) throw badRequest(`Unsupported file type "${ext || 'none'}". Supported: PDF, TXT, MD, DOCX, CSV, XLSX, images (JPG, PNG, WebP, GIF) and videos (MP4, MOV, WebM).`);
   const head = buf.subarray(0, 8);
   const isPdf = head.subarray(0, 5).toString('latin1') === '%PDF-';
   const isZip = head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04;
@@ -51,6 +55,12 @@ export function detectKind(filename: string, buf: Buffer): { kind: DocKind; mime
     if (!mime) throw badRequest('This file is not a valid JPG, PNG, WebP or GIF image.');
     if (buf.length > MAX_IMAGE_BYTES) throw badRequest('Images can be up to 5 MB. Attach it from the Carino app, which shrinks large photos automatically, or resize it first.');
     return { kind: 'image', mime };
+  }
+  if (spec.kind === 'video') {
+    const isMp4 = buf.subarray(4, 8).toString('latin1') === 'ftyp';
+    const isWebm = buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3;
+    if (ext === '.webm' ? !isWebm : !isMp4) throw badRequest('This file is not a valid MP4, MOV or WebM video.');
+    return spec;
   }
   if (['text', 'markdown', 'csv'].includes(spec.kind)) {
     if (isPdf || isZip || buf.subarray(0, 4096).includes(0)) throw badRequest('This file does not look like plain text.');
@@ -117,6 +127,7 @@ export async function extract(kind: DocKind, buf: Buffer): Promise<Extracted> {
       sheets = await parseXlsx(buf);
       break;
     case 'image':
+    case 'video':
       break; // stored for viewing and for vision models; there is no text to index
   }
   if (sheets) {

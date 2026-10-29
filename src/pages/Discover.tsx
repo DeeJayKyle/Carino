@@ -14,7 +14,7 @@ export function openCard(card: any) {
   else if (card.action === 'routine') navigate(`/routines?idea=${encodeURIComponent(card.routine)}`);
   else if (card.action === 'ramble') navigate('/ramble');
   else if (card.action === 'voice') navigate('/chat/new?voice=1');
-  else if (card.action === 'connect') navigate(card.id === 'group' ? '/messaging' : '/connectors');
+  else if (card.action === 'connect') navigate(card.id === 'group' ? '/messaging' : '/apps');
 }
 
 const ACTION_LABEL: Record<string, string> = { chat: 'Start', routine: 'Set up', ramble: 'Talk it out', voice: 'Talk', connect: 'Connect' };

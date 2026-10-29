@@ -37,6 +37,8 @@ public class MainActivity extends Activity {
 
     /** True while the app is on screen; alarms then leave reminders to the app itself. */
     static volatile boolean visible = false;
+    /** The running activity, for the background listener and the sign-in listener. */
+    static volatile MainActivity current;
 
     WebView web;
     NativeBridge bridge;
@@ -72,6 +74,7 @@ public class MainActivity extends Activity {
                 .build();
 
         bridge = new NativeBridge(this);
+        current = this;
         web.addJavascriptInterface(bridge, "CarinoNative");
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -214,6 +217,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (current == this) current = null;
         bridge.shutdown();
         web.destroy();
         super.onDestroy();

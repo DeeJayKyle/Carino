@@ -7,7 +7,7 @@ import sqliteWasmUrl from '@sqlite.org/sqlite-wasm/sqlite3.wasm?url';
 import { configureSqlite, type DatabaseSync } from './shims/sqlite.ts';
 import { flushFiles, loadFiles, preloadFiles, seedFile } from './shims/fs.ts';
 import { idbDeleteAll, idbGet, idbWrite } from './idb.ts';
-import { makeNetFetch, notify, setAlarms, isNative } from './native.ts';
+import { makeNetFetch, notify, setAlarms, isNative, keepListening } from './native.ts';
 import { configToEnv, maskConfig, PRESETS, type DeviceConfig } from './presets.ts';
 import { speedTest } from './speedtest.ts';
 import { loadConfig } from '../server/config.ts';
@@ -16,6 +16,7 @@ import { createRegistry } from '../server/ai/providers.ts';
 import { createSearchService } from '../server/services/search.ts';
 import { startScheduler } from '../server/services/scheduler.ts';
 import { startTelegram } from '../server/services/telegram.ts';
+import { pollRelay } from '../server/services/whatsapp-relay.ts';
 import { createApp } from '../server/app.ts';
 import { createSession, resolveSession } from '../server/auth.ts';
 import { createAccount, NO_PASSWORD } from '../server/routes/auth.ts';
@@ -115,6 +116,27 @@ async function ensureOwner() {
   await idbWrite([{ store: 'kv', key: 'session', value: { token } }]);
 }
 
+// --- Messaging in the background -------------------------------------------------------------
+let listenWanted = true;
+let lastPoll = 0;
+
+const hasChannels = () => !!services.db.get('SELECT 1 FROM channels WHERE enabled = 1 LIMIT 1');
+
+/** The ongoing "Carino is listening" notification, while there's a chat app to answer. */
+function syncListening() {
+  keepListening(listenWanted && hasChannels());
+}
+
+/** Collects WhatsApp messages waiting on the user's relay (see server/services/whatsapp-relay.ts). */
+function pollWhatsApp() {
+  if (Date.now() - lastPoll < 3000) return;
+  lastPoll = Date.now();
+  void pollRelay(services).then((n) => {
+    // In the background timers are slowed down, so save straight away.
+    if (n && document.visibilityState === 'hidden') void flush();
+  }).catch(() => undefined);
+}
+
 // --- Requests ---------------------------------------------------------------------------------
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
 
@@ -175,6 +197,16 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
     await idbWrite([{ store: 'kv', key: 'device', value: next }]);
     applyDevice(next);
     return json({ config: maskConfig(next) });
+  }
+  if (path === '/api/device/listen') {
+    // Whether to keep answering WhatsApp and Telegram while the app is in the background.
+    if (req.method === 'PUT') {
+      const body = (await req.json().catch(() => ({}))) as { on?: boolean };
+      listenWanted = body.on !== false;
+      await idbWrite([{ store: 'kv', key: 'listen', value: { on: listenWanted } }]);
+    }
+    syncListening();
+    return json({ on: listenWanted, native: isNative, active: listenWanted && hasChannels() });
   }
   if (path === '/api/device/reset' && req.method === 'POST') {
     // Erase everything; the app reloads and starts fresh.
@@ -242,6 +274,7 @@ async function boot() {
     providers: createRegistry(config),
     search: createSearchService({ searxngUrl: config.SEARXNG_URL, braveKey: config.BRAVE_SEARCH_API_KEY }),
     push: phonePush,
+    loadFiles: preloadFiles,
     now: () => new Date(),
     deviceSession: {
       get: () => token,
@@ -261,6 +294,13 @@ async function boot() {
 
   startScheduler(services);
   startTelegram(services);
+  listenWanted = (await idbGet<{ on?: boolean }>('kv', 'listen'))?.on !== false;
+  syncListening();
+  setInterval(() => document.visibilityState === 'visible' && pollWhatsApp(), 4000);
+  // The background listener (Android) nudges the app every few seconds while it's hidden.
+  window.addEventListener('carino-tick', pollWhatsApp);
+  // Channels are added and removed in Messaging; keep the notification in step.
+  setInterval(syncListening, 30_000);
 
   const toBackground = () => void flush();
   document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && toBackground());

@@ -21,7 +21,7 @@ const STUFF = [
   { to: '/memory', label: 'Memory', icon: 'brain' },
 ];
 const NAV = [...PRIMARY, ...STUFF];
-const ME_PATHS = ['/me', '/settings', '/notifications', '/actions', '/messaging', '/connectors'];
+const ME_PATHS = ['/me', '/settings', '/notifications', '/actions', '/messaging', '/connectors', '/apps'];
 
 const isActive = (to: string, path: string) => (to === '/' ? path === '/' : path === to || path.startsWith(to + '/'));
 const tabActive = (to: string, path: string) =>
@@ -102,7 +102,7 @@ export function Shell({ title, actions, children, bare }: { title?: ReactNode; a
           {counts.unread > 0 && <span className="count">{counts.unread}</span>}
         </Link>
         <Link to="/messaging" className={`nav-item ${isActive('/messaging', pathname) ? 'active' : ''}`}><Icon name="send" /> Messaging</Link>
-        <Link to="/connectors" className={`nav-item ${isActive('/connectors', pathname) ? 'active' : ''}`}><Icon name="link" /> Connected apps</Link>
+        <Link to="/apps" className={`nav-item ${isActive('/apps', pathname) || isActive('/connectors', pathname) ? 'active' : ''}`}><Icon name="link" /> My apps</Link>
         <Link to="/settings" className={`nav-item ${isActive('/settings', pathname) ? 'active' : ''}`}><Icon name="settings" /> Settings</Link>
         <div className="sidebar-footer">
           <div className="row" style={{ padding: '6px 8px' }}>
@@ -163,7 +163,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
     { label: 'Add a to-do', icon: 'plus', go: '/tasks?new=1' },
     { label: 'Ramble it out (brain-dump into to-dos)', icon: 'mic', go: '/ramble' },
     { label: 'New routine', icon: 'clock', go: '/routines' },
-    { label: 'Connect an app (email, calendar…)', icon: 'link', go: '/connectors' },
+    { label: 'Connect an app (Gmail, Outlook, Instagram…)', icon: 'link', go: '/apps' },
     ...NAV.map((n) => ({ label: `Go to ${n.label}`, icon: n.icon, go: n.to })),
     { label: 'Approvals', icon: 'shield', go: '/actions' },
     { label: 'Settings', icon: 'settings', go: '/settings' },
