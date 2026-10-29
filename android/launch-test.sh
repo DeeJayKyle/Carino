@@ -18,10 +18,14 @@ adb exec-out screencap -p > screenshot.png || true
 adb logcat -d > logcat.txt
 echo "---- Carino log ----"
 grep -E "AndroidRuntime| Carino|$PKG" logcat.txt | tail -80
-if grep -q "FATAL EXCEPTION" logcat.txt; then
+# Only Carino's own crashes count (the emulator's preinstalled apps crash now and then).
+if grep -A 1 "FATAL EXCEPTION" logcat.txt | grep -q "Process: $PKG"; then
   echo "---- CRASH ----"
-  grep -A 40 "FATAL EXCEPTION" logcat.txt
+  grep -A 40 "FATAL EXCEPTION" logcat.txt | grep -A 39 "Process: $PKG"
   exit 1
+fi
+if grep -q "FATAL EXCEPTION" logcat.txt; then
+  echo "(Another app on the emulator crashed: $(grep -A 1 "FATAL EXCEPTION" logcat.txt | grep -o "Process: [^,]*" | sort -u | tr '\n' ' '); not Carino.)"
 fi
 if [ -z "$ok" ]; then
   echo "Carino did not report that it started (no 'Carino engine ready' in the log)."
