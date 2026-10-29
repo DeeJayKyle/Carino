@@ -18,15 +18,31 @@ fs.mkdirSync(OUT, { recursive: true });
   const sh = async (cmd) => (await device.shell(cmd)).toString();
   const activity = (await sh(`cmd package resolve-activity --brief ${PKG}`)).trim().split('\n').pop();
   let page;
+  /**
+   * Connects to the app's WebView. After a relaunch the old WebView can still be listed for a
+   * moment on a slow emulator, so keep trying until a live page answers.
+   */
   const attach = async () => {
-    const wv = await device.webView({ pkg: PKG }, { timeout: 60000 });
-    page = await wv.page();
-    page.setDefaultTimeout(30000);
+    const until = Date.now() + 90_000;
+    for (;;) {
+      try {
+        const wv = await device.webView({ pkg: PKG }, { timeout: 30000 });
+        const p = await wv.page();
+        await p.evaluate(() => document.readyState);
+        page = p;
+        page.setDefaultTimeout(30000);
+        return;
+      } catch (e) {
+        if (Date.now() > until) throw e;
+        await new Promise((ok) => setTimeout(ok, 2000));
+      }
+    }
   };
   const shot = async (name) => fs.writeFileSync(`${OUT}/${name}.png`, await device.screenshot());
   const step = async (name, fn) => {
     const t0 = Date.now();
     try {
+      if (page && page.isClosed()) await attach();
       const detail = await fn();
       results.push({ name, ok: true, ms: Date.now() - t0, detail: detail ?? '' });
       console.log(`PASS  ${name}${detail ? ' — ' + detail : ''}`);
