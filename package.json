@@ -2,7 +2,7 @@
   "name": "carino",
   "version": "1.1.0",
   "private": true,
-  "description": "Carino \u2014 a personal AI assistant for Android that runs on your phone, with free AI services.",
+  "description": "Carino — a personal AI assistant for Android that runs on your phone, with free AI services.",
   "type": "module",
   "scripts": {
     "dev": "vite -c vite.mobile.config.ts",
@@ -24,6 +24,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@adobe/leonardo-contrast-colors": "^1.1.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@noble/ciphers": "^2.4.0",

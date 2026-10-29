@@ -1,8 +1,19 @@
 import { useEffect, useSyncExternalStore, type AnchorHTMLAttributes, type MouseEvent } from 'react';
+import { flushSync } from 'react-dom';
 
 /** Minimal history-API router: enough for Carino's flat route structure. */
 const listeners = new Set<() => void>();
-const notify = () => listeners.forEach((l) => l());
+const render = () => listeners.forEach((l) => l());
+/**
+ * Page changes use the browser's View Transitions (a quick fade-through, see styles.css) where
+ * available. It is native and composited, so it costs no JavaScript animation work.
+ */
+const notify = () => {
+  const reduce = document.documentElement.dataset.motion === 'reduce' || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+  if (!doc.startViewTransition || reduce || document.visibilityState !== 'visible') return render();
+  doc.startViewTransition(() => flushSync(render));
+};
 if (typeof window !== 'undefined') window.addEventListener('popstate', notify);
 
 export function navigate(to: string, opts: { replace?: boolean } = {}) {

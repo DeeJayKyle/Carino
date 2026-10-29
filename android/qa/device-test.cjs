@@ -138,7 +138,7 @@ fs.mkdirSync(OUT, { recursive: true });
     await page.getByRole('button', { name: /Download export/ }).click();
     await page.waitForTimeout(2500);
     const ls = await sh('ls /sdcard/Download/');
-    expect(/export\.json/.test(ls), 'file in Downloads: ' + ls.trim());
+    expect(/export[-0-9]*\.json/.test(ls), 'file in Downloads: ' + ls.trim());
     return ls.trim().split('\n').filter((l) => l.includes('export')).join(', ');
   });
   await step('Phone’s voice reads text aloud (text-to-speech)', async () => {
