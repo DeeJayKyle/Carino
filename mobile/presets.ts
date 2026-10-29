@@ -19,7 +19,7 @@ export const PRESETS: Preset[] = [
   },
   {
     id: 'gemini', label: 'Google Gemini', free: 'Free tier with a Google account. Reads photos too.',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.5-flash', vision: true,
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-flash-latest', vision: true, // Google's alias for its current Flash model
     keyUrl: 'https://aistudio.google.com/apikey',
   },
   {

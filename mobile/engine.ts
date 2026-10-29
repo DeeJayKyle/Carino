@@ -122,6 +122,20 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 /** Settings only the phone has: which AI service to use, and its key. */
 async function deviceRoute(req: Request, path: string): Promise<Response> {
   if (path === '/api/device/config' && req.method === 'GET') return json({ config: maskConfig(device), presets: PRESETS, native: isNative });
+  if (path === '/api/device/models' && req.method === 'GET') {
+    // The models this key can use, so the app can offer a working one when a name is retired.
+    const env = configToEnv(device);
+    const base = env.OPENAI_COMPAT_BASE_URL;
+    if (!base) return json({ models: [] });
+    try {
+      const res = await fetch(`${base.replace(/\/$/, '')}/models`, { headers: env.OPENAI_COMPAT_API_KEY ? { authorization: `Bearer ${env.OPENAI_COMPAT_API_KEY}` } : {}, signal: AbortSignal.timeout(15_000) });
+      const data: any = await res.json().catch(() => ({}));
+      const ids = (Array.isArray(data?.data) ? data.data : []).map((m: any) => String(m?.id ?? '').replace(/^models\//, '')).filter(Boolean);
+      return json({ models: [...new Set<string>(ids)].sort() });
+    } catch {
+      return json({ models: [] });
+    }
+  }
   if (path === '/api/device/config' && req.method === 'PUT') {
     const body = (await req.json().catch(() => ({}))) as Partial<DeviceConfig>;
     const keep = (k: keyof DeviceConfig) => (typeof body[k] === 'string' && (body[k] as string).startsWith('••••') ? device[k] : body[k]);

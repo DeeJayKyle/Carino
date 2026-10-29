@@ -18,6 +18,7 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
   const [form, setForm] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [test, setTest] = useState<{ ok: boolean; text: string } | null>(null);
+  const [choices, setChoices] = useState<string[]>([]);
 
   useEffect(() => {
     api<any>('/device/config').then((r) => {
@@ -33,16 +34,25 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
     setForm((f: any) => ({ ...f, ...patch }));
   };
 
-  const save = async () => {
+  const save = async (override?: any) => {
+    const f = { ...form, ...override };
+    if (override) setForm(f);
     setBusy(true);
     setTest(null);
+    setChoices([]);
     try {
-      await api('/device/config', { method: 'PUT', body: { ...form, model: form.model || undefined } });
+      await api('/device/config', { method: 'PUT', body: { ...f, model: f.model || undefined } });
       await refresh();
       const r = await post<any>('/ai/test', {}).catch((e) => ({ results: [{ ok: false, error: e.message }] }));
       const res = r.results?.find((x: any) => x.ok) ?? r.results?.[0];
       setTest(res?.ok ? { ok: true, text: `Connected to ${p.label} · ${res.model}` } : { ok: false, text: res?.error ?? 'Could not reach the AI service.' });
       if (res?.ok) onSaved?.();
+      // A retired or mistyped model name: offer the ones this key can actually use.
+      else if (/\b(404|not found|no longer available|does not exist|model)\b/i.test(res?.error ?? '')) {
+        const m = await api<any>('/device/models').catch(() => ({ models: [] }));
+        const fit = (m.models as string[]).filter((id) => (p.id === 'gemini' ? /gemini.*flash/i.test(id) && !/image|tts|audio|live|embedding/i.test(id) : !/whisper|embed|tts|guard/i.test(id)));
+        setChoices((fit.length ? fit : m.models).slice(0, 12));
+      }
     } catch (e: any) {
       toast(e.message, 'error');
     } finally {
@@ -87,9 +97,15 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
             <input id="dai-searx" className="input" inputMode="url" placeholder="https://searx.example.org" value={form.searxngUrl ?? ''} onChange={(e) => set({ searxngUrl: e.target.value })} /></div>
         </div>
       </details>
-      {test && <div className={`callout small ${test.ok ? 'success' : 'warning'}`} role="status"><Icon name={test.ok ? 'check' : 'info'} size={16} />{test.text}</div>}
+      {test && <div className={`callout small ${test.ok ? 'success' : 'warning'}`} role="status"><Icon name={test.ok ? 'check' : 'info'} size={16} /><span style={{ overflowWrap: 'anywhere' }}>{test.text.slice(0, 400)}</span></div>}
+      {choices.length > 0 && (
+        <div className="stack">
+          <p className="small">Models your key can use — tap one to try it:</p>
+          <div className="row wrap">{choices.map((id) => <button key={id} type="button" className="btn sm" disabled={busy} onClick={() => save({ model: id })}>{id}</button>)}</div>
+        </div>
+      )}
       <div className="row">
-        <button className="btn primary" disabled={busy || (!form.apiKey && p.id !== 'custom')} onClick={save}>{busy ? 'Checking…' : 'Save and test'}</button>
+        <button className="btn primary" disabled={busy || (!form.apiKey && p.id !== 'custom')} onClick={() => save()}>{busy ? 'Checking…' : 'Save and test'}</button>
       </div>
       <p className="faint tiny">Your key stays on this phone and is sent only to {p.label}. Messages you send go to {p.label} to be answered; everything else stays on the phone.</p>
     </div>
