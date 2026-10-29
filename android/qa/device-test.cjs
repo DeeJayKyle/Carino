@@ -12,6 +12,13 @@ const results = [];
 const OUT = 'device-test';
 fs.mkdirSync(OUT, { recursive: true });
 
+// The whole run has a limit too, so CI always gets the results that were collected.
+setTimeout(() => {
+  fs.writeFileSync(`${OUT}/results.json`, JSON.stringify({ app: NAME, results, timedOut: true }, null, 2));
+  console.log('DEVICE TEST TIMED OUT after 25 minutes; results so far: ' + JSON.stringify(results));
+  process.exit(1);
+}, 25 * 60_000).unref();
+
 (async () => {
   const [device] = await android.devices();
   if (!device) throw new Error('No emulator found');
@@ -43,7 +50,9 @@ fs.mkdirSync(OUT, { recursive: true });
     const t0 = Date.now();
     try {
       if (page && page.isClosed()) await attach();
-      const detail = await fn();
+      // A step that hangs fails on its own instead of stalling the whole run.
+      let timer;
+      const detail = await Promise.race([fn(), new Promise((_, no) => { timer = setTimeout(() => no(new Error('step timed out after 3 minutes')), 180_000); })]).finally(() => clearTimeout(timer));
       results.push({ name, ok: true, ms: Date.now() - t0, detail: detail ?? '' });
       console.log(`PASS  ${name}${detail ? ' — ' + detail : ''}`);
     } catch (e) {
