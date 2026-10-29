@@ -28,6 +28,8 @@ const schema = z.object({
   OPENAI_COMPAT_TOOLSET: z.enum(['core', 'full']).default('core'),
   /** Set to true when the model can read images (e.g. llava, qwen2.5vl, gemma3, GPT-4o, Gemini). */
   OPENAI_COMPAT_VISION: z.enum(['true', 'false']).default('false'),
+  /** Comma-separated models to try in order when the main one is retired, busy or rate-limited. */
+  OPENAI_COMPAT_FALLBACK_MODELS: z.string().max(2000).optional(),
   DEFAULT_PROVIDER: z.enum(['anthropic', 'openai_compat']).optional(),
 
   // Web research

@@ -111,6 +111,7 @@ export function createRegistry(config: Config): ProviderRegistry {
       reasoningEffort: config.OPENAI_COMPAT_REASONING_EFFORT,
       toolset: config.OPENAI_COMPAT_TOOLSET,
       vision: config.OPENAI_COMPAT_VISION === 'true',
+      fallbackModels: config.OPENAI_COMPAT_FALLBACK_MODELS?.split(',').map((m) => m.trim()).filter(Boolean),
     }),
   );
   reg.setDefault(config.DEFAULT_PROVIDER);

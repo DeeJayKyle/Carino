@@ -7,10 +7,10 @@ import { ProviderError } from './types.ts';
  * compatibility endpoint, etc. Streaming via SSE; tool calls when the model supports them.
  */
 export class OpenAICompatProvider implements AIProvider {
-  private opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full'; vision?: boolean };
+  private opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full'; vision?: boolean; fallbackModels?: string[] };
   private fetchImpl: typeof fetch;
 
-  constructor(opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full'; vision?: boolean }, fetchImpl: typeof fetch = fetch) {
+  constructor(opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full'; vision?: boolean; fallbackModels?: string[] }, fetchImpl: typeof fetch = fetch) {
     this.opts = opts;
     this.fetchImpl = fetchImpl;
   }
@@ -50,31 +50,30 @@ export class OpenAICompatProvider implements AIProvider {
     if (this.opts.tools && req.tools.length) {
       body.tools = req.tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }));
     }
+    // Free models get retired, overloaded or rate-limited without warning. When that happens
+    // before any reply arrives, move on to the next model in the list.
+    const candidates = [model, ...(this.opts.fallbackModels ?? []).filter((m) => m !== model)];
+    const tried: string[] = [];
     let res!: Response;
-    for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      res = await this.fetchImpl(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
-        body: JSON.stringify(body),
-        signal: req.signal,
-      });
-    } catch (err: any) {
-      if (err?.name === 'AbortError') throw new ProviderError('aborted', 'Response cancelled.');
-      throw new ProviderError('unavailable', `Could not reach ${this.opts.label}. Is it running and reachable from the server?`, true);
-    }
-    if (res.status !== 429 || attempt === 2) break;
-    const after = Number(res.headers.get('retry-after'));
-    const waitMs = Number.isFinite(after) && after > 0 ? Math.min(after * 1000, 30_000) : [5_000, 15_000][attempt];
-    await res.body?.cancel().catch(() => undefined);
-    await new Promise((r) => setTimeout(r, this.retryDelay(waitMs)));
+    let used = model;
+    let errText = '';
+    for (const candidate of candidates) {
+      used = candidate;
+      tried.push(candidate);
+      body.model = candidate;
+      res = await this.send(body, req, candidates.length - tried.length > 0 ? 1 : 3);
+      if (res.ok) break;
+      errText = (await res.text().catch(() => '')).slice(0, 300);
+      const switchable = res.status === 404 || res.status === 429 || res.status >= 500
+        || (res.status === 400 && /model|not (found|supported|available)/i.test(errText));
+      if (!switchable) break;
     }
     if (!res.ok) {
-      const text = (await res.text().catch(() => '')).slice(0, 300);
+      const others = tried.length > 1 ? ` (tried ${tried.join(', ')})` : '';
       if (res.status === 401 || res.status === 403) throw new ProviderError('auth', `${this.opts.label} rejected the API key.`);
-      if (res.status === 429) throw new ProviderError('rate_limited', `${this.opts.label} is rate-limiting requests. Try again shortly.`, true);
-      if (res.status >= 500) throw new ProviderError('unavailable', `${this.opts.label} returned an error (${res.status}).`, true);
-      throw new ProviderError('bad_request', `${this.opts.label} rejected the request (${res.status}): ${text}`);
+      if (res.status === 429) throw new ProviderError('rate_limited', `${this.opts.label} is rate-limiting requests${others}. Try again shortly.`, true);
+      if (res.status >= 500) throw new ProviderError('unavailable', `${this.opts.label} is busy or down (${res.status})${others}. Try again in a minute.`, true);
+      throw new ProviderError('bad_request', `${this.opts.label} rejected the request (${res.status})${others}: ${errText}`);
     }
 
     let text = '';
@@ -145,7 +144,32 @@ export class OpenAICompatProvider implements AIProvider {
       content.push({ type: 'tool_use', id: call.id, name: call.name, input, ...(call.extra ? { extra_content: call.extra } : {}) } as Block);
     }
     const stopReason = calls.size ? 'tool_use' : finish === 'length' ? 'max_tokens' : 'end_turn';
-    return { content, stopReason, usage, model };
+    return { content, stopReason, usage, model: used };
+  }
+
+  /** One POST, retrying a 429 after the wait the service asks for (up to `attempts` tries). */
+  private async send(body: Record<string, unknown>, req: ChatRequest, attempts: number): Promise<Response> {
+    const { baseUrl, apiKey } = this.opts;
+    let res!: Response;
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        res = await this.fetchImpl(`${baseUrl!.replace(/\/$/, '')}/chat/completions`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) },
+          body: JSON.stringify(body),
+          signal: req.signal,
+        });
+      } catch (err: any) {
+        if (err?.name === 'AbortError') throw new ProviderError('aborted', 'Response cancelled.');
+        throw new ProviderError('unavailable', `Could not reach ${this.opts.label}. Is it running and reachable from the server?`, true);
+      }
+      if (res.status !== 429 || attempt === attempts - 1) break;
+      const after = Number(res.headers.get('retry-after'));
+      const waitMs = Number.isFinite(after) && after > 0 ? Math.min(after * 1000, 30_000) : [5_000, 15_000][attempt];
+      await res.body?.cancel().catch(() => undefined);
+      await new Promise((r) => setTimeout(r, this.retryDelay(waitMs)));
+    }
+    return res;
   }
 }
 

@@ -4,7 +4,8 @@ import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 import * as shim from '../mobile/shims/crypto.ts';
 import { Buffer as PhoneBuffer } from '../mobile/buffer.ts';
 import { configureSqlite, DatabaseSync } from '../mobile/shims/sqlite.ts';
-import { configToEnv, maskConfig } from '../mobile/presets.ts';
+import { configToEnv, maskConfig, PRESETS } from '../mobile/presets.ts';
+import { OpenAICompatProvider } from '../server/ai/openai-compat.ts';
 
 describe('phone app stand-ins for Node', () => {
   it('encrypts, hashes and signs exactly like node:crypto', () => {
@@ -55,11 +56,56 @@ describe('phone app stand-ins for Node', () => {
   it('turns the chosen free AI service into server settings, and hides keys', () => {
     expect(configToEnv({ provider: 'groq', apiKey: 'gsk_123456' })).toMatchObject({
       OPENAI_COMPAT_BASE_URL: 'https://api.groq.com/openai/v1', OPENAI_COMPAT_API_KEY: 'gsk_123456', DEFAULT_PROVIDER: 'openai_compat',
-      TRANSCRIBE_API_KEY: 'gsk_123456', OPENAI_COMPAT_TOOLSET: 'full',
+      TRANSCRIBE_API_KEY: 'gsk_123456', OPENAI_COMPAT_TOOLSET: 'full', OPENAI_COMPAT_MODEL: 'openai/gpt-oss-120b',
+      OPENAI_COMPAT_FALLBACK_MODELS: 'qwen/qwen3.8-27b,openai/gpt-oss-20b',
     });
     expect(configToEnv({ provider: 'gemini', apiKey: 'AIza', model: 'gemini-x' })).toMatchObject({ OPENAI_COMPAT_MODEL: 'gemini-x', OPENAI_COMPAT_VISION: 'true' });
     expect(configToEnv({ provider: 'anthropic', apiKey: 'sk-ant' })).toMatchObject({ ANTHROPIC_API_KEY: 'sk-ant', DEFAULT_PROVIDER: 'anthropic' });
     expect(configToEnv({ provider: null })).toEqual({});
     expect(maskConfig({ provider: 'groq', apiKey: 'gsk_abcdef1234' }).apiKey).toBe('••••1234');
+  });
+});
+
+describe('free AI models', () => {
+  it('offers only free services, best first, each with free models in priority order', () => {
+    const shown = PRESETS.filter((p) => !p.hidden);
+    expect(shown[0].id).toBe('gemini');
+    expect(shown.map((p) => p.id)).not.toContain('anthropic');
+    for (const p of shown) {
+      expect(p.models.length, p.id).toBeGreaterThan(0);
+      expect(p.model, p.id).toBe(p.models[0].id);
+      expect(new Set(p.models.map((m) => m.id)).size, p.id).toBe(p.models.length);
+    }
+    // Retired names must not come back as defaults.
+    expect(PRESETS.find((p) => p.id === 'gemini')!.models.map((m) => m.id)).not.toContain('gemini-2.5-flash');
+    expect(PRESETS.find((p) => p.id === 'groq')!.models.map((m) => m.id)).not.toContain('llama-3.3-70b-versatile');
+    expect(PRESETS.find((p) => p.id === 'openrouter')!.models.every((m) => m.id.endsWith(':free') || m.id === 'openrouter/free')).toBe(true);
+    // DeepSeek and Qwen are reachable through a free service.
+    const families = shown.flatMap((p) => p.models.map((m) => m.family));
+    expect(families).toContain('DeepSeek');
+    expect(families).toContain('Qwen');
+  });
+
+  it('moves on to the next free model when one is retired, busy or rate-limited', async () => {
+    const asked: string[] = [];
+    const replies: Record<string, number> = { a: 404, b: 503, c: 429 };
+    const p = new OpenAICompatProvider({ baseUrl: 'http://x/v1', model: 'a', label: 'Svc', tools: false, fallbackModels: ['b', 'c', 'd'] }, (async (_u: string, init: any) => {
+      const model = JSON.parse(init.body).model;
+      asked.push(model);
+      if (replies[model]) return new Response(JSON.stringify({ error: { message: `model ${model} problem` } }), { status: replies[model] });
+      return new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: 'hi' }, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`, { headers: { 'content-type': 'text/event-stream' } });
+    }) as any);
+    p.retryDelay = () => 0;
+    const r = await p.chat({ system: 's', messages: [{ role: 'user', content: [{ type: 'text', text: 'q' }] }], tools: [] } as any);
+    expect(asked).toEqual(['a', 'b', 'c', 'd']);
+    expect(r.model).toBe('d');
+    expect((r.content[0] as any).text).toBe('hi');
+  });
+
+  it('does not switch models for a bad key, and says which models it tried', async () => {
+    const keyFail = new OpenAICompatProvider({ baseUrl: 'http://x/v1', model: 'a', label: 'Svc', tools: false, fallbackModels: ['b'] }, (async () => new Response('{}', { status: 401 })) as any);
+    await expect(keyFail.chat({ system: 's', messages: [], tools: [] } as any)).rejects.toThrow(/rejected the API key/);
+    const allBusy = new OpenAICompatProvider({ baseUrl: 'http://x/v1', model: 'a', label: 'Svc', tools: false, fallbackModels: ['b'] }, (async () => new Response('{}', { status: 503 })) as any);
+    await expect(allBusy.chat({ system: 's', messages: [], tools: [] } as any)).rejects.toThrow(/busy or down \(503\) \(tried a, b\)/);
   });
 });

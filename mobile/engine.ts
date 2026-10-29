@@ -122,18 +122,29 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 /** Settings only the phone has: which AI service to use, and its key. */
 async function deviceRoute(req: Request, path: string): Promise<Response> {
   if (path === '/api/device/config' && req.method === 'GET') return json({ config: maskConfig(device), presets: PRESETS, native: isNative });
-  if (path === '/api/device/models' && req.method === 'GET') {
-    // The models this key can use, so the app can offer a working one when a name is retired.
-    const env = configToEnv(device);
-    const base = env.OPENAI_COMPAT_BASE_URL;
+  if (path === '/api/device/models') {
+    // The models a key can use, so the app can mark which free models work (and offer others
+    // when names change). POST checks the form's values before they're saved.
+    const body = req.method === 'POST' ? ((await req.json().catch(() => ({}))) as Partial<DeviceConfig>) : {};
+    const p = PRESETS.find((x) => x.id === (body.provider ?? device.provider));
+    if (!p || p.hidden) return json({ models: [] });
+    const masked = !body.apiKey || body.apiKey.startsWith('••••');
+    const key = (masked && body.provider === device.provider) || !body.provider ? device.apiKey : body.apiKey;
+    const base = (p.ownAddress ? (body.baseUrl || device.baseUrl) : p.baseUrl)?.replace(/\/$/, '');
     if (!base) return json({ models: [] });
     try {
-      const res = await fetch(`${base.replace(/\/$/, '')}/models`, { headers: env.OPENAI_COMPAT_API_KEY ? { authorization: `Bearer ${env.OPENAI_COMPAT_API_KEY}` } : {}, signal: AbortSignal.timeout(15_000) });
+      const res = await fetch(`${base}/models`, { headers: key ? { authorization: `Bearer ${key}` } : {}, signal: AbortSignal.timeout(15_000) });
+      if (res.status === 401 || res.status === 403) return json({ models: [], error: `${p.label} rejected the key.` });
       const data: any = await res.json().catch(() => ({}));
-      const ids = (Array.isArray(data?.data) ? data.data : []).map((m: any) => String(m?.id ?? '').replace(/^models\//, '')).filter(Boolean);
+      const list: any[] = Array.isArray(data?.data) ? data.data : Array.isArray(data?.models) ? data.models : [];
+      // OpenRouter lists paid models too: keep only the ones that cost nothing.
+      const free = p.id === 'openrouter'
+        ? list.filter((m) => Number(m?.pricing?.prompt) === 0 && Number(m?.pricing?.completion) === 0)
+        : list;
+      const ids = free.map((m) => String(m?.id ?? m?.name ?? '').replace(/^models\//, '')).filter(Boolean);
       return json({ models: [...new Set<string>(ids)].sort() });
     } catch {
-      return json({ models: [] });
+      return json({ models: [], error: `Could not reach ${p.label}.` });
     }
   }
   if (path === '/api/device/config' && req.method === 'PUT') {

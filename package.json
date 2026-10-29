@@ -1,6 +1,6 @@
 {
   "name": "carino",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "private": true,
   "description": "Carino \u2014 a personal AI assistant for Android that runs on your phone, with free AI services.",
   "type": "module",

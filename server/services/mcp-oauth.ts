@@ -46,7 +46,7 @@ async function discover(services: Services, mcpUrl: URL, allowPrivate: boolean) 
     const probe = await f(mcpUrl.href, {
       method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(15_000),
       headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'Carino', version: '1.0.1' } } }),
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'Carino', version: '1.1.0' } } }),
     });
     resourceMeta = probe.headers.get('www-authenticate')?.match(/resource_metadata="([^"]+)"/)?.[1] ?? null;
     await probe.body?.cancel().catch(() => undefined);
