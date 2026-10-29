@@ -1,0 +1,72 @@
+// Carino for Android: the whole app runs on the phone (no server needed). The web app and
+// Carino's server code are built into src/main/assets/www by `npm run build:android` first.
+// Build: gradle assembleRelease -PappVersion=3.0.0
+plugins {
+    id 'com.android.application'
+}
+
+def appVersion = (project.findProperty('appVersion') ?: '1.0.0').toString()
+def parts = appVersion.tokenize('.').collect { it.replaceAll('[^0-9]', '') ?: '0' }.collect { it as int }
+def versionCodeValue = parts[0] * 10000 + (parts.size() > 1 ? parts[1] : 0) * 100 + (parts.size() > 2 ? parts[2] : 0)
+
+android {
+    namespace 'app.carino.android'
+    compileSdk 36
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    defaultConfig {
+        applicationId 'app.carino'
+        minSdk 26
+        targetSdk 36
+        versionCode versionCodeValue
+        versionName appVersion
+    }
+
+    signingConfigs {
+        release {
+            def ks = System.getenv('CARINO_KEYSTORE_FILE')
+            if (ks) {
+                storeFile file(ks)
+                storeType 'pkcs12'
+                storePassword System.getenv('CARINO_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('CARINO_KEY_ALIAS') ?: 'carino'
+                keyPassword System.getenv('CARINO_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv('CARINO_KEYSTORE_FILE') ? signingConfigs.release : null
+        }
+    }
+
+    // sqlite3.wasm must stay uncompressed-readable; compression is fine for everything else.
+    androidResources {
+        noCompress += ['wasm']
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// The bundled app must exist; otherwise the APK would open to a blank screen.
+tasks.register('checkWebAssets') {
+    doLast {
+        if (!file('src/main/assets/www/index.html').exists()) {
+            throw new GradleException('Missing src/main/assets/www — run `npm run build:android` in the repository root first.')
+        }
+    }
+}
+tasks.named('preBuild') { dependsOn 'checkWebAssets' }
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.14.0'
+    implementation 'androidx.core:core:1.16.0'
+}

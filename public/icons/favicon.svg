@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Carino's app icon: Carino (an original character — a round coral pebble with a leaf sprout) on a violet tile. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a63f0"/><stop offset="1" stop-color="#4a35c4"/></linearGradient>
+    <radialGradient id="skin" cx="38%" cy="30%" r="75%"><stop offset="0%" stop-color="#ffd9c8"/><stop offset="35%" stop-color="#ff9b7c"/><stop offset="80%" stop-color="#ec6446"/><stop offset="100%" stop-color="#c4462f"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g transform="translate(76 92) scale(3)">
+    <path d="M60 30 C60 22 60 16 61 10" stroke="#3f8f5a" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M61 14 C66 4 80 4 84 9 C78 16 68 18 61 14 Z" fill="#5fbf7a" stroke="#3f8f5a" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M60 18 C55 10 44 10 41 14 C46 20 54 21 60 18 Z" fill="#7fd394" stroke="#3f8f5a" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="M60 26 C88 26 106 44 106 70 C106 94 86 110 60 110 C34 110 14 94 14 70 C14 44 32 26 60 26 Z" fill="url(#skin)"/>
+    <ellipse cx="42" cy="44" rx="11" ry="6" fill="#fff" opacity="0.35" transform="rotate(-24 42 44)"/>
+    <ellipse cx="34" cy="80" rx="8" ry="5" fill="#ff6f8a" opacity="0.45"/>
+    <ellipse cx="86" cy="80" rx="8" ry="5" fill="#ff6f8a" opacity="0.45"/>
+    <ellipse cx="48" cy="64" rx="5" ry="7" fill="#2a1a24"/><ellipse cx="72" cy="64" rx="5" ry="7" fill="#2a1a24"/>
+    <circle cx="49.5" cy="61.5" r="1.6" fill="#fff"/><circle cx="73.5" cy="61.5" r="1.6" fill="#fff"/>
+    <path d="M51 76 Q60 84 69 76" fill="none" stroke="#2a1a24" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Carino</string>
+    <string name="channel_reminders">Reminders and briefings</string>
+    <string name="channel_reminders_description">Reminders you set, routines and approvals from Carino.</string>
+    <string name="widget_ramble">🎙 Ramble</string>
+    <string name="widget_talk">💬 Talk</string>
+    <string name="widget_chat">＋ Chat</string>
+    <string name="widget_description">Quick ways into Carino: ramble, talk or start a chat.</string>
+</resources>

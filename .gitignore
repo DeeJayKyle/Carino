@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+test-results/
+*.log
+.DS_Store
+# Android build outputs, local SDK path and signing keys
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.jks
+*.keystore
+*.p12
+# The app bundle inside the APK (built by npm run build)
+android/app/src/main/assets/www/
