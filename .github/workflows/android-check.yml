@@ -24,6 +24,11 @@ jobs:
       - name: Build APK
         working-directory: android
         run: gradle assembleDebug --no-daemon
+      - name: Start the stand-in AI service and install the test driver
+        run: |
+          npm i --no-save playwright@1.63.0
+          nohup node android/qa/fake-ai.mjs 9996 > fake-ai.log 2>&1 &
+          sleep 1 && curl -sf http://127.0.0.1:9996/v1/models
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -36,7 +41,10 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: bash android/launch-test.sh android/app/build/outputs/apk/debug/app-debug.apk
+          # Opens the app, then drives it through every phone-only feature (android/qa/device-test.cjs).
+          script: |
+            bash android/launch-test.sh android/app/build/outputs/apk/debug/app-debug.apk
+            node android/qa/device-test.cjs app.carino Carino http://10.0.2.2:9996/v1
       # The log and screenshot are a convenience; a full artifact quota must not fail the check.
       - uses: actions/upload-artifact@v7
         if: always()
@@ -46,4 +54,6 @@ jobs:
           path: |
             logcat.txt
             screenshot.png
+            device-test/
+            fake-ai.log
           if-no-files-found: ignore

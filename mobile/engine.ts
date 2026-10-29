@@ -25,7 +25,8 @@ import type { PushService } from '../server/services/push.ts';
 const MIGRATIONS = import.meta.glob('../server/db/migrations/*.sql', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 const DATA_DIR = '/data';
 const MIGRATIONS_DIR = '/app/migrations';
-const SAVE_DELAY_MS = 1200;
+// Short, so closing the app right after a change doesn't lose it (the first change in a burst starts the timer).
+const SAVE_DELAY_MS = 150;
 
 let services!: Services;
 let app!: ReturnType<typeof createApp>;
@@ -242,6 +243,8 @@ async function boot() {
   const toBackground = () => void flush();
   document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && toBackground());
   window.addEventListener('pagehide', toBackground);
+  // Lets tests (and the Android check) wait for everything to be saved, as a normal close does.
+  (globalThis as any).__flushEngine = flush;
 }
 
 const ready = boot().then(() => console.info('Carino engine ready'));

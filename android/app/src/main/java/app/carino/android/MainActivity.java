@@ -51,6 +51,8 @@ public class MainActivity extends Activity {
         w.setNavigationBarColor(getColor(R.color.surface));
 
         web = new WebView(this);
+        // Debug builds only: lets the emulator test (android/device-test.cjs) drive the app.
+        if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true);
         web.setBackgroundColor(getColor(R.color.surface));
         setContentView(web);
 
