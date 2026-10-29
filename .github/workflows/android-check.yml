@@ -37,8 +37,10 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: bash android/launch-test.sh android/app/build/outputs/apk/debug/app-debug.apk
+      # The log and screenshot are a convenience; a full artifact quota must not fail the check.
       - uses: actions/upload-artifact@v7
         if: always()
+        continue-on-error: true
         with:
           name: emulator
           path: |
