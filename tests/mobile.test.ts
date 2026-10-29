@@ -67,6 +67,17 @@ describe('phone app stand-ins for Node', () => {
 });
 
 describe('free AI models', () => {
+  it('says what to check when the AI service cannot be reached', async () => {
+    const offline = (async () => { throw new TypeError('Failed to fetch'); }) as any;
+    const msg = async (baseUrl: string) => {
+      const p = new OpenAICompatProvider({ baseUrl, model: 'm', label: 'Svc', tools: false }, offline);
+      return p.chat({ system: '', messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }], tools: [] }).then(() => '', (e: any) => e.message);
+    };
+    expect(await msg('https://api.groq.com/openai/v1')).toBe('Could not reach Svc. Check your internet connection and try again.');
+    expect(await msg('http://192.168.1.20:11434/v1')).toBe('Could not reach Svc. Is it running, and on the same Wi-Fi as this device?');
+    expect(await msg('http://localhost:11434/v1')).toContain('same Wi-Fi');
+  });
+
   it('offers only free services, best first, each with free models in priority order', () => {
     const shown = PRESETS.filter((p) => !p.hidden);
     expect(shown[0].id).toBe('gemini');
