@@ -46,6 +46,7 @@ setTimeout(() => {
     }
   };
   const shot = async (name) => fs.writeFileSync(`${OUT}/${name}.png`, await device.screenshot());
+  let loggedCrash = false;
   const step = async (name, fn) => {
     const t0 = Date.now();
     try {
@@ -58,6 +59,14 @@ setTimeout(() => {
     } catch (e) {
       results.push({ name, ok: false, ms: Date.now() - t0, detail: String(e.message ?? e).split('\n')[0].slice(0, 300) });
       console.log(`FAIL  ${name} — ${String(e.message ?? e).split('\n')[0].slice(0, 300)}`);
+      // The phone's own log around the failure (artifact uploads can fail, so print it here).
+      if (!loggedCrash) {
+        loggedCrash = true;
+        const log = await sh('logcat -d -t 2000').catch(() => '');
+        const keep = log.split('\n').filter((l) => /FATAL|AndroidRuntime|Process .*died|has died|crash|Crash|SIGSEGV|renderer|RenderProcess|Carino|app\.carino|chromium.*ERROR|lowmemory|ActivityManager: Kill/.test(l)).slice(-120);
+        console.log('---- phone log (filtered) ----\n' + keep.join('\n') + '\n---- end phone log ----');
+        console.log('processes: ' + (await sh(`pidof ${PKG}`).catch(() => '')).trim());
+      }
       await shot('FAIL-' + name.replace(/\W+/g, '-').slice(0, 40)).catch(() => {});
     }
   };
