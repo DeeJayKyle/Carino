@@ -1,0 +1,12 @@
+// Carino's sign-in helper: finishes one-tap sign-ins with the app's client secrets (kept here,
+// never in the APK) and runs the shared WhatsApp number. Deployed by .github/workflows/helper.yml.
+{
+  "name": "carino-auth",
+  "main": "worker.js",
+  "compatibility_date": "2025-09-01",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [{ "name": "WA", "class_name": "WaHub" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WaHub"] }]
+}

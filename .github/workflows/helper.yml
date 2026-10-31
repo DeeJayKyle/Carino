@@ -1,0 +1,137 @@
+name: Sign-in helper
+# Deploys Carino's sign-in helper (auth/worker.js) to Cloudflare with the app's client secrets,
+# connects the shared WhatsApp number's webhook, and checks the helper answers. Runs when the
+# helper changes, and can be started by hand (e.g. after adding or changing a secret).
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['auth/**', '.github/workflows/helper.yml']
+
+concurrency: { group: helper, cancel-in-progress: false }
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 24 }
+
+      - name: Which secrets are set (names only)
+        env:
+          S_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          S_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          S_MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          S_MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          S_META_APP_ID: ${{ secrets.META_APP_ID }}
+          S_META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
+          S_WA_PHONE_NUMBER_ID: ${{ secrets.WA_PHONE_NUMBER_ID }}
+          S_WA_ACCESS_TOKEN: ${{ secrets.WA_ACCESS_TOKEN }}
+          S_WA_VERIFY_TOKEN: ${{ secrets.WA_VERIFY_TOKEN }}
+          S_X_CLIENT_ID: ${{ secrets.X_CLIENT_ID }}
+          S_X_CLIENT_SECRET: ${{ secrets.X_CLIENT_SECRET }}
+          S_LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
+          S_LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          S_TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          S_TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+        run: |
+          {
+            echo "## Secrets"
+            for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do [ -n "${!v}" ] && echo "- ✅ $v" || echo "- ❌ $v (missing)"; done
+            for n in GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET MS_CLIENT_ID MS_CLIENT_SECRET META_APP_ID META_APP_SECRET WA_PHONE_NUMBER_ID WA_ACCESS_TOKEN WA_VERIFY_TOKEN X_CLIENT_ID X_CLIENT_SECRET LINKEDIN_CLIENT_ID LINKEDIN_CLIENT_SECRET TIKTOK_CLIENT_KEY TIKTOK_CLIENT_SECRET; do
+              v="S_$n"; [ -n "${!v}" ] && echo "- ✅ $n" || echo "- ⚪ $n (not set: that app stays on manual setup)"
+            done
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are needed to deploy the helper."; exit 1
+          fi
+
+      - name: Deploy the helper
+        working-directory: auth
+        run: npx --yes wrangler@4 deploy
+
+      - name: Shared WhatsApp number's display form
+        id: wa
+        env:
+          WA_PHONE_NUMBER_ID: ${{ secrets.WA_PHONE_NUMBER_ID }}
+          WA_ACCESS_TOKEN: ${{ secrets.WA_ACCESS_TOKEN }}
+        run: |
+          n=""
+          if [ -n "$WA_PHONE_NUMBER_ID" ] && [ -n "$WA_ACCESS_TOKEN" ]; then
+            n=$(curl -s "https://graph.facebook.com/v23.0/$WA_PHONE_NUMBER_ID?fields=display_phone_number" -H "Authorization: Bearer $WA_ACCESS_TOKEN" | jq -r '.display_phone_number // empty')
+            [ -n "$n" ] && echo "WhatsApp number: $n" || echo "::warning::Couldn't read the WhatsApp number (check WA_PHONE_NUMBER_ID and WA_ACCESS_TOKEN)."
+          fi
+          echo "number=$n" >> "$GITHUB_OUTPUT"
+
+      - name: Load the secrets into the helper
+        working-directory: auth
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          META_APP_ID: ${{ secrets.META_APP_ID }}
+          META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
+          WA_PHONE_NUMBER_ID: ${{ secrets.WA_PHONE_NUMBER_ID }}
+          WA_ACCESS_TOKEN: ${{ secrets.WA_ACCESS_TOKEN }}
+          WA_VERIFY_TOKEN: ${{ secrets.WA_VERIFY_TOKEN }}
+          WA_DISPLAY_NUMBER: ${{ steps.wa.outputs.number }}
+          X_CLIENT_ID: ${{ secrets.X_CLIENT_ID }}
+          X_CLIENT_SECRET: ${{ secrets.X_CLIENT_SECRET }}
+          LINKEDIN_CLIENT_ID: ${{ secrets.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
+          TIKTOK_CLIENT_KEY: ${{ secrets.TIKTOK_CLIENT_KEY }}
+          TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
+        run: |
+          # Only the ones that are set; the file never leaves this machine and is deleted at once.
+          jq -n 'env | with_entries(select(.key | test("^(GOOGLE|MS|META|WA|X|LINKEDIN|TIKTOK)_")) | select(.value != ""))' > secrets.json
+          npx --yes wrangler@4 secret bulk secrets.json
+          rm -f secrets.json
+
+      - name: The helper's address
+        id: url
+        run: |
+          sub=$(curl -s "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result.subdomain // empty')
+          [ -n "$sub" ] || { echo "::error::No workers.dev subdomain on this Cloudflare account."; exit 1; }
+          echo "url=https://carino-auth.$sub.workers.dev" >> "$GITHUB_OUTPUT"
+          echo "Helper: https://carino-auth.$sub.workers.dev" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Connect the WhatsApp webhook
+        env:
+          META_APP_ID: ${{ secrets.META_APP_ID }}
+          META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
+          WA_ACCESS_TOKEN: ${{ secrets.WA_ACCESS_TOKEN }}
+          WA_VERIFY_TOKEN: ${{ secrets.WA_VERIFY_TOKEN }}
+          HELPER: ${{ steps.url.outputs.url }}
+        run: |
+          if [ -z "$META_APP_ID" ] || [ -z "$META_APP_SECRET" ] || [ -z "$WA_ACCESS_TOKEN" ] || [ -z "$WA_VERIFY_TOKEN" ]; then
+            echo "WhatsApp secrets not all set; skipping." | tee -a "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          sleep 10 # a new workers.dev address can take a moment
+          app="$META_APP_ID|$META_APP_SECRET"
+          # Tell Meta where to deliver messages (Meta checks the verify token against the helper).
+          r=$(curl -s -X POST "https://graph.facebook.com/v23.0/$META_APP_ID/subscriptions" \
+            --data-urlencode "object=whatsapp_business_account" --data-urlencode "callback_url=$HELPER/whatsapp/webhook" \
+            --data-urlencode "verify_token=$WA_VERIFY_TOKEN" --data-urlencode "fields=messages" --data-urlencode "access_token=$app")
+          echo "Webhook: $(echo "$r" | jq -c '{success, error: .error.message}')" | tee -a "$GITHUB_STEP_SUMMARY"
+          # Subscribe the WhatsApp Business Account(s) the token can manage to this app.
+          wabas=$(curl -s "https://graph.facebook.com/v23.0/debug_token?input_token=$WA_ACCESS_TOKEN&access_token=$app" \
+            | jq -r '[.data.granular_scopes[]? | select(.scope=="whatsapp_business_management" or .scope=="whatsapp_business_messaging") | .target_ids[]?] | unique | .[]')
+          for w in $wabas; do
+            s=$(curl -s -X POST "https://graph.facebook.com/v23.0/$w/subscribed_apps" -H "Authorization: Bearer $WA_ACCESS_TOKEN")
+            echo "Business account $w subscribed: $(echo "$s" | jq -c '{success, error: .error.message}')" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+
+      - name: Check the helper answers
+        env:
+          HELPER: ${{ steps.url.outputs.url }}
+        run: |
+          for i in 1 2 3 4 5 6; do curl -sf "$HELPER/" && break; sleep 5; done
+          echo
+          echo "### Apps the helper offers" >> "$GITHUB_STEP_SUMMARY"
+          curl -sf "$HELPER/config" | jq '{apps: (.providers | keys), whatsapp}' | tee -a "$GITHUB_STEP_SUMMARY"

@@ -29,6 +29,15 @@ jobs:
         with: { node-version: 24, cache: npm }
       - run: npm ci
       - run: npm run typecheck
+      - name: The sign-in helper's address (for one-tap sign-in)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            sub=$(curl -s "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result.subdomain // empty')
+            if [ -n "$sub" ]; then echo "VITE_CARINO_HELPER=https://carino-auth.$sub.workers.dev" >> "$GITHUB_ENV"; echo "Helper: https://carino-auth.$sub.workers.dev"; fi
+          fi
       - run: npm run build
       - run: npm test
       - uses: actions/setup-java@v6
