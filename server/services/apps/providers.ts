@@ -12,6 +12,8 @@ export interface TokenSet {
   refresh_token?: string;
   /** Milliseconds since the epoch. */
   expires_at?: number;
+  /** Signed in with one tap through Carino's sign-in helper (it renews these too). */
+  managed?: boolean;
 }
 
 export type AppFetch = typeof fetch;

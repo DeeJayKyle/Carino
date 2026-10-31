@@ -15,7 +15,7 @@ import { getSettings } from './settings.ts';
  */
 const GRAPH = 'https://graph.facebook.com/v23.0';
 type Secret = { access_token: string; app_secret: string };
-export type WaConfig = { phone_number_id: string; verify_token: string; display_phone?: string; transcribe_voice?: boolean; /** Phone app: the user's relay (see whatsapp-relay.ts). */ relay_url?: string };
+export type WaConfig = { phone_number_id: string; verify_token: string; display_phone?: string; transcribe_voice?: boolean; /** Phone app: the user's relay (see whatsapp-relay.ts). */ relay_url?: string; /** Carino's shared number (see whatsapp-shared.ts). */ mode?: 'shared' };
 
 export class WhatsAppError extends Error {}
 
@@ -80,8 +80,14 @@ export function signatureValid(services: Services, ch: Row, raw: string, header:
 }
 
 export async function sendWhatsApp(services: Services, ch: Row, to: string, out: Outgoing) {
-  const secret = channelSecret<Secret>(services, ch);
   const cfg = parseJson<WaConfig>(ch.config, {} as WaConfig);
+  if (cfg.mode === 'shared') {
+    const { sendShared } = await import('./whatsapp-shared.ts');
+    for (const body of out.text.match(/[\s\S]{1,4000}(?=\s|$)|[\s\S]{1,4000}/g) ?? [out.text]) await sendShared(services, ch, body);
+    for (const a of out.approvals?.slice(0, 5) ?? []) await sendShared(services, ch, `Approve this? ${a.summary}`.slice(0, 1000), [{ id: `ok:${a.id}`, title: 'Approve' }, { id: `no:${a.id}`, title: 'Decline' }]);
+    return;
+  }
+  const secret = channelSecret<Secret>(services, ch);
   if (!secret) throw new WhatsAppError('The saved WhatsApp token can no longer be read. Connect WhatsApp again.');
   const parts = out.text.match(/[\s\S]{1,4000}(?=\s|$)|[\s\S]{1,4000}/g) ?? [out.text];
   for (const body of parts) {
@@ -144,6 +150,11 @@ export async function processWhatsAppPayload(services: Services, ch: Row, payloa
 
 async function handleOne(services: Services, ch: Row, secret: Secret, cfg: WaConfig, m: any, from: string, name: string) {
   const { db } = services;
+  const fetchMedia = async (id: string, max: number) => {
+    if (cfg.mode !== 'shared') return media(services, secret.access_token, id, max);
+    const { sharedMedia } = await import('./whatsapp-shared.ts');
+    return sharedMedia(services, ch, id, max);
+  };
   const chat = db.get('SELECT * FROM channel_chats WHERE channel_id = ? AND external_id = ?', ch.id, from);
   // Approve / Decline buttons.
   const button = m.interactive?.button_reply?.id ?? m.button?.payload;
@@ -168,13 +179,13 @@ async function handleOne(services: Services, ch: Row, secret: Secret, cfg: WaCon
   try {
     if (chat && !chat.muted) {
       if (m.type === 'audio' && m.audio?.id && cfg.transcribe_voice !== false) {
-        const { buf, mime } = await media(services, secret.access_token, m.audio.id, 20 * 1024 * 1024);
+        const { buf, mime } = await fetchMedia(m.audio.id, 20 * 1024 * 1024);
         incoming.text = await transcribe(services, buf, 'voice.ogg', mime.split(';')[0], getSettings(db, ch.user_id).voice.language);
         incoming.transcribedFrom = 'voice note';
       }
       const file = m.type === 'image' ? m.image : m.type === 'document' ? m.document : null;
       if (file?.id) {
-        const { buf, mime } = await media(services, secret.access_token, file.id, m.type === 'image' ? MAX_IMAGE_BYTES : 20 * 1024 * 1024);
+        const { buf, mime } = await fetchMedia(file.id, m.type === 'image' ? MAX_IMAGE_BYTES : 20 * 1024 * 1024);
         const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
         const filename = file.filename || `whatsapp-photo.${ext}`;
         const { doc } = await storeDocument(db, services.config.DATA_DIR, ch.user_id, { name: filename, buf }, { tags: ['whatsapp'] }, services.config.MAX_UPLOAD_MB * 1024 * 1024);

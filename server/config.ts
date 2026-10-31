@@ -55,6 +55,10 @@ const schema = z.object({
   // refused unless this is true — only turn it on if you run MCP servers on that network yourself.
   MCP_ALLOW_PRIVATE_NETWORK: z.enum(['true', 'false']).default('false'),
 
+  // Carino's sign-in helper (auth/worker.js): one-tap sign-in for My apps and the shared WhatsApp
+  // number. Built into release APKs; empty means each app is set up by hand.
+  CARINO_HELPER_URL: z.string().default(''),
+
   // Web push (generate with `npm run setup`)
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),

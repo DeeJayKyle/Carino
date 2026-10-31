@@ -6,6 +6,7 @@ import { parseJson, nowIso } from '../db/index.ts';
 import { encryptSecret } from './secrets.ts';
 import { channelSecret } from './channels.ts';
 import { signatureValid, processWhatsAppPayload, type WaConfig } from './whatsapp.ts';
+import { pollShared } from './whatsapp-shared.ts';
 
 /**
  * WhatsApp on the phone. Meta only delivers messages to a web address that's always online, so
@@ -88,9 +89,9 @@ async function pollAll(services: Services) {
   for (const ch of services.db.all("SELECT * FROM channels WHERE kind = 'whatsapp' AND enabled = 1")) {
     const cfg = parseJson<WaConfig>(ch.config, {} as WaConfig);
     const secret = cfg.relay_url ? channelSecret<Secret>(services, ch) : null;
-    if (!cfg.relay_url || !secret?.relay_key) continue;
+    if (cfg.mode !== 'shared' && (!cfg.relay_url || !secret?.relay_key)) continue;
     try {
-      n += await pollOne(services, ch, cfg.relay_url, secret.relay_key);
+      n += cfg.mode === 'shared' ? await pollShared(services, ch) : await pollOne(services, ch, cfg.relay_url!, secret!.relay_key!);
       if (ch.last_error) services.db.run('UPDATE channels SET last_error = NULL WHERE id = ?', ch.id);
     } catch (e: any) {
       services.db.run('UPDATE channels SET last_error = ? WHERE id = ?', String(e?.message ?? e).slice(0, 300), ch.id);

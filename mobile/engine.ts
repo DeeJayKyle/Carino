@@ -38,7 +38,7 @@ let token: string | undefined;
 function envFor(c: DeviceConfig) {
   return {
     NODE_ENV: 'production', DATA_DIR, PUBLIC_URL: location.origin, ALLOW_SIGNUP: 'true', MAX_USERS: '1',
-    MAX_UPLOAD_MB: '100', DAILY_TOKEN_LIMIT: '2000000', ...configToEnv(c),
+    MAX_UPLOAD_MB: '100', DAILY_TOKEN_LIMIT: '2000000', CARINO_HELPER_URL: import.meta.env.VITE_CARINO_HELPER ?? '', ...configToEnv(c),
   };
 }
 

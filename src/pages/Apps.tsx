@@ -16,6 +16,8 @@ interface AppRow {
   redirect_uri: string;
   client: { client_id: string; has_secret: boolean } | null;
   needs_secret: boolean;
+  /** Carino's own app at this provider is ready: just sign in. */
+  one_tap: boolean;
   accounts: { id: string; label: string; last_error: string | null }[];
 }
 
@@ -254,15 +256,20 @@ function AppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
             </ul>
           ) : <p className="small muted" style={{ marginTop: 4 }}>Not connected yet.</p>}
           <div className="row wrap" style={{ marginTop: 12 }}>
-            <button className="btn primary" disabled={busy || !app.client} onClick={signIn}>
+            <button className="btn primary" disabled={busy || (!app.client && !app.one_tap)} onClick={signIn}>
               <Icon name="lock" size={15} />{app.accounts.length ? `Add another ${about.name} account` : `Sign in with ${about.name}`}
             </button>
-            {!app.client && <span className="small muted">First do the one-time setup below.</span>}
+            {!app.client && !app.one_tap && <span className="small muted">First do the one-time setup below.</span>}
           </div>
         </section>
 
-        <details className="card pad" style={{ marginTop: 14 }} open={!app.client}>
-          <summary><h2 style={{ display: 'inline' }}>One-time setup</h2> <span className="small muted">· about 5 minutes, free</span></summary>
+        {app.one_tap && !app.client && (
+          <p className="small muted" style={{ marginTop: 10 }}>You sign in on {about.name}’s own page and choose what Carino may do. Your sign-in is kept on this phone.</p>
+        )}
+        <details className="card pad" style={{ marginTop: 14 }} open={!app.client && !app.one_tap}>
+          {app.one_tap
+            ? <summary><h2 style={{ display: 'inline', fontSize: '1rem' }}>Advanced: use my own developer app</h2></summary>
+            : <summary><h2 style={{ display: 'inline' }}>One-time setup</h2> <span className="small muted">· about 5 minutes, free</span></summary>}
           <p className="small muted" style={{ marginTop: 8 }}>
             Carino talks to {about.name} directly from your phone, with your own free developer app — nothing goes through anyone else’s server.
             {shared && <> This is the same Meta app as {shared}: set it up once for both.</>}

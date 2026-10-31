@@ -6,6 +6,7 @@ import type { Row } from '../../db/index.ts';
 import { nowIso, parseJson } from '../../db/index.ts';
 import { encryptSecret, decryptSecret } from '../secrets.ts';
 import { OAUTH_STATE_TTL_MS } from '../mcp-oauth.ts';
+import { helperConfig, helperPost, helperUrl } from '../helper.ts';
 import { PROVIDERS, PROVIDER_IDS, LOOPBACK_PORT, isProvider, type ProviderId, type ClientGroup, type TokenSet } from './providers.ts';
 
 /** An app problem the model and the user should see as-is (expired sign-in, missing permission…). */
@@ -60,9 +61,10 @@ function client(services: Services, userId: string, group: ClientGroup) {
 
 // ---- What the My apps screen shows ---------------------------------------------------------
 
-export function presentApps(services: Services, userId: string) {
+export async function presentApps(services: Services, userId: string) {
   const accounts = services.db.all('SELECT * FROM app_accounts WHERE user_id = ? ORDER BY created_at', userId);
   const clients = new Map(services.db.all('SELECT provider, client_id, client_secret FROM app_clients WHERE user_id = ?', userId).map((r) => [r.provider, r]));
+  const helper = await helperConfig(services);
   return PROVIDER_IDS.map((id) => {
     const p = PROVIDERS[id];
     const c = clients.get(p.group);
@@ -70,6 +72,8 @@ export function presentApps(services: Services, userId: string) {
       id, label: p.label, group: p.group, redirect_uri: redirectFor(services, id),
       client: c ? { client_id: c.client_id, has_secret: !!c.client_secret } : null,
       needs_secret: p.secret === 'required',
+      // One tap: Carino's own app at this provider, through the sign-in helper.
+      one_tap: !!helper?.providers[id],
       accounts: accounts.filter((a) => a.provider === id).map((a) => ({ id: a.id, label: a.label, last_error: a.last_error, created_at: a.created_at })),
     };
   });
@@ -82,23 +86,34 @@ export function connectedProviders(services: Services, userId: string): Set<Prov
 
 // ---- Sign-in -------------------------------------------------------------------------------
 
-export function startSignIn(services: Services, userId: string, provider: string) {
+/**
+ * PKCE through the helper: its web-app registrations take PKCE alongside the secret for these;
+ * TikTok's web flow and Meta's and LinkedIn's don't use it.
+ */
+const HELPER_PKCE: Partial<Record<ProviderId, 'S256'>> = { google: 'S256', microsoft: 'S256', x: 'S256' };
+
+export async function startSignIn(services: Services, userId: string, provider: string) {
   if (!isProvider(provider)) throw new HttpError(404, 'Unknown app', 'not_found');
   const p = PROVIDERS[provider];
-  const c = client(services, userId, p.group);
+  // The user's own developer app wins if they set one up; otherwise Carino's (one tap).
+  let c = client(services, userId, p.group);
+  const helper = c ? null : await helperConfig(services);
+  const managed = !!helper?.providers[provider];
+  if (managed) c = { id: helper!.providers[provider].client_id, secret: undefined };
   if (!c) throw badRequest(`Add your ${p.label} developer app’s client ID first (see the steps on this page).`);
-  if (p.secret === 'required' && !c.secret) throw badRequest(`Add your ${p.label} client secret first.`);
+  if (!managed && p.secret === 'required' && !c.secret) throw badRequest(`Add your ${p.label} client secret first.`);
   const n = Number(services.db.get('SELECT COUNT(*) AS n FROM app_accounts WHERE user_id = ? AND provider = ?', userId, provider)!.n);
   if (n >= MAX_ACCOUNTS_PER_PROVIDER) throw badRequest(`You can connect up to ${MAX_ACCOUNTS_PER_PROVIDER} ${p.label} accounts.`);
 
   const verifier = b64url(randomBytes(32));
   const state = b64url(randomBytes(24));
-  const redirect = redirectFor(services, provider);
+  const redirect = managed ? `${helperUrl(services)}/callback/${provider}` : redirectFor(services, provider);
+  const pkce = managed ? HELPER_PKCE[provider] ?? 'none' : p.pkce;
   services.db.run('DELETE FROM oauth_states WHERE created_at < ?', new Date(services.now().getTime() - OAUTH_STATE_TTL_MS).toISOString());
   services.db.run(
     'INSERT INTO oauth_states (state, user_id, name, url, data, created_at) VALUES (?, ?, ?, ?, ?, ?)',
     state, userId, `${STATE_PREFIX}${provider}`, provider,
-    encryptSecret(services.config.DATA_DIR, JSON.stringify({ verifier, redirect })), services.now().toISOString(),
+    encryptSecret(services.config.DATA_DIR, JSON.stringify({ verifier, redirect, managed, pkce })), services.now().toISOString(),
   );
   const auth = new URL(p.authorize);
   const q = auth.searchParams;
@@ -107,13 +122,27 @@ export function startSignIn(services: Services, userId: string, provider: string
   q.set('redirect_uri', redirect);
   q.set('scope', p.scopes.join(p.scopeSeparator ?? ' '));
   q.set('state', state);
-  if (p.pkce !== 'none') {
+  if (pkce !== 'none') {
     const digest = createHash('sha256').update(verifier).digest();
-    q.set('code_challenge', p.pkce === 'S256-hex' ? digest.toString('hex') : b64url(digest));
+    q.set('code_challenge', pkce === 'S256-hex' ? digest.toString('hex') : b64url(digest));
     q.set('code_challenge_method', 'S256');
   }
   for (const [k, v] of Object.entries(p.extraAuth ?? {})) q.set(k, v);
-  return { authorize_url: auth.href, loopback: !!services.deviceSession };
+  return { authorize_url: auth.href, loopback: !!services.deviceSession, one_tap: managed };
+}
+
+/** Sign-in through Carino's helper, which holds the app's client secret. */
+async function helperTokens(services: Services, provider: ProviderId, body: Record<string, string | undefined>): Promise<TokenSet> {
+  let d: { access_token: string; refresh_token?: string; expires_in?: number };
+  try {
+    d = await helperPost(services, body.code ? '/token' : '/refresh', { provider, ...body });
+  } catch (e: any) {
+    throw new AppError(`${PROVIDERS[provider].label} sign-in failed: ${String(e?.message ?? e).slice(0, 240)}`);
+  }
+  return {
+    access_token: String(d.access_token), refresh_token: d.refresh_token ? String(d.refresh_token) : undefined,
+    expires_at: d.expires_in ? services.now().getTime() + Number(d.expires_in) * 1000 : undefined, managed: true,
+  };
 }
 
 async function tokenCall(services: Services, provider: ProviderId, c: { id: string; secret?: string }, params: Record<string, string | undefined>): Promise<TokenSet> {
@@ -156,13 +185,21 @@ export async function finishSignIn(services: Services, userId: string, state: st
   const provider = row.url as string;
   if (!isProvider(provider)) throw new AppError('Unknown app.');
   const p = PROVIDERS[provider];
-  const d = parseJson<{ verifier: string; redirect: string } | null>(decryptSecret(services.config.DATA_DIR, row.data), null);
-  const c = client(services, userId, p.group);
-  if (!d || !c) throw new AppError('That sign-in can no longer be completed. Start again.');
-  let tokens = await tokenCall(services, provider, c, {
-    grant_type: 'authorization_code', code, redirect_uri: d.redirect, code_verifier: p.pkce === 'none' ? undefined : d.verifier,
-  });
-  if (p.afterToken) tokens = await p.afterToken(fetcher(services), tokens, c);
+  const d = parseJson<{ verifier: string; redirect: string; managed?: boolean; pkce?: string } | null>(decryptSecret(services.config.DATA_DIR, row.data), null);
+  if (!d) throw new AppError('That sign-in can no longer be completed. Start again.');
+  const pkce = d.pkce ?? p.pkce;
+  let tokens: TokenSet;
+  if (d.managed) {
+    // The helper adds the app's secret (and, for Meta, swaps for a 60-day sign-in).
+    tokens = await helperTokens(services, provider, { code, code_verifier: pkce === 'none' ? undefined : d.verifier });
+  } else {
+    const c = client(services, userId, p.group);
+    if (!c) throw new AppError('That sign-in can no longer be completed. Start again.');
+    tokens = await tokenCall(services, provider, c, {
+      grant_type: 'authorization_code', code, redirect_uri: d.redirect, code_verifier: pkce === 'none' ? undefined : d.verifier,
+    });
+    if (p.afterToken) tokens = await p.afterToken(fetcher(services), tokens, c);
+  }
   let who: { id: string; label: string };
   try {
     who = await p.identify(fetcher(services), tokens.access_token);
@@ -210,11 +247,13 @@ export async function accessToken(services: Services, account: Row): Promise<str
     markError(services, account, `Sign-in expired. ${again}`);
     throw new AppError(`The ${p.label} sign-in for ${account.label} has expired. ${again}`);
   }
-  const c = client(services, account.user_id, p.group);
-  if (!c) throw new AppError(`The ${p.label} developer app was removed from My apps. Add it again, then sign in.`);
+  const c = t.managed ? null : client(services, account.user_id, p.group);
+  if (!t.managed && !c) throw new AppError(`The ${p.label} developer app was removed from My apps. Add it again, then sign in.`);
   let next: TokenSet;
   try {
-    next = await tokenCall(services, provider, c, { grant_type: 'refresh_token', refresh_token: t.refresh_token, scope: p.refreshWithScope ? p.scopes.join(' ') : undefined });
+    next = t.managed
+      ? await helperTokens(services, provider, { refresh_token: t.refresh_token })
+      : await tokenCall(services, provider, c!, { grant_type: 'refresh_token', refresh_token: t.refresh_token, scope: p.refreshWithScope ? p.scopes.join(' ') : undefined });
   } catch (e: any) {
     markError(services, account, `Sign-in expired. ${again}`);
     throw new AppError(`The ${p.label} sign-in for ${account.label} has expired or was revoked. ${again}`);

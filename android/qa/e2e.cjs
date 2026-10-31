@@ -60,6 +60,22 @@ let shotN = 0;
     gj(r, { id: 'm1', threadId: 't1', snippet: 'Delivery on Friday', payload: { headers: [{ name: 'From', value: 'Supplier <s@x.com>' }, { name: 'Subject', value: 'Your order' }] } });
   });
   const relayItems = [];
+  // Carino's sign-in helper (one-tap sign-in and the shared WhatsApp number), when the build has one.
+  const hub = { linked: false, inbox: [], sent: [], tokens: 0 };
+  await ctx.route('https://carino-auth.qa-helper.dev/**', async (r) => {
+    const u = new URL(r.request().url());
+    if (r.request().method() === 'OPTIONS') return r.fulfill({ status: 204, headers: cors });
+    const body = (() => { try { return JSON.parse(r.request().postData() || '{}'); } catch { return {}; } })();
+    if (u.pathname === '/config') return gj(r, { providers: { microsoft: { client_id: 'qa-ms-client' } }, whatsapp: { number: '+1 555-206-4808' } });
+    if (u.pathname === '/token') { hub.tokens++; return gj(r, { access_token: 'ms-at', refresh_token: 'ms-rt', expires_in: 3600 }); }
+    if (u.pathname === '/wa/register') return gj(r, { code: '424242', expires_in: 900 });
+    if (u.pathname === '/wa/status') return gj(r, hub.linked ? { linked: true, wa_id: '15550111', name: 'Herbert' } : { linked: false });
+    if (u.pathname === '/wa/inbox') return gj(r, { items: hub.inbox.splice(0) });
+    if (u.pathname === '/wa/send') { hub.sent.push(body.text); return gj(r, { sent: true }); }
+    gj(r, { ok: true });
+  });
+  await ctx.route('https://login.microsoftonline.com/**', (r) => r.fulfill({ status: 204, body: '' }));
+  await ctx.route('https://graph.microsoft.com/v1.0/me?**', (r) => gj(r, { id: 'ms1', mail: 'herbert@outlook.com' }));
   const cfCalls = [];
   await ctx.route('https://api.cloudflare.com/**', (r) => {
     const u = new URL(r.request().url());
@@ -482,8 +498,45 @@ let shotN = 0;
       expect(outside.google.includes('send'), 'sent after approval');
       return 'read inbox; email sent only after Approve';
     });
+    if (process.env.HELPER) {
+      await step('One tap: Microsoft signs in with no developer setup', async () => {
+        await go('/apps/microsoft', 'Accounts');
+        expect(await page.locator('#client-id').isVisible() === false, 'setup is tucked away');
+        const opened = page.waitForRequest(/login\.microsoftonline\.com/, { timeout: 10000 });
+        await page.getByRole('button', { name: 'Sign in with Microsoft' }).click();
+        const u = new URL((await opened).url());
+        expect(u.searchParams.get('client_id') === 'qa-ms-client', 'Carino’s own app');
+        expect(u.searchParams.get('redirect_uri') === 'https://carino-auth.qa-helper.dev/callback/microsoft', 'redirect via the helper');
+        await page.waitForTimeout(500);
+        await page.evaluate((q) => window.__hn.oauth(q), `code=qa-code&state=${u.searchParams.get('state')}&provider=microsoft`);
+        await page.getByText('herbert@outlook.com').first().waitFor({ timeout: 10000 });
+        expect(hub.tokens === 1, 'code traded through the helper');
+        await shot('one-tap-microsoft');
+        return 'signed in with one tap; the secret stayed on the helper';
+      });
+      await step('WhatsApp: link Carino’s shared number with a code, and get answered', async () => {
+        await go('/messaging#whatsapp', 'WhatsApp');
+        await page.getByRole('button', { name: 'Link my WhatsApp' }).click();
+        await page.getByText('424242').waitFor({ timeout: 10000 });
+        expect(await page.getByRole('link', { name: 'Open WhatsApp' }).getAttribute('href') === 'https://wa.me/15552064808?text=424242', 'wa.me link');
+        await shot('whatsapp-shared-code');
+        hub.linked = true;
+        await page.getByText('WhatsApp linked').waitFor({ timeout: 15000 });
+        hub.inbox.push({ id: 1, at: Date.now(), from: '15550111', name: 'Herbert', message: { from: '15550111', id: 'w1', type: 'text', text: { body: 'hello Carino' } } });
+        for (let i = 0; i < 30 && !hub.sent.length; i++) await page.waitForTimeout(500);
+        expect(/Reply to: hello Carino/.test(hub.sent[0] ?? ''), 'answered: ' + hub.sent[0]);
+        await shot('whatsapp-shared-linked');
+        // Unlink, so the own-number setup can be tested next.
+        await page.locator('#whatsapp').getByRole('button', { name: 'Disconnect' }).click();
+        await page.getByRole('dialog').getByRole('button', { name: 'Disconnect' }).click();
+        await page.waitForTimeout(1000);
+        return 'linked by code; message answered through the shared number';
+      });
+    }
     await step('WhatsApp: connect, link the relay, and answer a message collected from it', async () => {
       await go('/messaging#whatsapp', 'WhatsApp');
+      const advanced = page.getByText('Advanced: use my own WhatsApp Business number');
+      if (await advanced.count()) await advanced.click();
       await page.getByLabel('Phone number ID').fill('5550100');
       await page.getByLabel('Access token').fill('EAAG-qa-access-token-xxxxxxxx');
       await page.getByLabel('App secret').fill('qa-app-secret-0123456789');

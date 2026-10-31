@@ -19,6 +19,8 @@ import { connectTelegram } from '../services/telegram.ts';
 import { connectWhatsApp, webhookUrl } from '../services/whatsapp.ts';
 import { connectRelay, pollRelay } from '../services/whatsapp-relay.ts';
 import { deployRelay } from '../services/relay-deploy.ts';
+import { startSharedLink, sharedLinkStatus, unlinkShared, isShared } from '../services/whatsapp-shared.ts';
+import { helperConfig } from '../services/helper.ts';
 import { transcriptionConfigured } from '../services/transcribe.ts';
 import { getSettings, updateSettings } from '../services/settings.ts';
 import { buildOverview, briefingText, suggestions } from '../services/briefing.ts';
@@ -319,10 +321,10 @@ export function dataRoutes() {
     if (!['google', 'microsoft', 'meta', 'x', 'linkedin', 'tiktok'].includes(g)) throw notFound('App');
     return g as Parameters<typeof apps.saveClient>[2];
   };
-  r.get('/apps', (c) => c.json({ apps: apps.presentApps(c.var.services, uid(c)) }));
+  r.get('/apps', async (c) => c.json({ apps: await apps.presentApps(c.var.services, uid(c)) }));
   r.put('/apps/clients/:group', connectLimit, async (c) => c.json(apps.saveClient(c.var.services, uid(c), groupParam(c), await body(c))));
   r.delete('/apps/clients/:group', (c) => c.json(apps.deleteClient(c.var.services, uid(c), groupParam(c))));
-  r.post('/apps/:provider/start', connectLimit, (c) => c.json(apps.startSignIn(c.var.services, uid(c), c.req.param('provider'))));
+  r.post('/apps/:provider/start', connectLimit, async (c) => c.json(await apps.startSignIn(c.var.services, uid(c), c.req.param('provider'))));
   r.delete('/apps/accounts/:id', (c) => c.json(apps.disconnect(c.var.services, uid(c), c.req.param('id'))));
   /** The provider sends the browser back here after sign-in (PC; the phone uses /oauth/finish). */
   r.get('/apps/callback', async (c) => {
@@ -365,11 +367,13 @@ export function dataRoutes() {
   });
 
   // ---------- Messaging channels (Telegram, WhatsApp) ----------
-  r.get('/channels', (c) => {
+  r.get('/channels', async (c) => {
     const rows = db(c).all('SELECT * FROM channels WHERE user_id = ? ORDER BY kind', uid(c));
     return c.json({
       channels: rows.map((ch) => ({ ...channels.presentChannel(db(c), ch, c.var.services.now()), webhook_url: ch.kind === 'whatsapp' ? webhookUrl(c.var.services, ch) : undefined })),
       transcription: transcriptionConfigured(c.var.services),
+      // Carino's shared WhatsApp number, if this build has one (link with a code, like Toqi).
+      shared_whatsapp: (await helperConfig(c.var.services))?.whatsapp ?? null,
       publicUrl: c.var.services.config.PUBLIC_URL,
     });
   });
@@ -411,6 +415,8 @@ export function dataRoutes() {
     }
     return c.json({ ...channels.presentChannel(db(c), ch, c.var.services.now()), webhook_url: webhookUrl(c.var.services, ch) });
   });
+  r.post('/channels/whatsapp/shared/link', connectLimit, async (c) => c.json(await startSharedLink(c.var.services, uid(c))));
+  r.get('/channels/whatsapp/shared/status', async (c) => c.json(await sharedLinkStatus(c.var.services, uid(c))));
   r.post('/channels/whatsapp/poll', async (c) => c.json({ handled: await pollRelay(c.var.services) }));
   r.post('/channels/:id/pair', (c) => {
     const ch = channels.ownChannel(db(c), uid(c), c.req.param('id'));
@@ -423,7 +429,11 @@ export function dataRoutes() {
     if (i.transcribe_voice !== undefined) db(c).run("UPDATE channels SET config = json_set(config, '$.transcribe_voice', json(?)) WHERE id = ?", String(i.transcribe_voice), ch.id);
     return c.json(channels.presentChannel(db(c), db(c).get('SELECT * FROM channels WHERE id = ?', ch.id)!, c.var.services.now()));
   });
-  r.delete('/channels/:id', (c) => c.json(channels.deleteChannel(db(c), uid(c), c.req.param('id'))));
+  r.delete('/channels/:id', async (c) => {
+    const ch = channels.ownChannel(db(c), uid(c), c.req.param('id'));
+    if (ch.kind === 'whatsapp' && isShared(ch)) await unlinkShared(c.var.services, ch);
+    return c.json(channels.deleteChannel(db(c), uid(c), c.req.param('id')));
+  });
   r.patch('/channel-chats/:id', async (c) => {
     const i = z.object({ muted: z.boolean() }).parse(await body(c));
     channels.setChatMuted(db(c), uid(c), c.req.param('id'), i.muted);

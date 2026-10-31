@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
 import { ErrorBox, Loading, Switch, useConfirm, useToast } from '../components/ui';
@@ -23,8 +23,16 @@ export default function Messaging() {
             {!data.transcription && (
               <div className="callout small"><Icon name="mic" size={16} /><span>To understand voice notes, add a free Groq key in <Link to="/settings#ai">Settings → AI service</Link> (under “More options”, or choose Groq as the AI service). Text and photos work without it.</span></div>
             )}
+            {data.shared_whatsapp && (!wa || wa.config.mode === 'shared')
+              ? <SharedWhatsApp ch={wa} number={data.shared_whatsapp.number} reload={reload} />
+              : <WhatsAppCard ch={wa} reload={reload} />}
+            {data.shared_whatsapp && !wa && (
+              <details className="card pad">
+                <summary><h2 style={{ display: 'inline', fontSize: '1rem' }}>Advanced: use my own WhatsApp Business number</h2></summary>
+                <div style={{ marginTop: 12 }}><WhatsAppCard ch={undefined} reload={reload} /></div>
+              </details>
+            )}
             <TelegramCard ch={tg} reload={reload} />
-            <WhatsAppCard ch={wa} reload={reload} />
             {(tg || wa) && <Background />}
             <section className="card pad small muted">
               <h3 style={{ marginBottom: 6 }}>Privacy in chats</h3>
@@ -244,6 +252,68 @@ function Background() {
         </div>
         <Switch label="Answer in the background" checked={state.on} onChange={async (v) => setState(await put('/device/listen', { on: v }))} />
       </div>
+    </section>
+  );
+}
+
+/** Carino's shared WhatsApp number (like Toqi's): send a code from your WhatsApp and you're linked. */
+function SharedWhatsApp({ ch, number, reload }: { ch: any; number: string | null; reload: () => void }) {
+  const toast = useToast();
+  const [link, setLink] = useState<{ code: string; number: string; link: string | null } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const linked = !!ch?.chats?.length;
+  const done = useRef(reload);
+  done.current = reload;
+  useEffect(() => {
+    if (!link) return;
+    // Wait for the code to arrive on WhatsApp.
+    const t = setInterval(async () => {
+      const s = await get('/channels/whatsapp/shared/status').catch(() => null);
+      if (s?.linked) {
+        clearInterval(t);
+        setLink(null);
+        toast('WhatsApp linked');
+        done.current();
+      }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [link, toast]);
+  const start = async () => {
+    setBusy(true);
+    try {
+      setLink(await post('/channels/whatsapp/shared/link'));
+    } catch (e: any) {
+      toast(e.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (ch && linked && !link) {
+    return (
+      <section className="card pad" id="whatsapp">
+        <ChannelHeader ch={ch} title="WhatsApp" sub={`Chat with Carino on ${number ?? 'its WhatsApp number'}${ch.last_seen_at ? ` · last message ${fmtDateTime(ch.last_seen_at)}` : ''}`} reload={reload} />
+        <Chats ch={ch} reload={reload} />
+        <div className="row wrap" style={{ marginTop: 10 }}>
+          <button className="btn sm" onClick={start} disabled={busy}><Icon name="refresh" size={14} />Link a different WhatsApp</button>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section className="card pad stack" id="whatsapp">
+      <h2>WhatsApp</h2>
+      <p className="small muted">Chat with Carino on WhatsApp like with a friend: text, voice notes and photos. Carino has its own number{number ? <> (<b>{number}</b>)</> : null}; link yours with a code.</p>
+      {!link ? (
+        <button className="btn primary" onClick={start} disabled={busy}><Icon name="send" size={15} />{busy ? 'Getting a code…' : 'Link my WhatsApp'}</button>
+      ) : (
+        <div className="callout brand" style={{ alignItems: 'center' }}>
+          <div className="grow">
+            Send <b className="mono" style={{ fontSize: '1.2em', letterSpacing: 2 }}>{link.code}</b> to <b style={{ whiteSpace: 'nowrap' }}>{link.number}</b> on WhatsApp.
+            <div className="tiny muted">Waiting for it… (valid for 15 minutes)</div>
+          </div>
+          {link.link && <a className="btn primary" href={link.link} target="_blank" rel="noopener noreferrer">Open WhatsApp</a>}
+        </div>
+      )}
     </section>
   );
 }
