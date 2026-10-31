@@ -30,6 +30,9 @@ const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...cors, 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+/** Secrets pasted with a stray space or line break still work. */
+const tidy = (env) => Object.fromEntries(Object.entries(env).map(([k, v]) => [k, typeof v === 'string' ? v.trim() : v]));
+
 const configured = (env, p) => !!(env[PROVIDERS[p].id] && env[PROVIDERS[p].secret]);
 const waConfigured = (env) => !!(env.WA_PHONE_NUMBER_ID && env.WA_ACCESS_TOKEN && env.META_APP_SECRET);
 
@@ -143,7 +146,8 @@ const KEEP_MS = 7 * 86400_000;
 
 export class WaHub extends DurableObject {
   constructor(ctx, env) {
-    super(ctx, env);
+    super(ctx, tidy(env));
+    this.env = tidy(env);
     this.sql = ctx.storage.sql;
     this.sql.exec(`CREATE TABLE IF NOT EXISTS links (key_hash TEXT PRIMARY KEY, wa_id TEXT, name TEXT, created INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS codes (code TEXT PRIMARY KEY, key_hash TEXT NOT NULL, expires INTEGER NOT NULL);
@@ -271,7 +275,8 @@ export class WaHub extends DurableObject {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, rawEnv) {
+    const env = tidy(rawEnv);
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, '') || '/';
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });

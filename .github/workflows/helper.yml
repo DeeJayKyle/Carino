@@ -89,7 +89,7 @@ jobs:
           TIKTOK_CLIENT_SECRET: ${{ secrets.TIKTOK_CLIENT_SECRET }}
         run: |
           # Only the ones that are set; the file never leaves this machine and is deleted at once.
-          jq -n 'env | with_entries(select(.key | test("^(GOOGLE|MS|META|WA|X|LINKEDIN|TIKTOK)_")) | select(.value != ""))' > secrets.json
+          jq -n 'env | with_entries(select(.key | test("^(GOOGLE|MS|META|WA|X|LINKEDIN|TIKTOK)_")) | .value |= gsub("^\\s+|\\s+$"; "") | select(.value != ""))' > secrets.json
           npx --yes wrangler@4 secret bulk secrets.json
           rm -f secrets.json
 
@@ -122,6 +122,7 @@ jobs:
           # Subscribe the WhatsApp Business Account(s) the token can manage to this app.
           wabas=$(curl -s "https://graph.facebook.com/v23.0/debug_token?input_token=$WA_ACCESS_TOKEN&access_token=$app" \
             | jq -r '[.data.granular_scopes[]? | select(.scope=="whatsapp_business_management" or .scope=="whatsapp_business_messaging") | .target_ids[]?] | unique | .[]')
+          [ -n "$wabas" ] || echo "Business account: not found from the token (Meta's test number is subscribed automatically; for a real number, check WhatsApp → Configuration → Webhook fields → messages)." | tee -a "$GITHUB_STEP_SUMMARY"
           for w in $wabas; do
             s=$(curl -s -X POST "https://graph.facebook.com/v23.0/$w/subscribed_apps" -H "Authorization: Bearer $WA_ACCESS_TOKEN")
             echo "Business account $w subscribed: $(echo "$s" | jq -c '{success, error: .error.message}')" | tee -a "$GITHUB_STEP_SUMMARY"

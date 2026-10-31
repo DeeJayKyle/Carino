@@ -22,7 +22,7 @@ const SECRETS = {
   MS_CLIENT_ID: 'ms-id', MS_CLIENT_SECRET: 'ms-secret',
   META_APP_ID: '1234', META_APP_SECRET: 'meta-secret-0123456789',
   X_CLIENT_ID: 'x-id', X_CLIENT_SECRET: 'x-secret',
-  TIKTOK_CLIENT_KEY: 'tt-key', TIKTOK_CLIENT_SECRET: 'tt-secret',
+  TIKTOK_CLIENT_KEY: '\ntt-key', TIKTOK_CLIENT_SECRET: '\ntt-secret\n',
   WA_PHONE_NUMBER_ID: '5550100', WA_ACCESS_TOKEN: 'wa-token', WA_VERIFY_TOKEN: 'verify-me', WA_DISPLAY_NUMBER: '+1 555 0100',
 };
 
@@ -96,7 +96,9 @@ describe('Sign-in helper: one-tap sign-in', () => {
     await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'x', code: 'c' }) });
     expect(calls.at(-1)!.headers.authorization).toBe(`Basic ${btoa('x-id:x-secret')}`);
     await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'tiktok', code: 'c' }) });
+    // Pasted with stray line breaks, used without them.
     expect(new URLSearchParams(calls.at(-1)!.body).get('client_key')).toBe('tt-key');
+    expect(new URLSearchParams(calls.at(-1)!.body).get('client_secret')).toBe('tt-secret');
     const fb = await (await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'facebook', code: 'c' }) })).json() as any;
     expect(fb.access_token).toBe('fb-long');
   });
