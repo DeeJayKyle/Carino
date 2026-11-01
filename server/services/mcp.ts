@@ -8,7 +8,7 @@ import { isIP } from 'node:net';
  * results — is third-party content and is treated as untrusted.
  */
 export const MCP_PROTOCOL_VERSION = '2025-06-18';
-const CLIENT_INFO = { name: 'Carino', version: '1.4.0' };
+const CLIENT_INFO = { name: 'Carino', version: '1.4.1' };
 
 export class McpError extends Error {}
 
