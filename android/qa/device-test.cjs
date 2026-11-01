@@ -67,8 +67,18 @@ setTimeout(() => {
         // On a slow emulator Android sometimes kills Google Play services (an ANR), and with it
         // every app using its providers — the WebView uses its font provider. That's Android, not
         // the app: reopen the app as a phone would and retry the step once, saying why.
-        const killed = (await sh('logcat -d -t 3000').catch(() => '')).split('\n').find((l) => l.includes(`Killing`) && l.includes(PKG) && /depends on provider|dying proc/.test(l));
+        const recent = (await sh('logcat -d -t 3000').catch(() => '')).split('\n');
+        const killed = recent.find((l) => l.includes(`Killing`) && l.includes(PKG) && /depends on provider|dying proc/.test(l));
         const alive = (await sh(`pidof ${PKG}`).catch(() => '')).trim();
+        // Play services crashing stalls a slow emulator for a while; a step that timed out then gets one more try.
+        const stalled = alive && /Timeout/.test(String(e?.message)) && recent.some((l) => /Process com\.google\.android\.gms[^ ]* \(pid \d+\) has died/.test(l));
+        if (stalled) {
+          console.log(`NOTE  ${name}: timed out while Google Play services was crashing on the emulator; retrying once`);
+          detail = `${(await run()) ?? ''} (retried once: the emulator stalled while Google Play services restarted)`;
+          results.push({ name, ok: true, ms: Date.now() - t0, detail });
+          console.log(`PASS  ${name} — ${detail}`);
+          return;
+        }
         if (!killed || alive) throw e;
         console.log(`NOTE  ${name}: Android killed the app (${killed.replace(/^.*Killing/, 'Killing').slice(0, 200)}); reopening and retrying once`);
         await sh(`am start -W -n ${activity}`);
