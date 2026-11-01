@@ -23,8 +23,8 @@ export default function Messaging() {
             {!data.transcription && (
               <div className="callout small"><Icon name="mic" size={16} /><span>To understand voice notes, add a free Groq key in <Link to="/settings#ai">Settings → AI service</Link> (under “More options”, or choose Groq as the AI service). Text and photos work without it.</span></div>
             )}
-            {data.shared_whatsapp && (!wa || wa.config.mode === 'shared')
-              ? <SharedWhatsApp ch={wa} number={data.shared_whatsapp.number} reload={reload} />
+            {(data.shared_whatsapp && !wa) || wa?.config.mode === 'shared'
+              ? <SharedWhatsApp ch={wa} number={data.shared_whatsapp?.number ?? wa?.config.display_phone ?? null} reload={reload} />
               : <WhatsAppCard ch={wa} reload={reload} />}
             {data.shared_whatsapp && !wa && (
               <details className="card pad">

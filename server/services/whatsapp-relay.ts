@@ -77,6 +77,9 @@ export async function connectRelay(services: Services, userId: string, rawUrl: s
 /** Recently handled deliveries, so one is never answered twice if an acknowledgement was lost. */
 const handled = new Set<number>();
 let busy: Promise<number> | null = null;
+/** Failed collections in a row, per channel. */
+const failures = new Map<string, number>();
+const FAILURES_BEFORE_ERROR = 12;
 
 /** Collects and answers waiting WhatsApp messages from the relay. Returns how many were handled. */
 export function pollRelay(services: Services): Promise<number> {
@@ -92,9 +95,16 @@ async function pollAll(services: Services) {
     if (cfg.mode !== 'shared' && (!cfg.relay_url || !secret?.relay_key)) continue;
     try {
       n += cfg.mode === 'shared' ? await pollShared(services, ch) : await pollOne(services, ch, cfg.relay_url!, secret!.relay_key!);
+      failures.delete(ch.id);
       if (ch.last_error) services.db.run('UPDATE channels SET last_error = NULL WHERE id = ?', ch.id);
     } catch (e: any) {
-      services.db.run('UPDATE channels SET last_error = ? WHERE id = ?', String(e?.message ?? e).slice(0, 300), ch.id);
+      // Phones drop off the network now and then; only say so when it lasts (about a minute).
+      const count = (failures.get(ch.id) ?? 0) + 1;
+      failures.set(ch.id, count);
+      if (count >= FAILURES_BEFORE_ERROR) {
+        const msg = /Could not reach/.test(String(e?.message)) ? 'Can’t reach WhatsApp right now (no internet, or the network is blocking it). Messages wait and arrive when it’s back.' : String(e?.message ?? e);
+        services.db.run('UPDATE channels SET last_error = ? WHERE id = ?', msg.slice(0, 300), ch.id);
+      }
     }
   }
   return n;

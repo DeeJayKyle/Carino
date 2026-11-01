@@ -368,12 +368,20 @@ export function dataRoutes() {
 
   // ---------- Messaging channels (Telegram, WhatsApp) ----------
   r.get('/channels', async (c) => {
+    const shared = (await helperConfig(c.var.services))?.whatsapp ?? null;
+    // Carino's shared number can change (e.g. from Meta's test number to a real one).
+    if (shared?.number) {
+      for (const ch of db(c).all("SELECT id, config FROM channels WHERE user_id = ? AND kind = 'whatsapp'", uid(c))) {
+        const cfg = parseJson<any>(ch.config, {});
+        if (cfg.mode === 'shared' && cfg.display_phone !== shared.number) db(c).run('UPDATE channels SET config = ? WHERE id = ?', JSON.stringify({ ...cfg, display_phone: shared.number }), ch.id);
+      }
+    }
     const rows = db(c).all('SELECT * FROM channels WHERE user_id = ? ORDER BY kind', uid(c));
     return c.json({
       channels: rows.map((ch) => ({ ...channels.presentChannel(db(c), ch, c.var.services.now()), webhook_url: ch.kind === 'whatsapp' ? webhookUrl(c.var.services, ch) : undefined })),
       transcription: transcriptionConfigured(c.var.services),
       // Carino's shared WhatsApp number, if this build has one (link with a code, like Toqi).
-      shared_whatsapp: (await helperConfig(c.var.services))?.whatsapp ?? null,
+      shared_whatsapp: shared,
       publicUrl: c.var.services.config.PUBLIC_URL,
     });
   });

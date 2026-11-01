@@ -101,6 +101,21 @@ jobs:
           echo "url=https://carino-auth.$sub.workers.dev" >> "$GITHUB_OUTPUT"
           echo "Helper: https://carino-auth.$sub.workers.dev" | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Switch on a real WhatsApp number (when WA_PIN is set)
+        env:
+          WA_PHONE_NUMBER_ID: ${{ secrets.WA_PHONE_NUMBER_ID }}
+          WA_ACCESS_TOKEN: ${{ secrets.WA_ACCESS_TOKEN }}
+          WA_PIN: ${{ secrets.WA_PIN }}
+        run: |
+          # A real number added in Meta must be registered once, with a 6-digit two-step PIN.
+          # Meta's test number doesn't need this. Registering again is harmless.
+          if [ -z "$WA_PIN" ] || [ -z "$WA_PHONE_NUMBER_ID" ]; then echo "No WA_PIN: skipping."; exit 0; fi
+          r=$(curl -s -X POST "https://graph.facebook.com/v23.0/$WA_PHONE_NUMBER_ID/register" -H "Authorization: Bearer $WA_ACCESS_TOKEN" \
+            -H 'content-type: application/json' -d "{\"messaging_product\":\"whatsapp\",\"pin\":\"$(echo "$WA_PIN" | tr -d '[:space:]')\"}")
+          echo "Number registered: $(echo "$r" | jq -c '{success, error: .error.message}')" | tee -a "$GITHUB_STEP_SUMMARY"
+          s=$(curl -s "https://graph.facebook.com/v23.0/$WA_PHONE_NUMBER_ID?fields=display_phone_number,verified_name,name_status,quality_rating,status" -H "Authorization: Bearer $WA_ACCESS_TOKEN")
+          echo "Number status: $(echo "$s" | jq -c '{display_phone_number, verified_name, name_status, status, error: .error.message}')" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Connect the WhatsApp webhook
         env:
           META_APP_ID: ${{ secrets.META_APP_ID }}
