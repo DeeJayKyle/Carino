@@ -63,12 +63,12 @@ export default function Tasks() {
             <button key={v.id} role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)}>{v.label}</button>
           ))}
         </div>
-        <div className="row wrap" style={{ marginBottom: 12 }}>
-          <input className="input" style={{ maxWidth: 260 }} placeholder="Search tasks" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tasks" />
-          <select className="select" style={{ maxWidth: 150 }} value={priority} onChange={(e) => setPriority(e.target.value)} aria-label="Filter by priority">
+        <div className="task-filters">
+          <input className="input" placeholder="Search tasks" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search tasks" />
+          <select className="select" value={priority} onChange={(e) => setPriority(e.target.value)} aria-label="Filter by priority">
             <option value="">Any priority</option><option value="1">High</option><option value="2">Normal</option><option value="3">Low</option>
           </select>
-          <select className="select" style={{ maxWidth: 160 }} value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
+          <select className="select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort">
             <option value="due">Sort: due date</option><option value="priority">Sort: priority</option><option value="created">Sort: newest</option>
           </select>
         </div>

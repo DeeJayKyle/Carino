@@ -58,7 +58,9 @@ export default function Chat({ id }: { id?: string }) {
 
 function ChatTitle({ id }: { id?: string }) {
   const { data } = useData<any>(id ? `/conversations/${id}` : null);
-  return <>{id ? data?.conversation.title ?? 'Chat' : 'New chat'}</>;
+  const t = data?.conversation.title;
+  // the stored placeholder until the first reply names the chat; shorter fits the phone header
+  return <>{!id || t === 'New conversation' ? 'New chat' : t ?? 'Chat'}</>;
 }
 
 function ConversationList({ activeId, open, refreshKey }: { activeId?: string; open: boolean; refreshKey: number }) {
@@ -524,7 +526,7 @@ function Composer({ onSend, busy, onCancel, disabled, onVoice }: { onSend: (text
         <label htmlFor="composer" className="sr-only">Message Carino</label>
         <textarea
           id="composer" ref={taRef} data-composer rows={1} value={voice.interim ? `${text} ${voice.interim}` : text}
-          placeholder={disabled ? 'Connect an AI provider to chat' : voice.listening ? 'Listening…' : `Message ${me!.settings.profile.assistantName || 'Carino'}…  (Enter to send, Shift+Enter for a new line)`}
+          placeholder={disabled ? 'Connect an AI provider to chat' : voice.listening ? 'Listening…' : `Message ${me!.settings.profile.assistantName || 'Carino'}…${coarsePointer() ? '' : '  (Enter to send, Shift+Enter for a new line)'}`}
           disabled={disabled}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -605,4 +607,9 @@ async function videoFrames(file: File, count = 4): Promise<File[]> {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/** Phones and tablets: no keyboard hints in the message box (they wrap and don't apply). */
+function coarsePointer() {
+  return typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 }

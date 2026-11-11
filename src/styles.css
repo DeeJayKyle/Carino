@@ -865,3 +865,17 @@ details.card > summary { cursor: pointer; list-style: none; }
 details.card > summary::-webkit-details-marker { display: none; }
 details.card > summary::after { content: '▾'; float: right; color: var(--text-3); }
 details.card[open] > summary::after { content: '▴'; }
+
+/* Home quick starts: one-line pills that scroll sideways on phones (the list-item
+   wrappers must not shrink either, or labels wrap inside squeezed circles) */
+.starter-chips .li-wrap { flex: none; }
+.starter-chips .chip { white-space: nowrap; }
+
+/* To-dos filters: search on its own row, the two filters side by side, aligned */
+.task-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.task-filters .input { grid-column: 1 / -1; }
+.task-filters .input, .task-filters .select { width: 100%; max-width: none; }
+@media (min-width: 720px) { .task-filters { grid-template-columns: 2fr 1fr 1fr; } .task-filters .input { grid-column: auto; } }
+
+/* Your stuff: a lone last tile on a two-column phone grid spans the row */
+@media (max-width: 600px) { .stuff-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; } }
