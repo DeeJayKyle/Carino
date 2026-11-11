@@ -165,6 +165,12 @@ class NativeBridge {
 
     // ---- Smarter reminders -------------------------------------------------------------------
 
+    /** Today's to-dos and next reminder for the home-screen widget. */
+    @JavascriptInterface
+    public void setWidgetData(String json) {
+        TodayWidget.update(activity, json);
+    }
+
     @JavascriptInterface
     public void setPlaceAlerts(String json) {
         PlaceAlerts.replace(activity, json);

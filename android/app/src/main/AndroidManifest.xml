@@ -89,6 +89,17 @@
         <!-- Place reminders: Android's proximity alerts call this on arriving. -->
         <receiver android:name=".PlaceAlerts" android:exported="false" />
 
+        <!-- Home-screen widget: today's to-dos and the next reminder. -->
+        <receiver
+            android:name=".TodayWidget"
+            android:exported="false"
+            android:label="@string/today_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today_info" />
+        </receiver>
+
         <!-- Home-screen widget: Ramble, Talk and New chat shortcuts. -->
         <receiver
             android:name=".QuickActionsWidget"

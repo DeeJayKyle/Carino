@@ -7,7 +7,9 @@ import sqliteWasmUrl from '@sqlite.org/sqlite-wasm/sqlite3.wasm?url';
 import { configureSqlite, type DatabaseSync } from './shims/sqlite.ts';
 import { flushFiles, loadFiles, preloadFiles, seedFile } from './shims/fs.ts';
 import { idbDeleteAll, idbGet, idbWrite } from './idb.ts';
-import { makeNetFetch, notify, setAlarms, setPlaceAlerts, takeReminderEvents, isNative, keepListening } from './native.ts';
+import { makeNetFetch, notify, setAlarms, setPlaceAlerts, setWidgetData, takeReminderEvents, isNative, keepListening } from './native.ts';
+import { getSettings } from '../server/services/settings.ts';
+import { addDays, localDate, safeTimeZone, startOfLocalDay } from '../server/services/time.ts';
 import { firePlaceReminder } from '../server/services/tasks.ts';
 import { notify as notifyInApp } from '../server/services/activity.ts';
 import { configToEnv, maskConfig, PRESETS, type DeviceConfig } from './presets.ts';
@@ -66,6 +68,7 @@ function save() {
   saving = saving.then(() => idbWrite([{ store: 'db', key: 'main', value: bytes }])).catch((err) => console.error('Saving failed', err));
   syncAlarms();
   syncPlaces();
+  syncWidget();
   return saving;
 }
 
@@ -98,6 +101,32 @@ function syncAlarms() {
     tag: `reminder-${r.id}`, title: `⏰ ${r.title}`, body: r.body || 'Reminder from Carino',
     url: r.task_id ? `/tasks?focus=${r.task_id}` : '/tasks', at: Date.parse(r.remind_at),
   })));
+}
+
+let lastWidget = '';
+/** Gives the home-screen widget today's to-dos and the next reminder (only when they change). */
+function syncWidget() {
+  if (!isNative || !services) return;
+  const user = services.db.get('SELECT id FROM users ORDER BY created_at LIMIT 1');
+  if (!user) return;
+  const now = services.now();
+  const tz = safeTimeZone(getSettings(services.db, user.id).regional.timeZone);
+  const startToday = startOfLocalDay(localDate(now, tz), tz).toISOString();
+  const endToday = startOfLocalDay(addDays(localDate(now, tz), 1), tz).toISOString();
+  const due = services.db.all(
+    "SELECT title, due_at FROM tasks WHERE user_id = ? AND status = 'open' AND due_at IS NOT NULL AND due_at < ? ORDER BY due_at LIMIT 200", user.id, endToday,
+  );
+  const next = services.db.get("SELECT title, remind_at FROM reminders WHERE user_id = ? AND status = 'scheduled' AND remind_at >= ? ORDER BY remind_at LIMIT 1", user.id, now.toISOString());
+  const data = {
+    total: due.length,
+    overdue: due.filter((t) => t.due_at < startToday).length,
+    todos: due.slice(0, 4).map((t) => String(t.title).slice(0, 80)),
+    next: next ? { title: String(next.title).slice(0, 80), at: Date.parse(next.remind_at) } : null,
+  };
+  const json = JSON.stringify(data);
+  if (json === lastWidget) return;
+  lastWidget = json;
+  setWidgetData(data);
 }
 
 /** Hands active place reminders to Android, which rings on arriving. */

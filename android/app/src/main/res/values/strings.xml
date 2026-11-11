@@ -16,4 +16,13 @@
     <string name="action_snooze">Snooze 10 min</string>
     <string name="action_done">Done</string>
     <string name="place_arrived">You\'re here</string>
+    <string name="today_widget_name">Carino · Today</string>
+    <string name="today_heading">Today</string>
+    <string name="today_talk">🎙</string>
+    <string name="today_talk_label">Talk to Carino</string>
+    <string name="today_add">＋</string>
+    <string name="today_add_label">Add a to-do</string>
+    <string name="today_description">Today\'s to-dos and your next reminder, with buttons to talk or add a to-do.</string>
+    <string name="today_open">Open Carino once to fill this in.</string>
+    <string name="today_none">Nothing due today 🎉</string>
 </resources>

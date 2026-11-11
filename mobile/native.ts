@@ -8,6 +8,7 @@ interface Bridge {
   notify(json: string): void;
   setAlarms(json: string): void;
   setPlaceAlerts?(json: string): void;
+  setWidgetData?(json: string): void;
   takeReminderEvents?(): string;
   placesPermission?(): string;
   askPlacesPermission?(): void;
@@ -131,6 +132,11 @@ export function notify(n: Notice) {
 /** Replaces the alarms Android shows while the app is closed. */
 export function setAlarms(alarms: (Notice & { at: number })[]) {
   bridge?.setAlarms(JSON.stringify(alarms));
+}
+
+/** Today's to-dos and next reminder for the home-screen widget. */
+export function setWidgetData(data: { total: number; overdue: number; todos: string[]; next: { title: string; at: number } | null }) {
+  bridge?.setWidgetData?.(JSON.stringify(data));
 }
 
 /** Replaces the places Android watches for place reminders. */
