@@ -25,6 +25,9 @@ export default defineConfig({
       { find: /^web-push$/, replacement: shim('web-push.ts') },
     ],
   },
-  optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm'] },
+  optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm', '@wllama/wllama'] },
+  // The same isolation headers the Android app sends (MainActivity.isolate), for the on-phone AI's threads.
+  server: { headers: { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'credentialless' } },
+  preview: { headers: { 'Cross-Origin-Opener-Policy': 'same-origin', 'Cross-Origin-Embedder-Policy': 'credentialless' } },
   build: { outDir: 'android/app/src/main/assets/www', emptyOutDir: true, sourcemap: false, chunkSizeWarningLimit: 4000, target: 'es2022' },
 });

@@ -97,7 +97,8 @@ export class ProviderRegistry {
   }
 }
 
-export function createRegistry(config: Config): ProviderRegistry {
+/** fetchImpl lets the phone app answer the OpenAI-compatible provider itself (mobile/ondevice.ts). */
+export function createRegistry(config: Config, fetchImpl: typeof fetch = fetch): ProviderRegistry {
   const reg = new ProviderRegistry();
   reg.register('anthropic', new AnthropicProvider({ apiKey: config.ANTHROPIC_API_KEY, model: config.ANTHROPIC_MODEL }));
   reg.register(
@@ -112,7 +113,7 @@ export function createRegistry(config: Config): ProviderRegistry {
       toolset: config.OPENAI_COMPAT_TOOLSET,
       vision: config.OPENAI_COMPAT_VISION === 'true',
       fallbackModels: config.OPENAI_COMPAT_FALLBACK_MODELS?.split(',').map((m) => m.trim()).filter(Boolean),
-    }),
+    }, fetchImpl),
   );
   reg.setDefault(config.DEFAULT_PROVIDER);
   return reg;

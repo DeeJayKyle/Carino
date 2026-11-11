@@ -2,7 +2,7 @@
   "name": "carino",
   "version": "1.4.1",
   "private": true,
-  "description": "Carino \u2014 a personal AI assistant for Android that runs on your phone, with free AI services.",
+  "description": "Carino — a personal AI assistant for Android that runs on your phone, with free AI services.",
   "type": "module",
   "scripts": {
     "dev": "vite -c vite.mobile.config.ts",
@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
+    "@wllama/wllama": "^3.13.0",
     "chrono-node": "^2.10.3",
     "docx": "^9.15.0",
     "exceljs": "^4.4.0",

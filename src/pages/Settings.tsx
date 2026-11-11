@@ -131,7 +131,7 @@ function Profile() {
 /** Learns how the user writes so drafts sound like them. */
 function AI() {
   return (
-    <Card title="AI service" desc="Carino lives on your phone and asks an AI service to write its replies. Groq, Google Gemini and OpenRouter have free tiers — pick one and paste its key.">
+    <Card title="AI service" desc="Carino lives on your phone and asks an AI service to write its replies. Groq, Google Gemini and OpenRouter have free tiers — pick one and paste its key. Or download a small AI that runs on the phone itself, with no internet.">
       <DeviceAI />
     </Card>
   );

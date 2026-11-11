@@ -7,7 +7,7 @@ import { openExternal } from '../../mobile/native';
 
 interface SpeedResult { model: string; ok: boolean; firstMs?: number; totalMs?: number; error?: string }
 interface FreeModel { id: string; label: string; family?: string; vision?: boolean }
-interface Preset { id: string; label: string; free: string; baseUrl: string; model: string; models: FreeModel[]; vision: boolean; keyUrl: string; hidden?: boolean; ownAddress?: boolean; transcribe?: { model: string } }
+interface Preset { id: string; label: string; free: string; baseUrl: string; model: string; models: FreeModel[]; vision: boolean; keyUrl: string; hidden?: boolean; ownAddress?: boolean; onDevice?: boolean; transcribe?: { model: string } }
 
 const OTHER = '__other__';
 
@@ -29,6 +29,8 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
   /** Speed test results for this service, fastest first; null until run. */
   const [speed, setSpeed] = useState<{ provider: string; results: SpeedResult[] } | null>(null);
   const [timing, setTiming] = useState(false);
+  /** On-phone AI: whether the chosen model is downloaded. */
+  const [localReady, setLocalReady] = useState(false);
 
   useEffect(() => {
     api<any>('/device/config').then((r) => {
@@ -122,18 +124,21 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
           </button>
         ))}
       </div>
+      {p.onDevice && <LocalModels value={current} onChange={(model) => set({ model })} onReady={setLocalReady} />}
       {p.keyUrl && (
         <p className="small muted">
           Get a free key: <button type="button" className="linklike" onClick={() => openExternal(p.keyUrl)}>{p.keyUrl.replace('https://', '')}</button>. Sign in, create a key, copy it and paste it below.
         </p>
       )}
-      {p.ownAddress && (
+      {p.ownAddress && !p.onDevice && (
         <div className="field"><label htmlFor="dai-url">Address</label>
           <input id="dai-url" className="input" inputMode="url" placeholder={p.baseUrl} value={form.baseUrl ?? ''} onChange={(e) => set({ baseUrl: e.target.value })} /></div>
       )}
-      <div className="field"><label htmlFor="dai-key">API key{p.ownAddress ? ' (if needed)' : ''}</label>
-        <input id="dai-key" className="input" type="password" autoComplete="off" spellCheck={false} placeholder="Paste your key" value={form.apiKey ?? ''} onChange={(e) => set({ apiKey: e.target.value })} /></div>
-      {!p.hidden && (
+      {!p.onDevice && (
+        <div className="field"><label htmlFor="dai-key">API key{p.ownAddress ? ' (if needed)' : ''}</label>
+          <input id="dai-key" className="input" type="password" autoComplete="off" spellCheck={false} placeholder="Paste your key" value={form.apiKey ?? ''} onChange={(e) => set({ apiKey: e.target.value })} /></div>
+      )}
+      {!p.hidden && !p.onDevice && (
         <div className="field">
           <label htmlFor="dai-model">Model <span className="faint">(free, best first)</span></label>
           {typing || (!inList && !!form.model) ? (
@@ -192,9 +197,92 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
       </details>
       {test && <div className={`callout small ${test.ok ? 'success' : 'warning'}`} role="status"><Icon name={test.ok ? 'check' : 'info'} size={16} /><span style={{ overflowWrap: 'anywhere' }}>{test.text.slice(0, 400)}</span></div>}
       <div className="row">
-        <button className="btn primary" disabled={busy || (!form.apiKey && !p.ownAddress)} onClick={() => save()}>{busy ? 'Checking…' : 'Save and test'}</button>
+        <button className="btn primary" disabled={busy || (p.onDevice ? !localReady : !form.apiKey && !p.ownAddress)} onClick={() => save()}>{busy ? (p.onDevice ? 'Starting the model…' : 'Checking…') : 'Save and test'}</button>
       </div>
-      <p className="faint tiny">Your key stays on this phone and is sent only to {p.label}. Messages you send go to {p.label} to be answered; everything else stays on the phone.</p>
+      <p className="faint tiny">{p.onDevice
+        ? 'Everything stays on this phone, including your messages. The first reply after opening the app takes longer while the model starts.'
+        : `Your key stays on this phone and is sent only to ${p.label}. Messages you send go to ${p.label} to be answered; everything else stays on the phone.`}</p>
+    </div>
+  );
+}
+
+interface LocalInfo {
+  models: { id: string; label: string; note: string; size: number; downloaded: boolean }[];
+  status: { state: string; model?: string; loaded?: number; total?: number; error?: string; threads?: number };
+  threads: number;
+  storage: { free: number | null };
+}
+
+const gb = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(1)} GB` : `${Math.round(n / 1e6)} MB`);
+
+/** The AI models that can run on this phone: download once, pick one, remove to free space. */
+function LocalModels({ value, onChange, onReady }: { value: string; onChange: (id: string) => void; onReady: (ok: boolean) => void }) {
+  const toast = useToast();
+  const [info, setInfo] = useState<LocalInfo | null>(null);
+  const load = () => api<LocalInfo>('/device/local').then(setInfo).catch((e) => toast(e.message, 'error'));
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const downloading = info?.status.state === 'downloading';
+  useEffect(() => {
+    if (!downloading) return;
+    const t = setInterval(load, 1000);
+    return () => clearInterval(t);
+  }, [downloading]); // eslint-disable-line react-hooks/exhaustive-deps
+  const chosen = info?.models.find((m) => m.id === value);
+  useEffect(() => { onReady(!!chosen?.downloaded); }, [chosen?.downloaded, onReady]);
+  // Pick a downloaded model if the chosen one isn't.
+  useEffect(() => {
+    if (!info || chosen?.downloaded) return;
+    const have = info.models.find((m) => m.downloaded);
+    if (have) onChange(have.id);
+  }, [info]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const act = async (body: any) => {
+    try {
+      setInfo(await api<LocalInfo>('/device/local', { method: 'POST', body }));
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
+  };
+  if (!info) return <Loading rows={2} />;
+  const s = info.status;
+  return (
+    <div className="field local-models">
+      <span className="label">Model on this phone</span>
+      <div role="radiogroup" aria-label="Model on this phone" className="stack" style={{ gap: 8 }}>
+        {info.models.map((m) => {
+          const mine = s.model === m.id;
+          const pct = mine && downloading && s.total ? Math.floor(((s.loaded ?? 0) / s.total) * 100) : 0;
+          const tooBig = info.storage.free != null && !m.downloaded && info.storage.free < m.size * 1.1;
+          return (
+            <div key={m.id} className={`local-model card ${value === m.id && m.downloaded ? 'on' : ''}`}>
+              <button type="button" role="radio" aria-checked={value === m.id} disabled={!m.downloaded} className="lm-pick" onClick={() => onChange(m.id)}>
+                <span className="lm-dot" aria-hidden="true" />
+                <span className="grow">
+                  <b>{m.label}</b>
+                  <span className="tiny muted">{gb(m.size)} · {m.note}</span>
+                </span>
+              </button>
+              {mine && downloading ? (
+                <div className="lm-progress">
+                  <span className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`Downloading ${m.label}`}><span style={{ width: `${pct}%` }} /></span>
+                  <span className="row"><span className="tiny muted grow">{gb(s.loaded ?? 0)} of {gb(s.total ?? m.size)} · keep Carino open</span>
+                    <button type="button" className="btn ghost sm" onClick={() => act({ action: 'cancel' })}>Cancel</button></span>
+                </div>
+              ) : m.downloaded ? (
+                <div className="row lm-actions"><span className="badge success"><Icon name="check" size={12} /> On this phone</span><span className="grow" />
+                  <button type="button" className="btn ghost sm" onClick={() => act({ action: 'remove', model: m.id })} aria-label={`Remove ${m.label}`}><Icon name="trash" size={14} />Remove</button></div>
+              ) : (
+                <div className="row lm-actions">
+                  <button type="button" className="btn sm" disabled={downloading || tooBig} onClick={() => act({ action: 'download', model: m.id })}><Icon name="download" size={14} />Download {gb(m.size)}</button>
+                  {tooBig && <span className="tiny warn-text">Not enough free space</span>}
+                </div>
+              )}
+              {s.state === 'error' && s.model === m.id && <p className="tiny" style={{ color: 'var(--danger)' }}>{s.error}</p>}
+            </div>
+          );
+        })}
+      </div>
+      <p className="faint tiny">Use Wi-Fi for the download. After that it works with no internet. {info.threads > 1 ? `Uses ${info.threads} processor cores.` : ''}</p>
     </div>
   );
 }

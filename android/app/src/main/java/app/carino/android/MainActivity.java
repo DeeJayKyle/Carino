@@ -79,7 +79,9 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                return loader.shouldInterceptRequest(request.getUrl());
+                WebResourceResponse r = loader.shouldInterceptRequest(request.getUrl());
+                if (r != null) isolate(r);
+                return r;
             }
 
             @Override
@@ -221,5 +223,17 @@ public class MainActivity extends Activity {
         bridge.shutdown();
         web.destroy();
         super.onDestroy();
+    }
+
+    /**
+     * Cross-origin isolation, so the on-phone AI (mobile/ondevice.ts) can use several processor
+     * cores. "credentialless" still lets pictures from other sites load, just without cookies.
+     */
+    private static void isolate(WebResourceResponse r) {
+        java.util.Map<String, String> h = new java.util.HashMap<>();
+        if (r.getResponseHeaders() != null) h.putAll(r.getResponseHeaders());
+        h.put("Cross-Origin-Opener-Policy", "same-origin");
+        h.put("Cross-Origin-Embedder-Policy", "credentialless");
+        r.setResponseHeaders(h);
     }
 }

@@ -59,6 +59,22 @@ export function buildSystemPrompt(user: SessionUser, settings: Settings): string
   ].join('\n');
 }
 
+/**
+ * For a small model running on the phone itself, where reading each word of the prompt takes
+ * time: the same rules, in as few words as possible.
+ */
+export function buildPhonePrompt(user: SessionUser, settings: Settings): string {
+  const name = settings.profile.displayName || user.name;
+  const me = settings.profile.assistantName?.trim() || 'Carino';
+  return [
+    `You are ${me}, ${name}'s personal assistant, running offline on their phone. Be warm and brief.`,
+    'To add a to-do, set a reminder, log spending or remember something, CALL THE TOOL. Never say it is done unless the tool result confirms it.',
+    'Do not invent facts, tasks or events. If you are unsure, ask one short question.',
+    settings.profile.replyLanguage ? `Reply in ${settings.profile.replyLanguage}.` : 'Reply in the language the user writes in.',
+    settings.profile.customInstructions ? `${name}'s instructions: ${settings.profile.customInstructions.slice(0, 400)}` : '',
+  ].filter(Boolean).join('\n');
+}
+
 export interface TurnEvent {
   type: 'start' | 'text' | 'tool' | 'message' | 'done' | 'error';
   [k: string]: unknown;
@@ -156,6 +172,7 @@ function turnContext(services: Services, ctx: ToolContext, conv: Row, userText: 
   const hints: string[] = [];
   if (/\bremind (me|us)\b|\breminder\b/i.test(userText)) hints.push('To schedule a reminder, call create_reminder (or create_task with remind). Only say it is scheduled after the tool succeeds.');
   if (/\bremember (that|this|my|i)\b|\bdon't forget that\b/i.test(userText)) hints.push('The user wants something remembered long-term: call save_memory with user_requested=true before replying.');
+  if (/\b(spent|paid|bought|cost me)\b/i.test(userText)) hints.push('The user spent money: call log_expense to record it before replying.');
   if (hints.length) parts.push(`<hints>\n${hints.join('\n')}\n</hints>`);
   const attachments: { id: string; filename: string; kind: string }[] = [];
   const images: ImageRefBlock[] = [];
@@ -226,11 +243,15 @@ export async function runTurn(
   }
   opts.emit({ type: 'start', userMessage: { ...userMsg, meta: { attachments } }, provider: { id: info.id, label: info.label, model: info.model, reason: routeReason } });
 
-  const system = conv.system_prompt || buildSystemPrompt(user, settings);
-  if (!conv.system_prompt) db.run('UPDATE conversations SET system_prompt = ? WHERE id = ?', system, conversationId);
+  // The on-phone model always gets the short prompt (conversations store the full one when created).
+  const onPhone = info.capabilities.toolset === 'phone';
+  const system = onPhone ? buildPhonePrompt(user, settings) + (conv.system_prompt?.endsWith(GROUP_RULES) ? GROUP_RULES : '')
+    : conv.system_prompt || buildSystemPrompt(user, settings);
+  if (!conv.system_prompt && !onPhone) db.run('UPDATE conversations SET system_prompt = ? WHERE id = ?', system, conversationId);
   const messages = expandImages(services, user.id, replayable([...history, userMsg]), !!info.capabilities.vision);
   const tools = !info.capabilities.tools ? []
     : opts.restricted ? toolSpecs('full').filter((t) => GROUP_TOOLS.has(t.name))
+    : info.capabilities.toolset === 'phone' ? toolSpecs('phone')
     : [...toolSpecs(info.capabilities.toolset ?? 'full'), ...appToolSpecs(services, user.id), ...connectorToolSpecs(db, user.id)];
   const toolEvents: unknown[] = [];
   let finalText = '';

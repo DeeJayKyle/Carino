@@ -17,11 +17,12 @@ export class FakeProvider implements AIProvider {
   configured = true;
   tools = true;
   vision = false;
+  toolset: 'core' | 'full' | 'phone' | undefined;
 
   info(): ProviderInfo {
     return {
       id: 'fake', label: 'Fake model', model: 'fake-1', configured: this.configured,
-      capabilities: { tools: this.tools, streaming: true, local: false, vision: this.vision }, pricing: { input: 1, output: 2 },
+      capabilities: { tools: this.tools, streaming: true, local: this.toolset === 'phone', vision: this.vision, ...(this.toolset ? { toolset: this.toolset } : {}) }, pricing: { input: 1, output: 2 },
     };
   }
 

@@ -25,7 +25,7 @@ const schema = z.object({
   /** Sent as reasoning_effort, e.g. 'none' to turn off slow thinking on local models. */
   OPENAI_COMPAT_REASONING_EFFORT: z.string().max(20).optional(),
   /** core = everyday tools only (shorter prompt, much faster on small local models); full = all tools. */
-  OPENAI_COMPAT_TOOLSET: z.enum(['core', 'full']).default('core'),
+  OPENAI_COMPAT_TOOLSET: z.enum(['core', 'full', 'phone']).default('core'),
   /** Set to true when the model can read images (e.g. llava, qwen2.5vl, gemma3, GPT-4o, Gemini). */
   OPENAI_COMPAT_VISION: z.enum(['true', 'false']).default('false'),
   /** Comma-separated models to try in order when the main one is retired, busy or rate-limited. */

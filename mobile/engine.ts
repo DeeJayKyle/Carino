@@ -12,7 +12,7 @@ import { getSettings } from '../server/services/settings.ts';
 import { addDays, localDate, safeTimeZone, startOfLocalDay } from '../server/services/time.ts';
 import { firePlaceReminder } from '../server/services/tasks.ts';
 import { notify as notifyInApp } from '../server/services/activity.ts';
-import { configToEnv, maskConfig, PRESETS, type DeviceConfig } from './presets.ts';
+import { configToEnv, maskConfig, PRESETS, ON_DEVICE_BASE_URL, type DeviceConfig } from './presets.ts';
 import { speedTest } from './speedtest.ts';
 import { loadConfig } from '../server/config.ts';
 import { Db } from '../server/db/index.ts';
@@ -46,12 +46,21 @@ function envFor(c: DeviceConfig) {
   };
 }
 
+// The on-phone model's code (and its WebAssembly) loads only when it's used.
+const onDevice = () => import('./ondevice.ts');
+/** fetch for the AI provider: the on-phone model is answered here, everything else goes out as usual. */
+const aiFetch: typeof fetch = async (input, init) => {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  if (url.startsWith(ON_DEVICE_BASE_URL)) return (await onDevice()).onDeviceFetch(input, init);
+  return fetch(input, init);
+};
+
 /** Applies a new AI / service configuration without restarting. */
 function applyDevice(c: DeviceConfig) {
   device = c;
   const config = loadConfig(envFor(c));
   services.config = config;
-  services.providers = createRegistry(config);
+  services.providers = createRegistry(config, aiFetch);
   services.search = createSearchService({ searxngUrl: config.SEARXNG_URL, braveKey: config.BRAVE_SEARCH_API_KEY });
 }
 
@@ -204,12 +213,30 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 /** Settings only the phone has: which AI service to use, and its key. */
 async function deviceRoute(req: Request, path: string): Promise<Response> {
   if (path === '/api/device/config' && req.method === 'GET') return json({ config: maskConfig(device), presets: PRESETS, native: isNative });
+  if (path === '/api/device/local') {
+    // The AI that runs on the phone: which models are downloaded, and downloading or removing one.
+    const od = await onDevice();
+    if (req.method === 'POST') {
+      const body = (await req.json().catch(() => ({}))) as { action?: string; model?: string };
+      try {
+        if (body.action === 'download' && body.model) od.startDownload(body.model);
+        else if (body.action === 'cancel') od.cancelDownload();
+        else if (body.action === 'remove' && body.model) await od.removeModel(body.model);
+        else if (body.action === 'unload') await od.unload();
+        else return json({ error: 'Unknown action' }, 400);
+      } catch (err: any) {
+        return json({ error: String(err?.message ?? err) }, 400);
+      }
+    }
+    return json(await od.localStatus());
+  }
   if (path === '/api/device/models') {
     // The models a key can use, so the app can mark which free models work (and offer others
     // when names change). POST checks the form's values before they're saved.
     const body = req.method === 'POST' ? ((await req.json().catch(() => ({}))) as Partial<DeviceConfig>) : {};
     const p = PRESETS.find((x) => x.id === (body.provider ?? device.provider));
     if (!p || p.hidden) return json({ models: [] });
+    if (p.onDevice) return json({ models: (await (await onDevice()).localStatus()).models.filter((m) => m.downloaded).map((m) => m.id) });
     const masked = !body.apiKey || body.apiKey.startsWith('••••');
     const key = (masked && body.provider === device.provider) || !body.provider ? device.apiKey : body.apiKey;
     const base = (p.ownAddress ? (body.baseUrl || device.baseUrl) : p.baseUrl)?.replace(/\/$/, '');
@@ -233,7 +260,7 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
     // Times each free model with this key, from this phone, and returns them fastest first.
     const body = (await req.json().catch(() => ({}))) as Partial<DeviceConfig> & { models?: string[] };
     const p = PRESETS.find((x) => x.id === (body.provider ?? device.provider));
-    if (!p || p.hidden) return json({ results: [] });
+    if (!p || p.hidden || p.onDevice) return json({ results: [] });
     const masked = !body.apiKey || body.apiKey.startsWith('••••');
     const key = (masked && body.provider === device.provider) || !body.provider ? device.apiKey : body.apiKey;
     const base = (p.ownAddress ? (body.baseUrl || device.baseUrl) : p.baseUrl)?.replace(/\/$/, '');
@@ -332,7 +359,7 @@ async function boot() {
   lap('open');
   services = {
     db, config,
-    providers: createRegistry(config),
+    providers: createRegistry(config, aiFetch),
     search: createSearchService({ searxngUrl: config.SEARXNG_URL, braveKey: config.BRAVE_SEARCH_API_KEY }),
     push: phonePush,
     loadFiles: preloadFiles,

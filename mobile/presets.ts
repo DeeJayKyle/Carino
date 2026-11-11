@@ -28,11 +28,37 @@ export interface Preset {
   hidden?: boolean;
   /** The address is the user's own (a PC on their network). */
   ownAddress?: boolean;
+  /** Runs on the phone itself: no key, no internet once downloaded. */
+  onDevice?: boolean;
 }
 
 const preset = (p: Omit<Preset, 'model' | 'vision'> & { vision?: boolean }): Preset => ({
   ...p, model: p.models[0]?.id ?? '', vision: p.vision ?? !!p.models[0]?.vision,
 });
+
+/** Open models that run on the phone itself (mobile/ondevice.ts), downloaded once. */
+export interface LocalModel {
+  id: string;
+  label: string;
+  note: string;
+  url: string;
+  /** Download size in bytes. */
+  size: number;
+}
+
+export const LOCAL_MODELS: LocalModel[] = [
+  {
+    id: 'qwen3-1.7b', label: 'Qwen 3 1.7B — better answers', note: 'Needs a phone with 6 GB of memory or more.',
+    url: 'https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf', size: 1_107_409_472,
+  },
+  {
+    id: 'qwen3-0.6b', label: 'Qwen 3 0.6B — small and quick', note: 'Works on most phones. Simpler answers.',
+    url: 'https://huggingface.co/unsloth/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf', size: 396_705_472,
+  },
+];
+
+/** The address the server uses for the on-phone model; answered in the app (mobile/ondevice.ts → onDeviceFetch), never sent anywhere. */
+export const ON_DEVICE_BASE_URL = 'http://localhost/on-device/v1';
 
 export const PRESETS: Preset[] = [
   preset({
@@ -112,6 +138,11 @@ export const PRESETS: Preset[] = [
     ],
   }),
   preset({
+    id: 'phone', label: 'On this phone (offline)', free: 'Free and fully private: a small AI runs on your phone, no internet or account needed. Download it once (0.4–1.1 GB). Simpler and slower than online AI; can\u2019t read photos.',
+    baseUrl: ON_DEVICE_BASE_URL, keyUrl: '', onDevice: true,
+    models: LOCAL_MODELS.map((m) => ({ id: m.id, label: m.label, family: 'Qwen' })),
+  }),
+  preset({
     id: 'custom', label: 'Ollama on your PC', free: 'Free and private: runs on your own computer. Also LM Studio or any compatible server.',
     baseUrl: 'http://192.168.1.10:11434/v1', keyUrl: '', ownAddress: true,
     models: [
@@ -152,6 +183,13 @@ export function configToEnv(c: DeviceConfig): Record<string, string> {
     if (c.apiKey) env.ANTHROPIC_API_KEY = c.apiKey;
     if (c.model) env.ANTHROPIC_MODEL = c.model;
     env.DEFAULT_PROVIDER = 'anthropic';
+  } else if (p?.onDevice) {
+    env.OPENAI_COMPAT_BASE_URL = ON_DEVICE_BASE_URL;
+    env.OPENAI_COMPAT_MODEL = c.model || p.model;
+    env.OPENAI_COMPAT_LABEL = 'Carino on this phone';
+    env.OPENAI_COMPAT_TOOLSET = 'phone';
+    env.OPENAI_COMPAT_VISION = 'false';
+    env.DEFAULT_PROVIDER = 'openai_compat';
   } else if (p) {
     const model = c.model || p.model;
     env.OPENAI_COMPAT_BASE_URL = (p.ownAddress ? c.baseUrl : p.baseUrl) || p.baseUrl;

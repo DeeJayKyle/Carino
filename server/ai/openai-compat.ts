@@ -7,10 +7,10 @@ import { ProviderError } from './types.ts';
  * compatibility endpoint, etc. Streaming via SSE; tool calls when the model supports them.
  */
 export class OpenAICompatProvider implements AIProvider {
-  private opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full'; vision?: boolean; fallbackModels?: string[] };
+  private opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full' | 'phone'; vision?: boolean; fallbackModels?: string[] };
   private fetchImpl: typeof fetch;
 
-  constructor(opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full'; vision?: boolean; fallbackModels?: string[] }, fetchImpl: typeof fetch = fetch) {
+  constructor(opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full' | 'phone'; vision?: boolean; fallbackModels?: string[] }, fetchImpl: typeof fetch = fetch) {
     this.opts = opts;
     this.fetchImpl = fetchImpl;
   }

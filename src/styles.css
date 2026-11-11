@@ -921,3 +921,14 @@ details.card[open] > summary::after { content: '▴'; }
 .exp-amt { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .money-page { max-width: 880px; }
 .add-expense .input, .add-expense .select { height: 44px; }
+
+/* ---------- AI on this phone ---------- */
+.local-model { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.local-model.on { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand) inset; }
+.lm-pick { display: flex; gap: 10px; align-items: flex-start; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.lm-pick:disabled { cursor: default; }
+.lm-pick .grow { display: flex; flex-direction: column; gap: 2px; }
+.lm-dot { flex: none; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--border-strong); }
+.lm-pick[aria-checked="true"]:not(:disabled) .lm-dot { border-color: var(--brand); background: radial-gradient(var(--brand) 45%, transparent 50%); }
+.lm-pick:disabled .lm-dot { opacity: 0.4; }
+.lm-progress .progress { margin: 0 0 4px; }

@@ -49,7 +49,7 @@ export interface ProviderInfo {
   label: string;
   model: string;
   configured: boolean;
-  capabilities: { tools: boolean; streaming: boolean; local: boolean; toolset?: 'core' | 'full'; /** Can read images. */ vision?: boolean };
+  capabilities: { tools: boolean; streaming: boolean; local: boolean; toolset?: 'core' | 'full' | 'phone'; /** Can read images. */ vision?: boolean };
   /** USD per million tokens, when known. */
   pricing?: { input: number; output: number };
   note?: string;

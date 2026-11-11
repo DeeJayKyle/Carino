@@ -540,16 +540,43 @@ export const TOOL_MAP = new Map(TOOLS.map((t) => [t.name, t]));
 /** The everyday tools sent to small local models, to keep their prompt short and fast. */
 export const CORE_TOOLS = new Set([
   'search_knowledge', 'list_tasks', 'get_daily_overview', 'recall_memories', 'web_search', 'parse_datetime',
-  'create_task', 'update_task', 'complete_task', 'create_reminder', 'save_memory', 'delete_task',
+  'create_task', 'update_task', 'complete_task', 'create_reminder', 'save_memory', 'delete_task', 'log_expense',
 ]);
 
 /** JSON-schema tool specs for the model. Generated deterministically so the prompt prefix stays stable. */
-export function toolSpecs(toolset: 'core' | 'full' = 'full'): ToolSpec[] {
-  return TOOLS.filter((t) => toolset === 'full' || CORE_TOOLS.has(t.name)).map((t) => {
+/** The fewest tools, for a small model running on the phone itself, where every word of prompt costs time. */
+export const PHONE_TOOLS = new Set([
+  'list_tasks', 'create_task', 'complete_task', 'create_reminder', 'log_expense', 'save_memory', 'get_daily_overview',
+]);
+
+export function toolSpecs(toolset: 'core' | 'full' | 'phone' = 'full'): ToolSpec[] {
+  const keep = toolset === 'phone' ? PHONE_TOOLS : CORE_TOOLS;
+  return TOOLS.filter((t) => toolset === 'full' || keep.has(t.name)).map((t) => {
     const schema = z.toJSONSchema(t.input, { target: 'draft-7', io: 'input' }) as Record<string, unknown>;
     delete schema.$schema;
+    if (toolset === 'phone') return { name: t.name, description: shortText(t.description), input_schema: trimSchema(schema) };
     return { name: t.name, description: `${t.description}${t.risk === 'consequential' ? ' (Queued for the user to approve — not executed immediately.)' : ''}`, input_schema: schema };
   });
+}
+
+/** First sentence only: small on-phone models read every word of the prompt slowly. */
+const shortText = (d: string) => (d.match(/^.*?[.!?](\s|$)/)?.[0] ?? d).trim().slice(0, 160);
+
+function trimSchema(schema: any): any {
+  if (!schema || typeof schema !== 'object') return schema;
+  const out: any = Array.isArray(schema) ? schema.map(trimSchema) : { ...schema };
+  if (!Array.isArray(out)) {
+    if (typeof out.description === 'string') out.description = out.description.slice(0, 80);
+    for (const k of ['additionalProperties', 'minLength', 'maxLength', 'minItems', 'maxItems', 'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'pattern', 'format']) delete out[k];
+    // Optional fields with nested structure (recurrence rules, project links) are left to the full app.
+    if (out.properties) {
+      const req = new Set<string>(out.required ?? []);
+      for (const [n, v] of Object.entries<any>(out.properties)) if (!req.has(n) && (v?.anyOf?.some((x: any) => x.type === 'object') || v?.type === 'object' || (v?.type === 'array' && v?.items?.type === 'object') || /_id$|^depends_on|^parent/.test(n))) delete out.properties[n];
+    }
+    for (const k of ['properties', 'items']) if (out[k]) out[k] = k === 'properties' ? Object.fromEntries(Object.entries(out[k]).map(([n, v]) => [n, trimSchema(v)])) : trimSchema(out[k]);
+    for (const k of ['anyOf', 'oneOf', 'allOf']) if (out[k]) out[k] = out[k].map(trimSchema);
+  }
+  return out;
 }
 
 function describeWhen(v: string, ctx: ToolContext) {
