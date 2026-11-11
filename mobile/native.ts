@@ -7,6 +7,10 @@ interface Bridge {
   httpAbort(id: string): void;
   notify(json: string): void;
   setAlarms(json: string): void;
+  setPlaceAlerts?(json: string): void;
+  takeReminderEvents?(): string;
+  placesPermission?(): string;
+  askPlacesPermission?(): void;
   listen(lang: string): void;
   stopListening(): void;
   speak(text: string, lang: string): void;
@@ -127,6 +131,37 @@ export function notify(n: Notice) {
 /** Replaces the alarms Android shows while the app is closed. */
 export function setAlarms(alarms: (Notice & { at: number })[]) {
   bridge?.setAlarms(JSON.stringify(alarms));
+}
+
+/** Replaces the places Android watches for place reminders. */
+export function setPlaceAlerts(alerts: { id: string; title: string; body: string; lat: number; lon: number; radius: number }[]) {
+  bridge?.setPlaceAlerts?.(JSON.stringify(alerts));
+}
+
+export interface ReminderEvent { type: 'snooze' | 'done' | 'arrived'; id: string; at: number; minutes?: number }
+
+/** Snooze / Done pressed on notifications, and places arrived at, while the app was closed. */
+export function takeReminderEvents(): ReminderEvent[] {
+  try {
+    return JSON.parse(bridge?.takeReminderEvents?.() ?? '[]');
+  } catch {
+    return [];
+  }
+}
+
+/** Location access for place reminders: "always", "while-open", "no", or "web" (no Android). */
+export function placesPermission(): string {
+  return bridge?.placesPermission?.() ?? 'web';
+}
+
+/** Asks Android for location; resolves with the new state. */
+export function askPlacesPermission(): Promise<string> {
+  if (!bridge?.askPlacesPermission) return Promise.resolve('web');
+  return new Promise((ok) => {
+    const done = (e: Event) => { removeEventListener('carino-location', done); ok(String((e as CustomEvent).detail)); };
+    addEventListener('carino-location', done);
+    bridge.askPlacesPermission!();
+  });
 }
 
 export const nativeSpeech = !!bridge;

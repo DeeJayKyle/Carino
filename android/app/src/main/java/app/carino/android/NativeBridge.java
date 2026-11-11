@@ -48,6 +48,8 @@ import java.util.concurrent.Executors;
  */
 class NativeBridge {
     private static final int MIC_PERMISSION = 7;
+    private static final int LOCATION_PERMISSION = 8;
+    private static final int BACKGROUND_LOCATION_PERMISSION = 9;
     private static final int MAX_SHARED_BYTES = 25 * 1024 * 1024;
 
     private final MainActivity activity;
@@ -161,6 +163,49 @@ class NativeBridge {
         Alarms.replace(activity, json);
     }
 
+    // ---- Smarter reminders -------------------------------------------------------------------
+
+    @JavascriptInterface
+    public void setPlaceAlerts(String json) {
+        PlaceAlerts.replace(activity, json);
+    }
+
+    /** Snooze / Done pressed on notifications and places arrived at, since the last call. */
+    @JavascriptInterface
+    public String takeReminderEvents() {
+        return ReminderEvents.take(activity);
+    }
+
+    /** "always" (rings while closed), "while-open", or "no". */
+    @JavascriptInterface
+    public String placesPermission() {
+        if (!PlaceAlerts.allowed(activity)) return "no";
+        return Build.VERSION.SDK_INT < 29 || backgroundLocation() ? "always" : "while-open";
+    }
+
+    /** Asks for location (then "all the time"); the answer arrives as a "carino-location" event. */
+    @JavascriptInterface
+    public void askPlacesPermission() {
+        main.post(() -> {
+            if (!PlaceAlerts.allowed(activity)) {
+                activity.requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_PERMISSION);
+            } else if (Build.VERSION.SDK_INT >= 29 && !backgroundLocation()) {
+                activity.requestPermissions(new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION}, BACKGROUND_LOCATION_PERMISSION);
+            } else {
+                locationResult();
+            }
+        });
+    }
+
+    private boolean backgroundLocation() {
+        return Build.VERSION.SDK_INT < 29 || activity.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void locationResult() {
+        PlaceAlerts.rearm(activity);
+        emit("dispatchEvent(new CustomEvent('carino-location', { detail: " + quote(placesPermission()) + " }))");
+    }
+
     // ---- Speech ------------------------------------------------------------------------------
 
     @JavascriptInterface
@@ -176,6 +221,19 @@ class NativeBridge {
     }
 
     void onPermissionResult(int requestCode, boolean granted) {
+        if (requestCode == LOCATION_PERMISSION) {
+            // Step 2 (Android 10+): "Allow all the time", so place reminders ring while Carino is closed.
+            if (granted && Build.VERSION.SDK_INT >= 29 && !backgroundLocation()) {
+                activity.requestPermissions(new String[]{Manifest.permission.ACCESS_BACKGROUND_LOCATION}, BACKGROUND_LOCATION_PERMISSION);
+            } else {
+                locationResult();
+            }
+            return;
+        }
+        if (requestCode == BACKGROUND_LOCATION_PERMISSION) {
+            locationResult();
+            return;
+        }
         if (requestCode != MIC_PERMISSION || pendingListenLang == null) return;
         String lang = pendingListenLang;
         pendingListenLang = null;

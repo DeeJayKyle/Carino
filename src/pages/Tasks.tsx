@@ -8,6 +8,7 @@ import { del, post, get, isOffline } from '../lib/api';
 import { isQueued, writeOrQueue } from '../lib/sync';
 import { navigate, useLocation } from '../lib/router';
 import { fmtDateTime, fromLocalInput, localDay, toLocalInput, getPrefs } from '../lib/format';
+import { askPlacesPermission, placesPermission } from '../../mobile/native';
 
 const VIEWS = [
   { id: 'today', label: 'Today' },
@@ -58,6 +59,7 @@ export default function Tasks() {
     <Shell title="Tasks">
       <div className="page">
         <QuickAdd onCreated={reload} />
+        <RemindersPanel />
         <div className="tabs" role="tablist" style={{ marginTop: 18 }}>
           {VIEWS.map((v) => (
             <button key={v.id} role="tab" aria-selected={view === v.id} className={view === v.id ? 'on' : ''} onClick={() => setView(v.id)}>{v.label}</button>
@@ -396,5 +398,69 @@ function Dependencies({ task }: { task: any }) {
       {err && <span className="hint" role="alert">{err}</span>}
       {deps.blocks.length > 0 && <p className="hint">Blocks: {deps.blocks.map((b) => b.title).join(', ')}</p>}
     </div>
+  );
+}
+
+/** Short label for a reminder's repeat rule (stored as JSON), or '' when it rings once. */
+function repeatText(json: string | null): string {
+  if (!json) return '';
+  try {
+    const r = JSON.parse(json);
+    if (r.freq === 'weekly' && r.byweekday?.length === 5) return 'Weekdays';
+    return ({ daily: 'Every day', weekly: 'Every week', monthly: 'Every month', yearly: 'Every year' } as Record<string, string>)[r.freq] ?? 'Repeats';
+  } catch {
+    return 'Repeats';
+  }
+}
+
+/** Upcoming timed reminders (with repeat, snooze and cancel) and place reminders. */
+function RemindersPanel() {
+  const toast = useToast();
+  const timed = useData<any>('/reminders');
+  const places = useData<any>('/place-reminders');
+  const [perm, setPerm] = useState(() => placesPermission());
+  const upcoming = (timed.data?.reminders ?? []).filter((r: any) => r.status === 'scheduled').slice(0, 20);
+  const placeList = (places.data?.places ?? []).slice(0, 20);
+  if (!upcoming.length && !placeList.length) return null;
+  const act = async (fn: () => Promise<unknown>, msg: string) => {
+    try {
+      await fn();
+      toast(msg);
+    } catch (e: any) {
+      toast(e?.message ?? 'That did not work', 'error');
+    }
+    void timed.reload();
+    void places.reload();
+  };
+  const activePlaces = placeList.some((p: any) => p.status === 'active');
+  return (
+    <section className="card reminders-panel" aria-label="Reminders">
+      <h2 className="row"><Icon name="bell" size={18} /> Reminders</h2>
+      {upcoming.map((r: any) => (
+        <div key={r.id} className="reminder-row">
+          <div className="grow">
+            <div className="rem-title">{r.title}</div>
+            <div className="tiny muted">{fmtDateTime(r.remind_at, { weekday: true })}{r.recurrence ? ` · ${repeatText(r.recurrence)}` : ''}</div>
+          </div>
+          <button className="btn ghost sm" onClick={() => act(() => post(`/reminders/${r.id}/snooze`, { minutes: 10 }), 'Snoozed for 10 minutes')} aria-label={`Snooze ${r.title} for 10 minutes`}>Snooze</button>
+          <button className="btn ghost sm" onClick={() => act(() => del(`/reminders/${r.id}`), 'Reminder cancelled')} aria-label={`Cancel ${r.title}`}><Icon name="x" size={16} /></button>
+        </div>
+      ))}
+      {placeList.map((p: any) => (
+        <div key={p.id} className={`reminder-row${p.status === 'fired' ? ' done' : ''}`}>
+          <div className="grow">
+            <div className="rem-title">📍 {p.title}</div>
+            <div className="tiny muted">{p.status === 'fired' ? `Arrived ${fmtDateTime(p.fired_at)}` : `When you get to ${p.place_name}`}{p.address ? ` · ${p.address}` : ''}</div>
+          </div>
+          <button className="btn ghost sm" onClick={() => act(() => del(`/place-reminders/${p.id}`), p.status === 'fired' ? 'Removed' : 'Place reminder cancelled')} aria-label={`${p.status === 'fired' ? 'Remove' : 'Cancel'} ${p.title}`}><Icon name="x" size={16} /></button>
+        </div>
+      ))}
+      {activePlaces && perm !== 'always' && perm !== 'web' && (
+        <div className="callout">
+          <span className="grow">{perm === 'no' ? 'Place reminders need your location.' : 'To ring while Carino is closed, allow location "All the time".'}</span>
+          <button className="btn sm" onClick={async () => setPerm(await askPlacesPermission())}>Allow location</button>
+        </div>
+      )}
+    </section>
   );
 }

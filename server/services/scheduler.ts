@@ -6,6 +6,7 @@ import { buildOverview, briefingText, eveningReviewText } from './briefing.ts';
 import { expireMemories } from './memory.ts';
 import { parseJson } from '../db/index.ts';
 import { runCustomRoutine } from './routines.ts';
+import { nextReminderTime, type Recurrence } from './tasks.ts';
 
 const MAX_ATTEMPTS = 5;
 
@@ -47,6 +48,13 @@ export async function deliverDueReminders(services: Services) {
       // Back off and retry the push; the in-app notification is already stored.
       const retryAt = new Date(now.getTime() + 2 ** (r.attempts + 1) * 60_000).toISOString();
       db.run("UPDATE reminders SET status = 'scheduled', remind_at = ?, last_error = ? WHERE id = ?", retryAt, errorText, r.id);
+    } else if (r.recurrence) {
+      // Repeating: ring again at the next time (a failed push still moves on, it's already in the app).
+      const rule = parseJson<Recurrence | null>(r.recurrence, null);
+      const next = rule ? nextReminderTime(new Date(r.remind_at), rule, now).toISOString() : null;
+      if (next) db.run("UPDATE reminders SET status = 'scheduled', remind_at = ?, sent_at = ?, attempts = 0, last_error = ? WHERE id = ?", next, now.toISOString(), errorText, r.id);
+      else db.run("UPDATE reminders SET status = 'sent', sent_at = ? WHERE id = ?", now.toISOString(), r.id);
+      delivered++;
     } else {
       db.run(
         'UPDATE reminders SET status = ?, sent_at = ?, last_error = ? WHERE id = ?',

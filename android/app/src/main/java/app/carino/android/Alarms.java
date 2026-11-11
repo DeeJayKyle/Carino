@@ -18,6 +18,27 @@ import org.json.JSONObject;
 public final class Alarms extends BroadcastReceiver {
     private static final String PREFS = "alarms";
     private static final int MAX = 60;
+    static final String REMINDER_PREFIX = "reminder-";
+    static final String SNOOZE = "app.carino.SNOOZE";
+    static final String DONE = "app.carino.DONE";
+    private static final String SNOOZED = "app.carino.SNOOZED";
+    static final int SNOOZE_MINUTES = 10;
+
+    /** A Snooze or Done button on a reminder notification. */
+    static PendingIntent action(Context ctx, String what, String tag, String title, String body, String url) {
+        Intent i = new Intent(ctx, Alarms.class).setAction(what)
+                .putExtra("tag", tag).putExtra("title", title).putExtra("body", body).putExtra("url", url);
+        return PendingIntent.getBroadcast(ctx, (what + tag).hashCode(), i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /** The alarm that rings a snoozed reminder again (its own request code, so replace() keeps it). */
+    private static PendingIntent snoozed(Context ctx, Intent from) {
+        String tag = from.getStringExtra("tag");
+        Intent i = new Intent(ctx, Alarms.class).setAction(SNOOZED)
+                .putExtra("tag", tag).putExtra("title", from.getStringExtra("title"))
+                .putExtra("body", from.getStringExtra("body")).putExtra("url", from.getStringExtra("url"));
+        return PendingIntent.getBroadcast(ctx, 10_000 + (tag.hashCode() & 0xffff), i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
 
     static void replace(Context ctx, String json) {
         SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
@@ -72,6 +93,30 @@ public final class Alarms extends BroadcastReceiver {
         String action = i.getAction();
         if (Intent.ACTION_BOOT_COMPLETED.equals(action) || Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) {
             rearm(ctx);
+            PlaceAlerts.rearm(ctx);
+            return;
+        }
+        String tag = i.getStringExtra("tag");
+        if (SNOOZE.equals(action) && tag != null) {
+            // Ring again in 10 minutes, even if the app stays closed; the app records it next time it runs.
+            Notifier.cancel(ctx, tag);
+            AlarmManager am = ctx.getSystemService(AlarmManager.class);
+            long at = System.currentTimeMillis() + SNOOZE_MINUTES * 60_000L;
+            if (am != null) {
+                if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, snoozed(ctx, i));
+                else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, snoozed(ctx, i));
+            }
+            ReminderEvents.add(ctx, "snooze", tag.substring(REMINDER_PREFIX.length()), SNOOZE_MINUTES);
+            return;
+        }
+        if (DONE.equals(action) && tag != null) {
+            Notifier.cancel(ctx, tag);
+            ReminderEvents.add(ctx, "done", tag.substring(REMINDER_PREFIX.length()), 0);
+            return;
+        }
+        if (SNOOZED.equals(action)) {
+            // Shown even while the app is open: the app's own copy is the same notification (same tag).
+            Notifier.show(ctx, tag, i.getStringExtra("title"), i.getStringExtra("body"), i.getStringExtra("url"));
             return;
         }
         // While Carino is open its own scheduler delivers the reminder (same tag, so no duplicate).

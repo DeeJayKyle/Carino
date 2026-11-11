@@ -7,7 +7,9 @@ import sqliteWasmUrl from '@sqlite.org/sqlite-wasm/sqlite3.wasm?url';
 import { configureSqlite, type DatabaseSync } from './shims/sqlite.ts';
 import { flushFiles, loadFiles, preloadFiles, seedFile } from './shims/fs.ts';
 import { idbDeleteAll, idbGet, idbWrite } from './idb.ts';
-import { makeNetFetch, notify, setAlarms, isNative, keepListening } from './native.ts';
+import { makeNetFetch, notify, setAlarms, setPlaceAlerts, takeReminderEvents, isNative, keepListening } from './native.ts';
+import { firePlaceReminder } from '../server/services/tasks.ts';
+import { notify as notifyInApp } from '../server/services/activity.ts';
 import { configToEnv, maskConfig, PRESETS, type DeviceConfig } from './presets.ts';
 import { speedTest } from './speedtest.ts';
 import { loadConfig } from '../server/config.ts';
@@ -63,6 +65,7 @@ function save() {
   const bytes = (services.db.raw as unknown as DatabaseSync).serialize();
   saving = saving.then(() => idbWrite([{ store: 'db', key: 'main', value: bytes }])).catch((err) => console.error('Saving failed', err));
   syncAlarms();
+  syncPlaces();
   return saving;
 }
 
@@ -95,6 +98,35 @@ function syncAlarms() {
     tag: `reminder-${r.id}`, title: `⏰ ${r.title}`, body: r.body || 'Reminder from Carino',
     url: r.task_id ? `/tasks?focus=${r.task_id}` : '/tasks', at: Date.parse(r.remind_at),
   })));
+}
+
+/** Hands active place reminders to Android, which rings on arriving. */
+function syncPlaces() {
+  if (!isNative || !services) return;
+  const rows = services.db.all("SELECT id, title, body, place_name, lat, lon, radius_m FROM place_reminders WHERE status = 'active' ORDER BY created_at DESC LIMIT 50");
+  setPlaceAlerts(rows.map((r) => ({ id: r.id, title: r.title, body: r.body || `You're at ${r.place_name}`, lat: r.lat, lon: r.lon, radius: r.radius_m })));
+}
+
+/** Applies what happened on Android while the app was closed: Snooze / Done, places arrived at. */
+function applyReminderEvents() {
+  if (!isNative || !services) return;
+  const events = takeReminderEvents();
+  if (!events.length) return;
+  for (const e of events) {
+    const owner = services.db.get('SELECT user_id FROM reminders WHERE id = ? UNION SELECT user_id FROM place_reminders WHERE id = ?', e.id, e.id);
+    if (!owner) continue;
+    try {
+      if (e.type === 'arrived') {
+        const p = firePlaceReminder(services.db, owner.user_id, e.id, new Date(e.at));
+        if (p) notifyInApp(services.db, owner.user_id, { kind: 'reminder', title: `📍 ${p.title}`, body: p.body || `You're at ${p.place_name}`, link: '/tasks' });
+      }
+      // 'snooze': Android rings it again itself in 10 minutes (rescheduling here too would ring twice).
+      // 'done': nothing to do; the reminder already rang (a repeating one has moved on).
+    } catch (err) {
+      console.warn('Reminder event not applied', e, err);
+    }
+  }
+  scheduleSave();
 }
 
 // --- The owner's account ----------------------------------------------------------------------
@@ -297,6 +329,10 @@ async function boot() {
   listenWanted = (await idbGet<{ on?: boolean }>('kv', 'listen'))?.on !== false;
   syncListening();
   setInterval(() => document.visibilityState === 'visible' && pollWhatsApp(), 4000);
+  // Snooze / Done on notifications and arrivals at places, recorded by Android while closed.
+  applyReminderEvents();
+  setInterval(applyReminderEvents, 5000);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && applyReminderEvents());
   // The background listener (Android) nudges the app every few seconds while it's hidden.
   window.addEventListener('carino-tick', pollWhatsApp);
   // Channels are added and removed in Messaging; keep the notification in step.

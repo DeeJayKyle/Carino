@@ -879,3 +879,12 @@ details.card[open] > summary::after { content: '▴'; }
 
 /* Your stuff: a lone last tile on a two-column phone grid spans the row */
 @media (max-width: 600px) { .stuff-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; } }
+
+/* To-dos: upcoming reminders and place reminders */
+.reminders-panel { padding: 14px 16px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+.reminders-panel h2 { font-size: 1rem; gap: 8px; margin: 0 0 4px; }
+.reminder-row { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--border); }
+.reminder-row:first-of-type { border-top: 0; }
+.reminder-row .rem-title { font-weight: 600; }
+.reminder-row.done .rem-title { color: var(--text-3); text-decoration: line-through; }
+.reminders-panel .callout { display: flex; align-items: center; gap: 10px; margin-top: 6px; }

@@ -205,7 +205,29 @@ export const reminderInput = z.object({
   body: z.string().max(2000).optional(),
   remind_at: isoDate,
   task_id: z.string().max(64).nullable().optional(),
+  recurrence: recurrenceSchema.nullable().optional(),
 });
+
+/** Plain-words repeat options (the assistant and the app) as recurrence rules. */
+export const repeatChoices = ['daily', 'weekdays', 'weekly', 'monthly'] as const;
+export type RepeatChoice = (typeof repeatChoices)[number];
+export function repeatRule(repeat: RepeatChoice | null | undefined, at: Date): Recurrence | null {
+  switch (repeat) {
+    case 'daily': return { freq: 'daily', interval: 1 };
+    case 'weekdays': return { freq: 'weekly', interval: 1, byweekday: [1, 2, 3, 4, 5] };
+    case 'weekly': return { freq: 'weekly', interval: 1, byweekday: [at.getUTCDay()] };
+    case 'monthly': return { freq: 'monthly', interval: 1 };
+    default: return null;
+  }
+}
+
+/** Short label for a repeating reminder ("Every day", "Weekdays"…), or '' when it rings once. */
+export function repeatLabel(rule: Recurrence | null): string {
+  if (!rule) return '';
+  if (rule.freq === 'weekly' && rule.byweekday?.length === 5 && [1, 2, 3, 4, 5].every((d) => rule.byweekday!.includes(d))) return 'Weekdays';
+  const every = (rule.interval ?? 1) > 1 ? `Every ${rule.interval} ` : 'Every ';
+  return { daily: `${every}${(rule.interval ?? 1) > 1 ? 'days' : 'day'}`, weekly: `${every}${(rule.interval ?? 1) > 1 ? 'weeks' : 'week'}`, monthly: `${every}${(rule.interval ?? 1) > 1 ? 'months' : 'month'}`, yearly: `${every}${(rule.interval ?? 1) > 1 ? 'years' : 'year'}` }[rule.freq];
+}
 
 export function createReminder(db: Db, userId: string, raw: unknown) {
   const input = reminderInput.parse(raw);
@@ -216,7 +238,56 @@ export function createReminder(db: Db, userId: string, raw: unknown) {
     body: input.body ?? '',
     remind_at: new Date(input.remind_at).toISOString(),
     task_id: input.task_id ?? null,
+    recurrence: input.recurrence ? JSON.stringify(input.recurrence) : null,
   });
+}
+
+/** The first occurrence of a repeating reminder after `now` (skips any missed while the phone was off). */
+export function nextReminderTime(last: Date, rule: Recurrence, now: Date): Date {
+  let next = nextOccurrence(last, rule);
+  for (let i = 0; i < 1000 && next.getTime() <= now.getTime(); i++) next = nextOccurrence(next, rule);
+  return next;
+}
+
+/** Rings again in `minutes` (from the notification's Snooze button or the app). */
+export function snoozeReminder(db: Db, userId: string, id: string, minutes: number, now: Date) {
+  const r = db.get('SELECT * FROM reminders WHERE id = ? AND user_id = ?', id, userId);
+  if (!r) throw notFound('Reminder');
+  if (r.status === 'cancelled') throw badRequest('That reminder was cancelled.');
+  const m = Math.min(Math.max(Math.round(minutes), 1), 24 * 60);
+  const at = new Date(now.getTime() + m * 60_000).toISOString();
+  if (r.recurrence && r.status === 'scheduled' && r.remind_at > now.toISOString()) {
+    // A repeating reminder already moved on to its next time: snooze this occurrence as a one-off.
+    return db.insert('reminders', { user_id: userId, title: r.title, body: r.body, remind_at: at, task_id: r.task_id });
+  }
+  db.run("UPDATE reminders SET status = 'scheduled', remind_at = ?, attempts = 0, last_error = NULL WHERE id = ?", at, id);
+  return db.get('SELECT * FROM reminders WHERE id = ?', id)!;
+}
+
+// ---------- Place reminders: ring on arriving somewhere ----------
+
+export const placeReminderInput = z.object({
+  title: z.string().trim().min(1).max(300),
+  body: z.string().max(2000).optional(),
+  place_name: z.string().trim().min(1).max(200),
+  address: z.string().max(500).optional(),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
+  radius_m: z.number().int().min(50).max(2000).optional(),
+});
+
+export function createPlaceReminder(db: Db, userId: string, raw: unknown) {
+  const i = placeReminderInput.parse(raw);
+  return db.insert('place_reminders', {
+    user_id: userId, title: i.title, body: i.body ?? '', place_name: i.place_name, address: i.address ?? '',
+    lat: i.lat, lon: i.lon, radius_m: i.radius_m ?? 150,
+  });
+}
+
+/** Called when the phone arrives at the place: rings once, then stays in the list as done. */
+export function firePlaceReminder(db: Db, userId: string, id: string, now: Date) {
+  const res = db.run("UPDATE place_reminders SET status = 'fired', fired_at = ? WHERE id = ? AND user_id = ? AND status = 'active'", now.toISOString(), id, userId);
+  return Number(res.changes) > 0 ? db.get('SELECT * FROM place_reminders WHERE id = ?', id) : null;
 }
 
 export type TaskView = 'today' | 'upcoming' | 'overdue' | 'completed' | 'all' | 'inbox';

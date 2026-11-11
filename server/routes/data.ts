@@ -5,6 +5,7 @@ import type { AppEnv } from '../context.ts';
 import { notFound, badRequest } from '../context.ts';
 import { parseJson } from '../db/index.ts';
 import * as tasks from '../services/tasks.ts';
+import { notify } from '../services/activity.ts';
 import * as memory from '../services/memory.ts';
 import * as routines from '../services/routines.ts';
 import { extractRamble, applyRamble, MAX_RAMBLE_CHARS } from '../services/ramble.ts';
@@ -195,6 +196,26 @@ export function dataRoutes() {
     const res = db(c).run("UPDATE reminders SET status = 'cancelled' WHERE id = ? AND user_id = ? AND status = 'scheduled'", c.req.param('id'), uid(c));
     if (Number(res.changes) === 0) throw notFound('Scheduled reminder');
     return c.json({ cancelled: true });
+  });
+  r.post('/reminders/:id/snooze', async (c) => {
+    const i = z.object({ minutes: z.number().int().min(1).max(1440).default(10) }).parse(await body(c));
+    return c.json(tasks.snoozeReminder(db(c), uid(c), c.req.param('id'), i.minutes, c.var.services.now()));
+  });
+  // ---------- Place reminders (ring on arriving somewhere) ----------
+  r.get('/place-reminders', (c) => c.json({
+    places: db(c).all("SELECT * FROM place_reminders WHERE user_id = ? AND status <> 'cancelled' ORDER BY status = 'fired', created_at DESC LIMIT 100", uid(c)),
+  }));
+  r.post('/place-reminders', async (c) => c.json(tasks.createPlaceReminder(db(c), uid(c), await body(c)), 201));
+  r.delete('/place-reminders/:id', (c) => {
+    const res = db(c).run("UPDATE place_reminders SET status = 'cancelled' WHERE id = ? AND user_id = ? AND status <> 'cancelled'", c.req.param('id'), uid(c));
+    if (Number(res.changes) === 0) throw notFound('Place reminder');
+    return c.json({ cancelled: true });
+  });
+  // The phone arrived: record it once and put it in the app's notifications.
+  r.post('/place-reminders/:id/arrived', (c) => {
+    const p = tasks.firePlaceReminder(db(c), uid(c), c.req.param('id'), c.var.services.now());
+    if (p) notify(db(c), uid(c), { kind: 'reminder', title: `📍 ${p.title}`, body: p.body || `You're at ${p.place_name}`, link: '/tasks' });
+    return c.json({ fired: !!p });
   });
 
   // ---------- Memories ----------

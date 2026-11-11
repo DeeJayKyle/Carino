@@ -321,21 +321,57 @@ export const TOOLS: ToolDef[] = [
   }),
   def({
     name: 'create_reminder',
-    description: 'Schedule a push-notification reminder at a specific time (server-side; works while the app is closed if notifications are enabled on the device).',
+    description: 'Schedule a reminder notification at a specific time (works while the app is closed if notifications are on). Set repeat for reminders that come back: daily, weekdays (Mon–Fri), weekly (same weekday) or monthly (same date). The notification has Snooze and Done buttons.',
     risk: 'reversible',
-    input: z.object({ title: z.string().min(1).max(300), when: isoOrNatural, body: z.string().max(1000).optional(), task_id: id.optional() }),
-    summarize: (i, ctx) => `Remind you "${i.title}" ${describeWhen(i.when, ctx)}`,
+    input: z.object({
+      title: z.string().min(1).max(300), when: isoOrNatural, body: z.string().max(1000).optional(), task_id: id.optional(),
+      repeat: z.enum(tasks.repeatChoices).optional().describe('Repeat the reminder: daily, weekdays, weekly or monthly. Leave out for once.'),
+    }),
+    summarize: (i, ctx) => `Remind you "${i.title}" ${describeWhen(i.when, ctx)}${i.repeat ? `, then ${i.repeat === 'weekdays' ? 'every weekday' : i.repeat === 'daily' ? 'every day' : i.repeat === 'weekly' ? 'every week' : 'every month'}` : ''}`,
     run: (i, ctx) => {
       const at = resolveWhen(i.when, ctx)!;
       if (new Date(at).getTime() < ctx.now.getTime() - 60_000) throw new ToolError('That time is in the past. Ask the user for a future time.');
-      const r = tasks.createReminder(ctx.services.db, ctx.userId, { title: i.title, body: i.body, remind_at: at, task_id: i.task_id });
+      const recurrence = tasks.repeatRule(i.repeat, new Date(at));
+      const r = tasks.createReminder(ctx.services.db, ctx.userId, { title: i.title, body: i.body, remind_at: at, task_id: i.task_id, recurrence });
       return {
-        reminder: { id: r.id, at: formatLocal(r.remind_at, ctx.timeZone, ctx.settings.regional.locale) },
+        reminder: { id: r.id, at: formatLocal(r.remind_at, ctx.timeZone, ctx.settings.regional.locale), repeats: tasks.repeatLabel(recurrence) || 'once' },
         delivery: ctx.services.push.configured()
           ? (ctx.services.db.get('SELECT COUNT(*) AS n FROM push_subscriptions WHERE user_id = ?', ctx.userId)!.n > 0
               ? 'Push notification to the user\'s subscribed devices.'
               : 'In-app only: the user has not enabled notifications on any device yet.')
           : 'In-app only: push notifications are not configured on the server.',
+      };
+    },
+  }),
+  def({
+    name: 'create_place_reminder',
+    description: 'Remind the user when they arrive somewhere ("remind me to buy milk when I get to the shop"). Give the place as the user said it plus a town or area if known; it is looked up on OpenStreetMap and the phone rings on arrival (location must be allowed "all the time" on Android). If the place is ambiguous or not found, ask the user which one.',
+    risk: 'reversible',
+    input: z.object({
+      title: z.string().min(1).max(300).describe('What to remind, e.g. "Buy milk"'),
+      place: z.string().min(2).max(200).describe('The place, e.g. "Capital Shoppers Ntinda" or "the pharmacy on Ntinda Road"'),
+      near: z.string().max(200).optional().describe('Town or area to search in, e.g. "Kampala"'),
+      lat: z.number().min(-90).max(90).optional(),
+      lon: z.number().min(-180).max(180).optional(),
+      radius_m: z.number().int().min(50).max(2000).optional().describe('How close counts as arriving (metres, default 150)'),
+      body: z.string().max(1000).optional(),
+    }),
+    summarize: (i) => `Remind you "${i.title}" when you get to ${i.place}`,
+    run: async (i, ctx) => {
+      let found;
+      try {
+        found = await findPlaces(ctx.services, { query: i.place, near: i.near, lat: i.lat, lon: i.lon, limit: 1 });
+      } catch (err) {
+        if (err instanceof PlacesError) throw new ToolError(err.message);
+        throw err;
+      }
+      const p = found[0];
+      if (!p) throw new ToolError(`"${i.place}" was not found on OpenStreetMap. Ask the user for the exact name or area.`);
+      const r = tasks.createPlaceReminder(ctx.services.db, ctx.userId, { title: i.title, body: i.body, place_name: i.place, address: p.address || p.name, lat: p.lat, lon: p.lon, radius_m: i.radius_m });
+      ctx.sources.push({ title: p.name, url: p.osm_url, snippet: p.address });
+      return {
+        place_reminder: { id: r.id, place: p.name, address: p.address, radius_m: r.radius_m },
+        note: 'Rings once on arrival. On Android, location must be allowed "all the time" for Carino (the app asks when needed). Data © OpenStreetMap contributors.',
       };
     },
   }),

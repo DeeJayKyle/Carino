@@ -13,4 +13,7 @@
     <string name="widget_talk">💬 Talk</string>
     <string name="widget_chat">＋ Chat</string>
     <string name="widget_description">Quick ways into Carino: ramble, talk or start a chat.</string>
+    <string name="action_snooze">Snooze 10 min</string>
+    <string name="action_done">Done</string>
+    <string name="place_arrived">You\'re here</string>
 </resources>
