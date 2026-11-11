@@ -1,15 +1,17 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
 import { Avatar } from '../components/Avatar';
 import { useMascot } from '../lib/mascot';
-import { ErrorBox, StaleNote } from '../components/ui';
+import { ErrorBox, StaleNote, useToast } from '../components/ui';
+import { post } from '../lib/api';
 import { useData } from '../lib/hooks';
 import { useSession } from '../lib/session';
 import { Link, navigate } from '../lib/router';
 import { fmtDateTime, relative, getPrefs } from '../lib/format';
 import { openCard } from './Discover';
-import { useDictation } from '../lib/voice';
+import { HandoffBanner } from '../components/Handoff';
+import { speakAsync, speechText, stopSpeaking, useDictation } from '../lib/voice';
 
 export function Home() {
   const { me } = useSession();
@@ -44,6 +46,9 @@ export function Home() {
         <StaleNote savedAt={stale} />
         <ErrorBox error={error} retry={reload} />
         {data && <HighlightCards data={data} idea={discover.data?.cards?.[0]} streakName={mascot.name} />}
+        {data?.briefing && me!.settings.voice.enabled && <BriefAloud text={data.briefing} />}
+        <HandoffBanner />
+        {data && <FollowUps overview={data.overview} reload={reload} />}
         {attention > 0 && (
           <Link to="/notifications" className="card attention"><Icon name="bell" size={18} /><span className="grow">{attention} thing{attention > 1 ? 's' : ''} need{attention > 1 ? '' : 's'} your attention</span><Icon name="chevron" size={16} /></Link>
         )}
@@ -114,6 +119,35 @@ function HighlightCards({ data, idea, streakName }: { data: any; idea?: any; str
   );
 }
 
+/** Reads the day's brief aloud: on a tap, or once a day by itself if chosen in Settings → Voice. */
+function BriefAloud({ text }: { text: string }) {
+  const { me } = useSession();
+  const v = me!.settings.voice;
+  const [speaking, setSpeaking] = useState(false);
+  const play = async () => {
+    setSpeaking(true);
+    await speakAsync(speechText(text), { lang: v.language, voiceName: v.voiceName }).catch(() => undefined);
+    setSpeaking(false);
+  };
+  useEffect(() => {
+    if (!v.speakBrief) return;
+    const today = new Date().toDateString();
+    try {
+      if (localStorage.getItem('carino.briefSpoken') === today) return;
+      localStorage.setItem('carino.briefSpoken', today);
+    } catch { /* private mode: just read it */ }
+    void play();
+    return () => stopSpeaking();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="row brief-aloud">
+      <button className="btn ghost sm" aria-pressed={speaking} onClick={() => (speaking ? (stopSpeaking(), setSpeaking(false)) : play())}>
+        <Icon name={speaking ? 'stop' : 'speaker'} size={14} />{speaking ? 'Stop reading' : 'Read my brief aloud'}
+      </button>
+    </div>
+  );
+}
+
 function AskBar() {
   const [q, setQ] = useState('');
   const { me } = useSession();
@@ -140,5 +174,64 @@ function AskBar() {
       {voice.listening && <p className="faint tiny" style={{ marginTop: 6 }}>Recording… speech is transcribed by your browser’s speech service.</p>}
       {voice.error && <p className="small" style={{ color: 'var(--danger)', marginTop: 6 }}>{voice.error}</p>}
     </>
+  );
+}
+
+/**
+ * Emails waiting for a reply, bills due and application follow-ups, from the brief. Each has a
+ * next step; nothing is sent or changed without the user (drafts are drafts, sending asks).
+ */
+function FollowUps({ overview, reload }: { overview: any; reload: () => void }) {
+  const toast = useToast();
+  const awaiting: any[] = overview?.connected?.awaiting ?? [];
+  const bills: any[] = overview?.bills ?? [];
+  const follow: any[] = overview?.applications?.followUps ?? [];
+  if (!awaiting.length && !bills.length && !follow.length) return null;
+  const tomorrow9 = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    d.setHours(9, 0, 0, 0);
+    return d.toISOString();
+  };
+  const act = async (fn: () => Promise<unknown>, ok: string) => {
+    try {
+      await fn();
+      toast(ok);
+      reload();
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
+  };
+  return (
+    <section className="home-section" aria-label="Follow-ups">
+      <div className="row"><h2 className="grow">Follow-ups</h2></div>
+      <div className="card"><ul className="list divided">
+        {awaiting.map((m) => (
+          <li key={m.id} className="list-item followup">
+            <Icon name="send" size={16} />
+            <span className="grow" style={{ minWidth: 0 }}><span className="ellipsis" style={{ display: 'block' }}>Reply to <b>{m.from}</b>: “{m.subject}”</span><span className="tiny muted">No reply for 2+ days · {m.account}</span></span>
+            <span className="row wrap" style={{ gap: 4 }}>
+              <Link className="btn sm" to={`/chat/new?q=${encodeURIComponent(`Read the ${m.provider === 'google' ? 'Gmail' : 'Outlook'} message ${m.id} from ${m.from} ("${m.subject}") and draft a reply for me to check. Save it as a draft; don't send it.`)}`}>Draft a reply</Link>
+              <button className="btn ghost sm" onClick={() => act(() => post('/reminders', { title: `Reply to ${m.from}: ${m.subject}`.slice(0, 300), remind_at: tomorrow9() }), 'I’ll remind you tomorrow at 9:00')}>Tomorrow</button>
+              <button className="btn ghost sm" onClick={() => act(() => post(`/followups/${encodeURIComponent(m.id)}/dismiss`, {}), 'Got it')}>No reply needed</button>
+            </span>
+          </li>
+        ))}
+        {bills.map((b) => (
+          <li key={b.id} className="list-item followup">
+            <Icon name="wallet" size={16} />
+            <span className="grow"><span>{b.name} · {b.amount}</span><span className={`tiny ${b.overdue ? 'warn-text' : 'muted'}`} style={{ display: 'block' }}>{b.overdue ? 'Overdue since' : 'Due'} {b.due}{b.book ? ` · ${b.book}` : ''}</span></span>
+            <Link className="btn ghost sm" to="/money">Open</Link>
+          </li>
+        ))}
+        {follow.map((a) => (
+          <li key={a.id} className="list-item followup">
+            <Icon name="briefcase" size={16} />
+            <span className="grow"><span>Follow up: {a.title}</span>{a.organisation && <span className="tiny muted" style={{ display: 'block' }}>{a.organisation}</span>}</span>
+            <Link className="btn ghost sm" to={`/chat/new?q=${encodeURIComponent(`Help me write a short, polite follow-up about my application for ${a.title}${a.organisation ? ` at ${a.organisation}` : ''}.`)}`}>Write it</Link>
+          </li>
+        ))}
+      </ul></div>
+    </section>
   );
 }

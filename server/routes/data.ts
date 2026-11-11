@@ -2,13 +2,20 @@ import { randomBytes } from 'node:crypto';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../context.ts';
-import { notFound, badRequest } from '../context.ts';
-import { parseJson } from '../db/index.ts';
+import { notFound, badRequest, HttpError } from '../context.ts';
+import { parseJson, nowIso } from '../db/index.ts';
 import * as tasks from '../services/tasks.ts';
 import * as money from '../services/money.ts';
+import * as finance from '../services/finance.ts';
+import * as applications from '../services/applications.ts';
+import * as backup from '../services/backup.ts';
+import * as inbox from '../services/inbox.ts';
+import * as sync from '../services/sync.ts';
+import * as files from '../services/localfiles.ts';
 import { notify } from '../services/activity.ts';
 import * as memory from '../services/memory.ts';
 import * as routines from '../services/routines.ts';
+import { ACCESS_GROUPS } from '../services/routine-access.ts';
 import { extractRamble, applyRamble, MAX_RAMBLE_CHARS } from '../services/ramble.ts';
 import * as connectors from '../services/connectors.ts';
 import { startOAuth, finishOAuth } from '../services/mcp-oauth.ts';
@@ -19,7 +26,7 @@ import { DISCOVER } from '../services/discover.ts';
 import * as channels from '../services/channels.ts';
 import { connectTelegram } from '../services/telegram.ts';
 import { connectWhatsApp, webhookUrl } from '../services/whatsapp.ts';
-import { connectRelay, pollRelay } from '../services/whatsapp-relay.ts';
+import { connectRelay, pollRelay, relayAppSecret } from '../services/whatsapp-relay.ts';
 import { deployRelay } from '../services/relay-deploy.ts';
 import { startSharedLink, sharedLinkStatus, unlinkShared, isShared } from '../services/whatsapp-shared.ts';
 import { helperConfig } from '../services/helper.ts';
@@ -28,7 +35,7 @@ import { getSettings, updateSettings } from '../services/settings.ts';
 import { buildOverview, briefingText, suggestions } from '../services/briefing.ts';
 import { searchIndex } from '../services/indexer.ts';
 import { localDate, startOfLocalDay, addDays, safeTimeZone, localClock, parseWhen, formatLocal } from '../services/time.ts';
-import { approveAction, rejectAction, TOOLS } from '../tools/registry.ts';
+import { approveAction, rejectAction, TOOLS, executeTool, makeContext } from '../tools/registry.ts';
 import { rateLimit } from '../middleware.ts';
 
 const page = z.object({ limit: z.coerce.number().int().min(1).max(500).default(100), offset: z.coerce.number().int().min(0).default(0) });
@@ -78,6 +85,12 @@ export function dataRoutes() {
       apps: n('SELECT (SELECT COUNT(*) FROM connectors WHERE user_id = ?1 AND enabled = 1) + (SELECT COUNT(*) FROM app_accounts WHERE user_id = ?1) AS n'),
       chats: n('SELECT COUNT(*) AS n FROM channel_chats WHERE user_id = ?'),
       approvals: n("SELECT COUNT(*) AS n FROM actions WHERE user_id = ? AND status = 'pending'"),
+      files: n('SELECT COUNT(*) AS n FROM local_files WHERE user_id = ?'),
+      folders: n('SELECT COUNT(*) AS n FROM folder_grants WHERE user_id = ?'),
+      applications: {
+        open: n("SELECT COUNT(*) AS n FROM applications WHERE user_id = ? AND status NOT IN ('accepted','rejected','withdrawn')"),
+        dueSoon: n("SELECT COUNT(*) AS n FROM applications WHERE user_id = ? AND status IN ('interested','preparing') AND deadline >= ? AND deadline <= ?", today, addDays(today, 7)),
+      },
       money: (() => {
         const s = getSettings(db(c), u);
         const m = money.monthSummary(db(c), u, today.slice(0, 7), today, money.currencyFor(s));
@@ -96,6 +109,8 @@ export function dataRoutes() {
     const { now } = c.var.services;
     const s = getSettings(db(c), uid(c));
     const tz = safeTimeZone(s.regional.timeZone);
+    // Email and calendar summary: refreshed in the background when it's old (the brief uses the saved one).
+    inbox.refreshIfStale(c.var.services, uid(c), tz);
     const o = buildOverview(db(c), uid(c), now(), tz, 0, s.regional.locale);
     const hour = Number(localClock(now(), tz).hhmm.slice(0, 2));
     const recentConversations = db(c).all(
@@ -227,29 +242,109 @@ export function dataRoutes() {
   // ---------- Money ----------
   const moneyCtx = (c: any) => {
     const s = getSettings(db(c), uid(c));
-    return { today: localDate(c.var.services.now(), safeTimeZone(s.regional.timeZone)), currency: money.currencyFor(s), locale: s.regional.locale };
+    const timeZone = safeTimeZone(s.regional.timeZone);
+    return { today: localDate(c.var.services.now(), timeZone), currency: money.currencyFor(s), locale: s.regional.locale, now: c.var.services.now(), timeZone };
   };
+  const moneyErr = <T>(fn: () => T): T => {
+    try {
+      return fn();
+    } catch (e) {
+      if (e instanceof money.MoneyError) throw badRequest(e.message);
+      throw e;
+    }
+  };
+  /** The book a request is about (?book= or "book" in the body); Personal when left out. */
+  const bookOf = (c: any, raw?: any) => moneyErr(() => finance.resolveBook(db(c), uid(c), (raw && typeof raw === 'object' ? raw.book : undefined) ?? c.req.query('book')));
+  const strip = (raw: any) => {
+    if (raw && typeof raw === 'object') delete raw.book;
+    return raw;
+  };
+  /** A book's own currency, if it has one, else the user's. */
+  const bookCurrency = (c: any, book: money.Book, main: string) => (book ? String(db(c).get('SELECT currency FROM money_books WHERE id = ?', book)?.currency ?? '') || main : main);
   r.get('/money', (c) => {
     const m = moneyCtx(c);
+    const book = bookOf(c);
+    const cur = bookCurrency(c, book, m.currency);
     const q = c.req.query('month');
     const month = q && /^\d{4}-\d{2}$/.test(q) ? q : m.today.slice(0, 7);
     return c.json({
-      ...money.monthSummary(db(c), uid(c), month, m.today, m.currency),
-      week: money.weekSummary(db(c), uid(c), m.today, m.currency),
+      ...money.monthSummary(db(c), uid(c), month, m.today, cur, book),
+      week: money.weekSummary(db(c), uid(c), m.today, cur, book),
       today: m.today,
-      expenses: money.listExpenses(db(c), uid(c), { from: `${month}-01`, to: money.monthEnd(month) }),
+      book, books: finance.listBooks(db(c), uid(c)),
+      expenses: money.listExpenses(db(c), uid(c), { from: `${month}-01`, to: money.monthEnd(month), book }),
+      income_list: finance.listIncome(db(c), uid(c), book, `${month}-01`, money.monthEnd(month)),
+      bills: finance.listBills(db(c), uid(c), book),
+      debts: finance.listDebts(db(c), uid(c), book),
+      goals: finance.listGoals(db(c), uid(c), book),
       categories: money.CATEGORIES.map((id) => ({ id, label: money.CATEGORY_LABELS[id] })),
     });
   });
+  r.post('/money/books', async (c) => {
+    const raw = await body(c);
+    return c.json(moneyErr(() => finance.createBook(db(c), uid(c), raw)), 201);
+  });
+  r.delete('/money/books/:id', (c) => c.json(finance.deleteBook(db(c), uid(c), c.req.param('id'))));
+  r.post('/income', async (c) => {
+    const raw = await body(c);
+    const m = moneyCtx(c);
+    const book = bookOf(c, raw);
+    return c.json(moneyErr(() => finance.addIncome(db(c), uid(c), strip(raw), { today: m.today, currency: bookCurrency(c, book, m.currency), book })), 201);
+  });
+  r.delete('/income/:id', (c) => {
+    if (!finance.deleteIncome(db(c), uid(c), c.req.param('id'))) throw notFound('Income');
+    return c.json({ deleted: true });
+  });
+  r.post('/bills', async (c) => {
+    const raw = await body(c);
+    const m = moneyCtx(c);
+    const book = bookOf(c, raw);
+    return c.json(moneyErr(() => finance.addBill(db(c), uid(c), strip(raw), { currency: bookCurrency(c, book, m.currency), book, timeZone: m.timeZone, now: m.now })), 201);
+  });
+  r.post('/bills/:id/pay', async (c) => {
+    const raw = await body(c);
+    const m = moneyCtx(c);
+    const i = z.object({ paid_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), amount: z.number().positive().max(1e12).optional() }).parse(raw);
+    const res = moneyErr(() => finance.payBill(db(c), uid(c), c.req.param('id'), { today: m.today, locale: m.locale, now: m.now, paidOn: i.paid_on, amount: i.amount }));
+    await money.pushAlerts(c.var.services, uid(c), res.alerts);
+    return c.json(res);
+  });
+  r.delete('/bills/:id', (c) => c.json(finance.stopBill(db(c), uid(c), c.req.param('id'))));
+  r.post('/debts', async (c) => {
+    const raw = await body(c);
+    const m = moneyCtx(c);
+    const book = bookOf(c, raw);
+    return c.json(moneyErr(() => finance.addDebt(db(c), uid(c), strip(raw), { currency: bookCurrency(c, book, m.currency), book })), 201);
+  });
+  r.post('/debts/:id/pay', async (c) => {
+    const raw = await body(c);
+    return c.json(moneyErr(() => finance.payDebt(db(c), uid(c), c.req.param('id'), raw, moneyCtx(c).today)));
+  });
+  r.post('/savings', async (c) => {
+    const raw = await body(c);
+    const m = moneyCtx(c);
+    const book = bookOf(c, raw);
+    return c.json(moneyErr(() => finance.addGoal(db(c), uid(c), strip(raw), { currency: bookCurrency(c, book, m.currency), book })), 201);
+  });
+  r.post('/savings/:id/move', async (c) => {
+    const raw = await body(c);
+    return c.json(moneyErr(() => finance.moveSavings(db(c), uid(c), c.req.param('id'), raw, moneyCtx(c).today)));
+  });
   r.post('/expenses', async (c) => {
-    const res = money.addExpense(db(c), uid(c), await body(c), moneyCtx(c));
+    const raw = await body(c);
+    const m = moneyCtx(c);
+    const book = bookOf(c, raw);
+    const res = moneyErr(() => money.addExpense(db(c), uid(c), strip(raw), { ...m, currency: bookCurrency(c, book, m.currency), book }));
     await money.pushAlerts(c.var.services, uid(c), res.alerts);
     return c.json(res, 201);
   });
+  // Returns the updated expense (with its new updated_at, for offline edits made on top of it).
   r.patch('/expenses/:id', async (c) => {
-    const e = money.updateExpense(db(c), uid(c), c.req.param('id'), await body(c));
-    if (!e) throw notFound('Expense');
-    return c.json(e);
+    const raw = await body(c);
+    const res = moneyErr(() => money.updateExpense(db(c), uid(c), c.req.param('id'), raw, moneyCtx(c)));
+    if (!res) throw notFound('Expense');
+    await money.pushAlerts(c.var.services, uid(c), res.alerts);
+    return c.json({ ...res.expense, alerts: res.alerts });
   });
   r.delete('/expenses/:id', (c) => {
     if (!money.deleteExpense(db(c), uid(c), c.req.param('id'))) throw notFound('Expense');
@@ -257,18 +352,38 @@ export function dataRoutes() {
   });
   r.put('/budgets', async (c) => {
     const m = moneyCtx(c);
-    const b = money.setBudget(db(c), uid(c), await body(c), m.currency);
-    const alerts = money.checkBudgets(db(c), uid(c), m.today.slice(0, 7), m.today, m.locale);
+    const raw = await body(c);
+    const book = bookOf(c, raw);
+    const b = money.setBudget(db(c), uid(c), strip(raw), bookCurrency(c, book, m.currency), book);
+    const alerts = money.checkBudgets(db(c), uid(c), m.today.slice(0, 7), m.today, m.locale, book);
     await money.pushAlerts(c.var.services, uid(c), alerts);
     return c.json({ budget: b });
   });
 
+  // ---------- Applications (jobs, scholarships) ----------
+  const appCtx = (c: any) => {
+    const m = moneyCtx(c);
+    return { today: m.today, timeZone: m.timeZone, now: m.now };
+  };
+  r.get('/applications', (c) => c.json({
+    applications: applications.listApplications(db(c), uid(c), { kind: c.req.query('kind'), open: c.req.query('open') === '1' }),
+    statuses: applications.STATUSES.map((id) => ({ id, label: applications.STATUS_LABELS[id] })),
+  }));
+  r.get('/applications/:id', (c) => c.json(applications.getApplication(db(c), uid(c), c.req.param('id'))));
+  r.post('/applications', async (c) => c.json(applications.createApplication(db(c), uid(c), await body(c), appCtx(c)), 201));
+  r.patch('/applications/:id', async (c) => c.json(applications.updateApplication(db(c), uid(c), c.req.param('id'), await body(c), appCtx(c))));
+  r.delete('/applications/:id', (c) => c.json(applications.deleteApplication(db(c), uid(c), c.req.param('id'))));
+  r.post('/applications/:id/items', async (c) => c.json(applications.addItem(db(c), uid(c), c.req.param('id'), await body(c)), 201));
+  r.patch('/application-items/:id', async (c) => c.json(applications.updateItem(db(c), uid(c), c.req.param('id'), await body(c))));
+  r.delete('/application-items/:id', (c) => c.json(applications.deleteItem(db(c), uid(c), c.req.param('id'))));
+
   // ---------- Memories ----------
   r.get('/memories', (c) => {
-    const { status, category, q } = c.req.query();
+    const { status, category, q, context } = c.req.query();
     const where = ['user_id = ?'];
     const params: any[] = [uid(c)];
     if (status) { where.push('status = ?'); params.push(status); }
+    if (context === 'personal' || context === 'work') { where.push('context = ?'); params.push(context); }
     if (category) { where.push('category = ?'); params.push(category); }
     if (q) { where.push('content LIKE ?'); params.push(`%${q}%`); }
     return c.json({
@@ -287,6 +402,10 @@ export function dataRoutes() {
   r.patch('/memories/:id', async (c) => c.json(memory.updateMemory(db(c), uid(c), c.req.param('id'), await body(c))));
   r.post('/memories/:id/approve', (c) => c.json(memory.updateMemory(db(c), uid(c), c.req.param('id'), { status: 'active' })));
   r.delete('/memories/:id', (c) => c.json(memory.deleteMemory(db(c), uid(c), c.req.param('id'))));
+  r.post('/memories/delete', async (c) => {
+    const i = z.object({ ids: z.array(z.string().max(64)).min(1).max(500) }).parse(await body(c));
+    return c.json(memory.deleteMemories(db(c), uid(c), i.ids));
+  });
   r.post('/memories/clear', async (c) => {
     const i = z.object({ categories: z.array(z.string()).optional(), confirm: z.literal(true) }).parse(await body(c));
     return c.json(memory.clearMemories(db(c), uid(c), i.categories));
@@ -341,6 +460,7 @@ export function dataRoutes() {
 
   // ---------- Routines ----------
   r.get('/routines', (c) => c.json({ routines: routines.listRoutines(db(c), uid(c)) }));
+  r.get('/routines/access', (c) => c.json({ groups: ACCESS_GROUPS.map(({ tools: _t, prefixes: _p, ...g }) => g) }));
   r.get('/routines/ideas', (c) => c.json({ ideas: routines.ROUTINE_IDEAS, webSearch: c.var.services.search.available().configured }));
   r.post('/routines', async (c) => c.json(routines.createRoutine(db(c), uid(c), await body(c)), 201));
   r.patch('/routines/:id', async (c) => c.json(routines.updateRoutine(db(c), uid(c), c.req.param('id'), await body(c))));
@@ -391,7 +511,7 @@ export function dataRoutes() {
   r.put('/apps/clients/:group', connectLimit, async (c) => c.json(apps.saveClient(c.var.services, uid(c), groupParam(c), await body(c))));
   r.delete('/apps/clients/:group', (c) => c.json(apps.deleteClient(c.var.services, uid(c), groupParam(c))));
   r.post('/apps/:provider/start', connectLimit, async (c) => c.json(await apps.startSignIn(c.var.services, uid(c), c.req.param('provider'))));
-  r.delete('/apps/accounts/:id', (c) => c.json(apps.disconnect(c.var.services, uid(c), c.req.param('id'))));
+  r.delete('/apps/accounts/:id', async (c) => c.json(await apps.disconnect(c.var.services, uid(c), c.req.param('id'))));
   /** The provider sends the browser back here after sign-in (PC; the phone uses /oauth/finish). */
   r.get('/apps/callback', async (c) => {
     const { code, state, error, error_description } = c.req.query();
@@ -466,16 +586,16 @@ export function dataRoutes() {
   });
   /** Phone app: link WhatsApp to the user's own relay (see relay/ in the repository). */
   r.post('/channels/whatsapp/relay', connectLimit, async (c) => {
-    const i = z.object({ url: z.string().trim().min(8).max(300) }).parse(await body(c));
-    const ch = await connectRelay(c.var.services, uid(c), i.url);
+    const i = z.object({ url: z.string().trim().min(8).max(300), setup_code: z.string().trim().max(200).optional() }).parse(await body(c));
+    const ch = await connectRelay(c.var.services, uid(c), i.url, undefined, i.setup_code || undefined);
     return c.json({ ...channels.presentChannel(db(c), ch, c.var.services.now()), webhook_url: webhookUrl(c.var.services, ch) });
   });
   /** Phone app: create the relay on the user's own Cloudflare account, then link it. */
   r.post('/channels/whatsapp/relay/create', connectLimit, async (c) => {
-    const i = z.object({ token: z.string().trim().min(20).max(300) }).parse(await body(c));
+    const i = z.object({ token: z.string().trim().min(20).max(300), verify_at_relay: z.boolean().optional() }).parse(await body(c));
     if (!db(c).get("SELECT 1 FROM channels WHERE user_id = ? AND kind = 'whatsapp'", uid(c))) throw badRequest('Connect WhatsApp first (phone number ID, token and app secret).');
     const key = randomBytes(24).toString('base64url');
-    const url = await deployRelay(c.var.services, i.token, key);
+    const url = await deployRelay(c.var.services, i.token, key, i.verify_at_relay ? relayAppSecret(c.var.services, uid(c)) : undefined);
     // A brand-new workers.dev address can take a few seconds to come online.
     let ch;
     for (let attempt = 0; ; attempt++) {
@@ -525,11 +645,245 @@ export function dataRoutes() {
   });
   r.post('/ramble/apply', async (c) => c.json(applyRamble(db(c), uid(c), await body(c), c.var.services.now()), 201));
 
+  // ---------- Email, calendar and follow-ups ----------
+  r.get('/digest', (c) => {
+    const d = inbox.cachedDigest(db(c), uid(c));
+    return c.json({ digest: d, awaiting: inbox.awaitingReplies(db(c), uid(c), d) });
+  });
+  r.post('/digest/refresh', connectLimit, async (c) => {
+    const d = await inbox.refreshDigest(c.var.services, uid(c), tzOf(c));
+    return c.json({ digest: d, awaiting: inbox.awaitingReplies(db(c), uid(c), d) });
+  });
+  /** "No reply needed": stop suggesting a follow-up for this message. */
+  r.post('/followups/:id/dismiss', (c) => {
+    inbox.dismissFollowUp(db(c), uid(c), c.req.param('id').slice(0, 300));
+    return c.json({ dismissed: true });
+  });
+
+  // ---------- Devices: pairing, sync, conflicts and handoffs ----------
+  const syncErr = async <T>(fn: () => Promise<T> | T): Promise<T> => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof sync.SyncError) throw new HttpError(e.status, e.message, 'sync');
+      throw e;
+    }
+  };
+  r.get('/sync', async (c) => c.json({
+    device: await sync.identity(c.var.services),
+    peers: sync.listPeers(db(c), uid(c)),
+    conflicts: sync.listConflicts(db(c), uid(c)),
+  }));
+  r.patch('/sync/device', async (c) => {
+    const i = z.object({ name: z.string().trim().min(1).max(60) }).parse(await body(c));
+    await sync.identity(c.var.services);
+    sync.renameDevice(db(c), i.name);
+    return c.json({ device: await sync.identity(c.var.services) });
+  });
+  /** On a PC: show a pairing code (the desktop app passes its local network addresses). */
+  r.post('/sync/pair/start', connectLimit, async (c) => {
+    const i = z.object({ addresses: z.array(z.string().max(100)).max(4).default([]) }).parse(await body(c));
+    return c.json(await sync.startPairing(c.var.services, uid(c), i.addresses));
+  });
+  /** On the phone: pair using the PC's QR link, or its code and address typed in. */
+  r.post('/sync/pair/join', connectLimit, async (c) => syncErr(async () => {
+    const i = z.object({ link: z.string().max(4000).optional(), code: z.string().max(40).optional(), address: z.string().max(200).optional(), offer: z.any().optional() }).parse(await body(c));
+    const fromLink = i.link ? sync.parsePairLink(i.link) : null;
+    const code = fromLink?.code ?? i.code;
+    if (!code) throw new sync.SyncError('Scan the QR code on the PC, or type its code and address.');
+    const address = (i.address || fromLink?.at?.[0] || i.offer?.at?.[0] || '').trim();
+    if (!/^https?:\/\/[\w.:[\]-]+$/.test(address)) throw new sync.SyncError('Add the PC’s address as shown on the PC, e.g. http://192.168.1.20:47900');
+    const offer = fromLink ?? i.offer ?? (await sync.fetchOffer(c.var.services, address));
+    return c.json(await sync.joinPairing(c.var.services, uid(c), offer, code, address));
+  }));
+  r.get('/sync/peers/:id/check', async (c) => syncErr(async () => c.json({ check: await sync.peerCheck(c.var.services, uid(c), c.req.param('id')) })));
+  r.post('/sync/peers/:id/confirm', async (c) => syncErr(() => {
+    sync.confirmPeer(db(c), uid(c), c.req.param('id'));
+    return c.json({ confirmed: true });
+  }));
+  r.delete('/sync/peers/:id', (c) => {
+    sync.forgetPeer(db(c), uid(c), c.req.param('id'));
+    return c.json({ forgotten: true });
+  });
+  /** On the phone: sync now with every paired PC that can be reached. */
+  r.post('/sync/now', async (c) => {
+    const out: any[] = [];
+    for (const p of sync.listPeers(db(c), uid(c)).filter((x) => x.role === 'listener' && x.confirmed)) {
+      try {
+        out.push({ device: p.device_id, name: p.name, ...(await sync.syncWith(c.var.services, uid(c), String(p.device_id))) });
+      } catch (e: any) {
+        out.push({ device: p.device_id, name: p.name, error: String(e?.message ?? e) });
+      }
+    }
+    return c.json({ results: out, conflicts: sync.listConflicts(db(c), uid(c)).length });
+  });
+  r.post('/sync/conflicts/:id', async (c) => syncErr(async () => {
+    const i = z.object({ keep: z.enum(['mine', 'theirs']) }).parse(await body(c));
+    sync.resolveConflict(c.var.services, uid(c), c.req.param('id'), i.keep);
+    return c.json({ resolved: true });
+  }));
+  // "Continue on my other device": a chat, to-do or application with a note and chosen files.
+  r.get('/handoffs', async (c) => {
+    const me = await sync.identity(c.var.services);
+    return c.json({
+      handoffs: db(c).all("SELECT * FROM handoffs WHERE user_id = ? AND status = 'open' ORDER BY created_at DESC LIMIT 20", uid(c))
+        .map((h) => ({ ...h, files: parseJson(h.files, []), from_here: h.from_device === me.device_id })),
+    });
+  });
+  r.post('/handoffs', async (c) => {
+    const i = z.object({ kind: z.enum(['chat', 'task', 'application']), ref_id: z.string().max(64), note: z.string().max(1000).default(''), files: z.array(z.string().max(64)).max(20).default([]) }).parse(await body(c));
+    const table = { chat: 'conversations', task: 'tasks', application: 'applications' }[i.kind];
+    const ref = db(c).getOwned(table, uid(c), i.ref_id);
+    if (!ref) throw notFound('Item');
+    for (const f of i.files) if (!db(c).getOwned('documents', uid(c), f)) throw notFound('File');
+    const me = await sync.identity(c.var.services);
+    db(c).run("UPDATE handoffs SET status = 'done', updated_at = ? WHERE user_id = ? AND kind = ? AND ref_id = ? AND status = 'open'", nowIso(), uid(c), i.kind, i.ref_id);
+    const h = db(c).insert('handoffs', { user_id: uid(c), kind: i.kind, ref_id: i.ref_id, title: String(ref.title ?? ref.name ?? 'Untitled').slice(0, 200), note: i.note, files: JSON.stringify(i.files), from_device: me.device_id });
+    return c.json({ ...h, files: i.files }, 201);
+  });
+  r.post('/handoffs/:id/done', (c) => {
+    const res = db(c).run("UPDATE handoffs SET status = 'done', updated_at = ? WHERE id = ? AND user_id = ?", nowIso(), c.req.param('id'), uid(c));
+    if (!Number(res.changes)) throw notFound('Handoff');
+    return c.json({ done: true });
+  });
+
+  // ---------- The user's own folders (read-only unless they allow changes; every change approved) ----------
+  const filesErr = async <T>(fn: () => Promise<T> | T): Promise<T> => {
+    try {
+      return await fn();
+    } catch (e: any) {
+      if (e instanceof files.FilesError || e?.name === 'LocalFsError') throw badRequest(e.message);
+      throw e;
+    }
+  };
+  r.get('/files', (c) => c.json({
+    available: !!c.var.services.localFs, platform: c.var.services.localFs?.platform ?? null,
+    folders: db(c).all('SELECT g.*, (SELECT COUNT(*) FROM local_files f WHERE f.grant_id = g.id) AS files FROM folder_grants g WHERE g.user_id = ? ORDER BY g.created_at', uid(c)).map((g) => ({ ...g, can_change: !!g.can_change, local_only: !!g.local_only })),
+  }));
+  /** Adds a folder the user picked in the system's folder picker (the app passes what the picker returned). */
+  r.post('/files/folders', async (c) => filesErr(async () => {
+    const i = z.object({ root: z.string().min(1).max(2000), label: z.string().max(200).default('') }).parse(await body(c));
+    if (!c.var.services.localFs) throw new files.FilesError('Folders on this device aren’t available here.');
+    const g = files.addGrant(db(c), uid(c), i.root, i.label);
+    const scan = await files.scanGrant(c.var.services, uid(c), String(g.id));
+    return c.json({ folder: g, scan }, 201);
+  }));
+  r.delete('/files/folders/:id', (c) => c.json({ removed: files.revokeGrant(db(c), uid(c), c.req.param('id')) }));
+  r.patch('/files/folders/:id', async (c) => {
+    const i = z.object({ can_change: z.boolean().optional(), local_only: z.boolean().optional() }).parse(await body(c));
+    if (i.can_change !== undefined) files.setCanChange(db(c), uid(c), c.req.param('id'), i.can_change);
+    if (i.local_only !== undefined) files.setLocalOnly(db(c), uid(c), c.req.param('id'), i.local_only);
+    return c.json(i);
+  });
+  r.post('/files/folders/:id/scan', async (c) => filesErr(async () => c.json(await files.scanGrant(c.var.services, uid(c), c.req.param('id')))));
+  r.get('/files/list', (c) => c.json({ files: files.listFiles(db(c), uid(c), { grant: c.req.query('folder'), q: c.req.query('q'), kind: c.req.query('kind') }) }));
+  r.get('/files/search', (c) => c.json({ results: files.searchFiles(db(c), uid(c), (c.req.query('q') ?? '').slice(0, 200)) }));
+  r.get('/files/duplicates', (c) => c.json({ groups: files.duplicates(db(c), uid(c)) }));
+  r.get('/files/suggestions', (c) => c.json({ suggestions: files.suggestions(db(c), uid(c)) }));
+  r.get('/files/history', (c) => c.json({ history: files.history(db(c), uid(c)) }));
+  r.get('/files/item/:id/text', (c) => c.json(files.fileText(db(c), uid(c), c.req.param('id'))));
+  /** Proposes changes: they're checked and queued for the user's approval (nothing happens yet). */
+  r.post('/files/changes', async (c) => filesErr(async () => {
+    const i = z.object({ ops: z.array(z.any()).min(1).max(200) }).parse(await body(c));
+    files.checkOps(db(c), uid(c), i.ops);
+    const res: any = await executeTool('change_local_files', { ops: i.ops }, makeContext(c.var.services, uid(c), null), 'user');
+    return c.json(res);
+  }));
+  r.post('/files/history/:id/undo', async (c) => filesErr(async () => c.json(await files.undoOp(c.var.services, uid(c), c.req.param('id')))));
+
+  // ---------- Encrypted backup and restore ----------
+  // Each call derives a key from the passphrase on purpose slowly, so these are limited too.
+  const backupLimit = rateLimit({ name: 'backup', windowMs: 60_000, max: 6, key: (c) => c.var.user.id });
+  const backupErr = async <T>(fn: () => Promise<T>): Promise<T> => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof backup.BackupError) throw badRequest(e.message);
+      throw e;
+    }
+  };
+  const dataDir = (c: any) => c.var.services.config.DATA_DIR as string;
+  /** The backup a request is about: an uploaded file (form field "file"), or one kept on this device ("name"). */
+  const backupInput = async (c: any) => {
+    const type = c.req.header('content-type') ?? '';
+    if (type.includes('multipart/form-data')) {
+      const form = await c.req.formData();
+      const file = form.get('file');
+      if (!(file instanceof Blob)) throw badRequest('Choose a backup file.');
+      if (file.size > 700 * 1024 * 1024) throw badRequest('That file is too large to be a Carino backup.');
+      return { file: new Uint8Array(await file.arrayBuffer()), passphrase: String(form.get('passphrase') ?? ''), mode: String(form.get('mode') ?? ''), confirm: form.get('confirm') === 'true' };
+    }
+    const i = z.object({ name: z.string().max(200), passphrase: z.string().max(200), mode: z.string().max(20).optional(), confirm: z.boolean().optional() }).parse(await body(c));
+    return { file: backup.readLocal(dataDir(c), uid(c), i.name), passphrase: i.passphrase, mode: i.mode ?? '', confirm: !!i.confirm };
+  };
+  r.get('/backup', (c) => c.json({
+    backups: backup.listLocal(dataDir(c), uid(c)),
+    tables: backup.backupTables(db(c)),
+    cloud: db(c).all("SELECT id, provider, label FROM app_accounts WHERE user_id = ? AND provider IN ('google', 'microsoft')", uid(c)),
+  }));
+  /** Makes an encrypted backup, proves it opens and restores, and keeps it on this device. */
+  r.post('/backup', backupLimit, async (c) => backupErr(async () => {
+    const i = z.object({ passphrase: z.string().max(200) }).parse(await body(c));
+    const pass = backup.checkPassphrase(i.passphrase);
+    const now = c.var.services.now();
+    const payload = backup.collect(db(c), uid(c), now);
+    const file = await backup.encryptBackup(payload, pass);
+    const check = await backup.decryptBackup(file, pass);
+    backup.testRestore(db(c), uid(c), dataDir(c), check);
+    const name = backup.backupName(now);
+    backup.saveLocal(dataDir(c), uid(c), name, file);
+    return c.json({ name, size: file.length, verified: true, records: Object.values(payload.manifest.tables).reduce((a, t) => a + t.count, 0), files: Object.keys(payload.manifest.files).length }, 201);
+  }));
+  r.get('/backup/files/:name', (c) => {
+    const file = (() => {
+      try {
+        return backup.readLocal(dataDir(c), uid(c), c.req.param('name'));
+      } catch (e: any) {
+        throw notFound('Backup');
+      }
+    })();
+    c.header('Content-Disposition', `attachment; filename="${c.req.param('name')}"`);
+    return c.body(file as any, 200, { 'content-type': 'application/octet-stream' });
+  });
+  r.delete('/backup/files/:name', (c) => {
+    backup.deleteLocal(dataDir(c), uid(c), c.req.param('name'));
+    return c.json({ deleted: true });
+  });
+  /** Opens a backup and says what restoring it would do. Changes nothing. */
+  r.post('/backup/inspect', backupLimit, async (c) => backupErr(async () => {
+    const i = await backupInput(c);
+    const p = await backup.decryptBackup(i.file, i.passphrase);
+    return c.json(backup.preview(db(c), uid(c), p));
+  }));
+  /** Restores a backup, after saving what's here now as an encrypted safety copy (to undo it). */
+  r.post('/backup/restore', backupLimit, async (c) => backupErr(async () => {
+    const i = await backupInput(c);
+    if (i.mode !== 'merge' && i.mode !== 'replace') throw badRequest('Choose how to restore: add what’s missing, or replace everything.');
+    if (!i.confirm) throw badRequest('Confirm the restore first.');
+    const p = await backup.decryptBackup(i.file, i.passphrase);
+    const now = c.var.services.now();
+    const safety = backup.backupName(now, 'before-restore');
+    backup.saveLocal(dataDir(c), uid(c), safety, await backup.encryptBackup(backup.collect(db(c), uid(c), now), backup.checkPassphrase(i.passphrase)));
+    const counts = backup.restore(db(c), uid(c), dataDir(c), p, i.mode);
+    return c.json({ restored: counts, undo: safety, note: 'Sign in to your apps again in My apps; sign-ins aren’t kept in backups.' });
+  }));
+  /** Opt-in: saves a copy of a backup to the user's Google Drive or OneDrive (it stays encrypted). */
+  r.post('/backup/cloud', backupLimit, async (c) => backupErr(async () => {
+    const i = z.object({ name: z.string().max(200), account_id: z.string().max(64) }).parse(await body(c));
+    const acct = db(c).getOwned('app_accounts', uid(c), i.account_id);
+    if (!acct || !['google', 'microsoft'].includes(String(acct.provider))) throw badRequest('Choose a Google or Microsoft account from My apps.');
+    const file = Buffer.from(backup.readLocal(dataDir(c), uid(c), i.name));
+    const res = acct.provider === 'google'
+      ? await (await import('../services/apps/google.ts')).driveUploadBytes(c.var.services, acct, i.name, 'application/octet-stream', file)
+      : await (await import('../services/apps/microsoft.ts')).upload(c.var.services, acct, i.name, 'application/octet-stream', file);
+    return c.json({ ...res, where: acct.provider === 'google' ? 'Google Drive' : 'OneDrive/Carino' });
+  }));
+
   // ---------- Data export ----------
   r.get('/export', (c) => {
     const u = uid(c);
     const d = db(c);
-    const tables = ['workspaces', 'projects', 'project_items', 'tasks', 'task_dependencies', 'reminders', 'place_reminders', 'expenses', 'budgets', 'notes', 'memories', 'conversations', 'routines', 'actions', 'activity', 'links'];
+    const tables = ['workspaces', 'projects', 'project_items', 'tasks', 'task_dependencies', 'reminders', 'place_reminders', 'expenses', 'budgets', 'money_books', 'income', 'bills', 'debts', 'debt_payments', 'savings_goals', 'savings_moves', 'applications', 'application_items', 'application_events', 'notes', 'memories', 'conversations', 'routines', 'actions', 'activity', 'links'];
     const data: Record<string, unknown> = { exported_at: new Date().toISOString(), format: 'carino-export-v1', user: c.var.user, settings: getSettings(d, u) };
     for (const t of tables) data[t] = d.all(`SELECT * FROM ${t} WHERE user_id = ?`, u);
     data.messages = d.all("SELECT id, conversation_id, role, content, created_at FROM messages WHERE user_id = ? AND role IN ('user','assistant')", u);

@@ -7,7 +7,7 @@ import { openExternal } from '../../mobile/native';
 
 interface SpeedResult { model: string; ok: boolean; firstMs?: number; totalMs?: number; error?: string }
 interface FreeModel { id: string; label: string; family?: string; vision?: boolean }
-interface Preset { id: string; label: string; free: string; baseUrl: string; model: string; models: FreeModel[]; vision: boolean; keyUrl: string; hidden?: boolean; ownAddress?: boolean; onDevice?: boolean; transcribe?: { model: string } }
+interface Preset { id: string; label: string; free: string; baseUrl: string; model: string; models: FreeModel[]; vision: boolean; keyUrl: string; hidden?: boolean; ownAddress?: boolean; onDevice?: boolean; paid?: boolean; api?: string; transcribe?: { model: string } }
 
 const OTHER = '__other__';
 
@@ -16,6 +16,12 @@ const OTHER = '__other__';
  * The key is saved on this phone and sent only to that service. Services and models are
  * listed best first; "Check my key" asks the service which models the key can really use.
  */
+const VAULT_TEXT: Record<string, string> = {
+  'android-keystore': 'Keys are encrypted and locked with your phone’s secure key store (Android Keystore).',
+  'windows-dpapi': 'Keys are encrypted and locked to your Windows account on this PC.',
+  browser: 'Keys are encrypted with a key this browser keeps and can’t reveal.',
+};
+
 export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; compact?: boolean }) {
   const toast = useToast();
   const { refresh } = useSession();
@@ -31,10 +37,13 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
   const [timing, setTiming] = useState(false);
   /** On-phone AI: whether the chosen model is downloaded. */
   const [localReady, setLocalReady] = useState(false);
+  /** How saved keys are protected on this device, and whether older ones couldn't be opened. */
+  const [vaultInfo, setVaultInfo] = useState<{ protection?: string; keysUnreadable?: boolean }>({});
 
   useEffect(() => {
     api<any>('/device/config').then((r) => {
       setPresets(r.presets);
+      setVaultInfo({ protection: r.protection, keysUnreadable: r.keysUnreadable });
       setForm({ ...r.config, provider: r.config.provider ?? r.presets[0].id });
     }).catch((e) => toast(e.message, 'error'));
   }, [toast]);
@@ -115,16 +124,20 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
 
   return (
     <div className="stack device-ai">
+      {vaultInfo.keysUnreadable && <div className="callout warning small"><Icon name="alert" size={16} />Your saved keys couldn’t be unlocked on this device (its secure key store was reset). Please enter them again.</div>}
       <div className="preset-grid" role="radiogroup" aria-label="AI service">
         {shown.map((x, i) => (
           <button key={x.id} type="button" role="radio" aria-checked={form.provider === x.id} className={`preset ${form.provider === x.id ? 'on' : ''}`}
             onClick={() => { set({ provider: x.id, model: '', baseUrl: x.ownAddress ? form.baseUrl : '' }); setLive(null); setTyping(false); }}>
-            <span className="preset-name">{x.label}{!x.hidden && <span className="badge success">{i === 0 ? 'Free · best' : 'Free'}</span>}</span>
+            <span className="preset-name">{x.label}{!x.hidden && (x.paid ? <span className="badge warn">Paid</span> : <span className="badge success">{i === 0 ? 'Free · best' : 'Free'}</span>)}</span>
             {!compact && <span className="tiny muted">{x.free}</span>}
           </button>
         ))}
       </div>
       {p.onDevice && <LocalModels value={current} onChange={(model) => set({ model })} onReady={setLocalReady} />}
+      {p.keyUrl && (
+        <p className="tiny muted"><Icon name="lock" size={12} /> {VAULT_TEXT[vaultInfo.protection ?? ''] ?? 'Keys are stored encrypted on this device.'} Only the last 4 characters are ever shown.</p>
+      )}
       {p.keyUrl && (
         <p className="small muted">
           Get a free key: <button type="button" className="linklike" onClick={() => openExternal(p.keyUrl)}>{p.keyUrl.replace('https://', '')}</button>. Sign in, create a key, copy it and paste it below.

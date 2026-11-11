@@ -18,6 +18,8 @@ const PRIMARY = [
 const STUFF = [
   { to: '/tasks', label: 'To-dos & reminders', icon: 'tasks' },
   { to: '/money', label: 'Money', icon: 'wallet' },
+  { to: '/applications', label: 'Applications', icon: 'briefcase' },
+  { to: '/files', label: 'Files', icon: 'folder' },
   { to: '/routines', label: 'Routines', icon: 'clock' },
   { to: '/memory', label: 'Memory', icon: 'brain' },
 ];
@@ -104,6 +106,7 @@ export function Shell({ title, actions, children, bare }: { title?: ReactNode; a
         </Link>
         <Link to="/messaging" className={`nav-item ${isActive('/messaging', pathname) ? 'active' : ''}`}><Icon name="send" /> Messaging</Link>
         <Link to="/apps" className={`nav-item ${isActive('/apps', pathname) || isActive('/connectors', pathname) ? 'active' : ''}`}><Icon name="link" /> My apps</Link>
+        <Link to="/connections" className={`nav-item ${isActive('/connections', pathname) ? 'active' : ''}`}><Icon name="sparkle" /> AI & connections</Link>
         <Link to="/settings" className={`nav-item ${isActive('/settings', pathname) ? 'active' : ''}`}><Icon name="settings" /> Settings</Link>
         <div className="sidebar-footer">
           <div className="row" style={{ padding: '6px 8px' }}>

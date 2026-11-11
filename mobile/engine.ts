@@ -5,14 +5,18 @@ import './globals.ts';
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 import sqliteWasmUrl from '@sqlite.org/sqlite-wasm/sqlite3.wasm?url';
 import { configureSqlite, type DatabaseSync } from './shims/sqlite.ts';
-import { flushFiles, loadFiles, preloadFiles, seedFile } from './shims/fs.ts';
+import { existsSync, flushFiles, loadFiles, preloadFiles, readFileSync, rmSync, seedFile } from './shims/fs.ts';
+import { Vault, openConfig, sealConfig, type VaultPlatform } from './vault.ts';
 import { idbDeleteAll, idbGet, idbWrite } from './idb.ts';
 import { makeNetFetch, notify, setAlarms, setPlaceAlerts, setWidgetData, takeReminderEvents, isNative, keepListening } from './native.ts';
 import { getSettings } from '../server/services/settings.ts';
 import { addDays, localDate, safeTimeZone, startOfLocalDay } from '../server/services/time.ts';
 import { firePlaceReminder } from '../server/services/tasks.ts';
 import { notify as notifyInApp } from '../server/services/activity.ts';
-import { configToEnv, maskConfig, PRESETS, ON_DEVICE_BASE_URL, type DeviceConfig } from './presets.ts';
+import { configToEnv, connectionSpecs, maskConfig, PRESETS, ON_DEVICE_BASE_URL, type DeviceConfig, type ExtraConnection } from './presets.ts';
+import { discover, type Probe } from './discover.ts';
+import { refreshModels } from '../server/ai/catalog.ts';
+import { refreshAll } from '../server/services/connections.ts';
 import { speedTest } from './speedtest.ts';
 import { loadConfig } from '../server/config.ts';
 import { Db } from '../server/db/index.ts';
@@ -38,6 +42,50 @@ let services!: Services;
 let app!: ReturnType<typeof createApp>;
 let device: DeviceConfig = { provider: null };
 let token: string | undefined;
+let vault!: Vault;
+/** Saved keys from before couldn't be opened on this device (the user is asked to enter them again). */
+let keysUnreadable = false;
+
+/** The system's key store: Android Keystore, Windows DPAPI, or a browser-held key. */
+function vaultPlatform(): VaultPlatform {
+  const nb = (globalThis as any).CarinoNative;
+  const tauri = (globalThis as any).__TAURI__;
+  const native = (out: string) => {
+    const r = JSON.parse(out);
+    if (!r.ok) throw new Error(r.error);
+    return r.value as string;
+  };
+  if (nb?.vaultSeal) return { name: 'android-keystore', seal: async (x) => native(nb.vaultSeal(x)), open: async (x) => native(nb.vaultOpen(x)) };
+  if (tauri?.core?.invoke) return { name: 'windows-dpapi', seal: (plain) => tauri.core.invoke('vault_seal', { plain }), open: (sealed) => tauri.core.invoke('vault_open', { sealed }) };
+  return { name: 'browser' };
+}
+
+/** Saves the configuration with its credentials sealed. */
+async function saveDevice(c: DeviceConfig) {
+  await idbWrite([{ store: 'kv', key: 'device', value: await sealConfig(vault, c as any) }]);
+}
+
+/**
+ * The key that protects account sign-ins (server/services/secrets.ts) lives only in memory;
+ * what is stored is that key sealed by the vault. An older plain copy is moved over and deleted.
+ */
+async function protectSecretKey() {
+  const path = `${DATA_DIR}/secret.key`;
+  const sealed = await idbGet<string>('kv', 'secretKey');
+  let plain = sealed ? await vault.open(sealed) : null;
+  let changed = !plain;
+  if (existsSync(path)) {
+    if (!plain) plain = String(readFileSync(path, 'utf8')).trim() || null;
+    rmSync(path);
+  }
+  if (!plain) {
+    const raw = crypto.getRandomValues(new Uint8Array(32));
+    plain = btoa(String.fromCharCode(...raw));
+    changed = true;
+  }
+  if (changed) await idbWrite([{ store: 'kv', key: 'secretKey', value: await vault.seal(plain) }]);
+  seedFile(path, plain);
+}
 
 function envFor(c: DeviceConfig) {
   return {
@@ -60,7 +108,7 @@ function applyDevice(c: DeviceConfig) {
   device = c;
   const config = loadConfig(envFor(c));
   services.config = config;
-  services.providers = createRegistry(config, aiFetch);
+  services.providers = createRegistry(config, aiFetch, connectionSpecs(c));
   services.search = createSearchService({ searxngUrl: config.SEARXNG_URL, braveKey: config.BRAVE_SEARCH_API_KEY });
 }
 
@@ -146,6 +194,22 @@ function syncPlaces() {
 }
 
 /** Applies what happened on Android while the app was closed: Snooze / Done, places arrived at. */
+let syncing = false;
+/** Syncs with each paired PC that can be reached; quietly (problems show in Settings → Devices). */
+async function syncDevices() {
+  if (syncing) return;
+  syncing = true;
+  try {
+    const { syncWith } = await import('../server/services/sync.ts');
+    for (const p of services.db.all("SELECT device_id, user_id FROM sync_peers WHERE confirmed = 1 AND role = 'listener'")) {
+      await syncWith(services, String(p.user_id), String(p.device_id)).catch(() => undefined);
+    }
+    scheduleSave();
+  } finally {
+    syncing = false;
+  }
+}
+
 function applyReminderEvents() {
   if (!isNative || !services) return;
   const events = takeReminderEvents();
@@ -212,7 +276,7 @@ const json = (data: unknown, status = 200) => new Response(JSON.stringify(data),
 
 /** Settings only the phone has: which AI service to use, and its key. */
 async function deviceRoute(req: Request, path: string): Promise<Response> {
-  if (path === '/api/device/config' && req.method === 'GET') return json({ config: maskConfig(device), presets: PRESETS, native: isNative });
+  if (path === '/api/device/config' && req.method === 'GET') return json({ config: maskConfig(device), presets: PRESETS, native: isNative, protection: vault.protection, keysUnreadable });
   if (path === '/api/device/local') {
     // The AI that runs on the phone: which models are downloaded, and downloading or removing one.
     const od = await onDevice();
@@ -281,8 +345,15 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
       searxngUrl: body.searxngUrl?.trim() || undefined,
       braveKey: (keep('braveKey') as string | undefined)?.trim() || undefined,
       githubToken: (keep('githubToken') as string | undefined)?.trim() || undefined,
+      connections: device.connections,
     };
-    await idbWrite([{ store: 'kv', key: 'device', value: next }]);
+    // A different main service: its old model list and test results no longer apply.
+    if (next.provider !== device.provider || next.baseUrl !== device.baseUrl) {
+      services.db.run("DELETE FROM ai_models WHERE conn_id = 'openai_compat'");
+      services.db.run("DELETE FROM connection_status WHERE kind = 'ai' AND ref = 'openai_compat'");
+    }
+    await saveDevice(next);
+    keysUnreadable = false;
     applyDevice(next);
     return json({ config: maskConfig(next) });
   }
@@ -296,6 +367,53 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
     syncListening();
     return json({ on: listenWanted, native: isNative, active: listenWanted && hasChannels() });
   }
+  // --- More AI services, and AI found on the user's own devices ---
+  if (path === '/api/device/connections' && req.method === 'GET') {
+    return json({ connections: (device.connections ?? []).map((x) => ({ ...x, apiKey: x.apiKey ? `••••${x.apiKey.slice(-4)}` : '' })) });
+  }
+  if (path === '/api/device/connections' && req.method === 'POST') {
+    const body = (await req.json().catch(() => ({}))) as Partial<ExtraConnection>;
+    const p = PRESETS.find((x) => x.id === body.preset);
+    if (!p || p.id === 'anthropic') return json({ error: 'Choose a service to add.' }, 400);
+    if (p.keyUrl && !p.ownAddress && !String(body.apiKey ?? '').trim()) return json({ error: `Paste your ${p.label} key.` }, 400);
+    if (p.ownAddress && !/^https?:\/\/[^\s]+$/.test(String(body.baseUrl ?? ''))) return json({ error: 'Enter the server’s address, like http://localhost:11434/v1.' }, 400);
+    if ((device.connections ?? []).length >= 12) return json({ error: 'You can add up to 12 services.' }, 400);
+    const conn: ExtraConnection = {
+      id: `c_${crypto.getRandomValues(new Uint32Array(2)).join('').slice(0, 10)}`, preset: p.id,
+      label: String(body.label ?? '').trim().slice(0, 60) || undefined,
+      baseUrl: p.ownAddress ? String(body.baseUrl).trim().replace(/\/$/, '') : undefined,
+      apiKey: String(body.apiKey ?? '').trim() || undefined,
+    };
+    const next = { ...device, connections: [...(device.connections ?? []), conn] };
+    applyDevice(next);
+    // Check it works (and read its models) before keeping it; a rejected key isn't saved.
+    const check = await refreshModels(services, conn.id);
+    if (!check.ok && /rejected/i.test(check.error ?? '')) {
+      applyDevice(device);
+      services.db.run('DELETE FROM ai_models WHERE conn_id = ?', conn.id);
+      services.db.run("DELETE FROM connection_status WHERE kind = 'ai' AND ref = ?", conn.id);
+      return json({ error: `${p.label} rejected that key. Check it and try again.` }, 400);
+    }
+    await saveDevice(next);
+    scheduleSave();
+    return json({ connection: { ...conn, apiKey: conn.apiKey ? `••••${conn.apiKey.slice(-4)}` : '' }, check }, 201);
+  }
+  const connDel = /^\/api\/device\/connections\/([\w-]+)$/.exec(path);
+  if (connDel && req.method === 'DELETE') {
+    const id = connDel[1];
+    if (!(device.connections ?? []).some((x) => x.id === id)) return json({ error: 'Not found', code: 'not_found' }, 404);
+    // Removing a service deletes its saved key from this device.
+    const next = { ...device, connections: (device.connections ?? []).filter((x) => x.id !== id) };
+    await saveDevice(next);
+    applyDevice(next);
+    services.db.run('DELETE FROM ai_models WHERE conn_id = ?', id);
+    services.db.run("DELETE FROM connection_status WHERE kind = 'ai' AND ref = ?", id);
+    scheduleSave();
+    return json({ removed: true });
+  }
+  if (path === '/api/device/discover') {
+    return json({ found: await discoverHere() });
+  }
   if (path === '/api/device/reset' && req.method === 'POST') {
     // Erase everything; the app reloads and starts fresh.
     erased = true;
@@ -305,6 +423,34 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
     return json({ erased: true });
   }
   return json({ error: 'Not found', code: 'not_found' }, 404);
+}
+
+/** AI on this device, the paired PC, and the on-phone models. */
+async function discoverHere() {
+  const tauri = (globalThis as any).__TAURI__;
+  const nb = (globalThis as any).CarinoNative;
+  const timeout = (ms: number) => AbortSignal.timeout(ms);
+  const viaFetch: Probe = async (host, port, p) => {
+    const res = await fetch(`http://${host}:${port}${p}`, { signal: timeout(2500) }).catch(() => null);
+    return res?.ok ? res.json().catch(() => null) : null;
+  };
+  // On Windows the window can't read other local ports itself (CORS): a narrow command reads the listing.
+  const probe: Probe = tauri?.core?.invoke
+    ? async (host, port, p) => {
+      if (host !== '127.0.0.1') return viaFetch(host, port, p);
+      const body = await tauri.core.invoke('probe_local_ai', { port, path: p }).catch(() => null);
+      return body ? JSON.parse(body) : null;
+    }
+    : viaFetch;
+  const pairedHosts = [...new Set(services.db.all("SELECT address FROM sync_peers WHERE confirmed = 1 AND address IS NOT NULL AND address != ''")
+    .map((r) => { try { return new URL(String(r.address).includes('://') ? r.address : `http://${r.address}`).hostname; } catch { return ''; } })
+    .filter(Boolean))];
+  const phoneModels = nb ? (await (await onDevice()).localStatus()).models.filter((m) => m.downloaded).map((m) => m.id) : [];
+  return discover({
+    probe, pairedHosts, thisDevice: !nb, phoneModels,
+    // The app's own requests (CORS on Windows and in a browser; Android's requests aren't limited).
+    appCanReach: nb ? undefined : async (base) => !!(await fetch(`${base}/models`, { signal: timeout(2500) }).catch(() => null))?.ok,
+  });
 }
 
 /** Files that are only loaded when needed (large uploads and exports). */
@@ -353,13 +499,24 @@ async function boot() {
   configureSqlite(sqlite3, { initial: await idbGet<Uint8Array>('db', 'main'), onWrite: scheduleSave });
   lap('load');
 
-  device = (await idbGet<DeviceConfig>('kv', 'device')) ?? { provider: null };
+  vault = await Vault.load({ get: (k) => idbGet('kv', k), set: (k, v) => idbWrite([{ store: 'kv', key: k, value: v }]) }, vaultPlatform());
+  await protectSecretKey();
+  const stored = await idbGet<Record<string, any>>('kv', 'device');
+  if (stored) {
+    const opened = await openConfig<DeviceConfig>(vault, stored);
+    device = opened.config;
+    keysUnreadable = opened.unreadable || vault.lost;
+    // Keys saved by an older version in plain form: seal them now.
+    if (opened.legacy) await saveDevice(device);
+  } else device = { provider: null };
+  lap('vault');
   const config = loadConfig(envFor(device));
   const db = new Db(`${DATA_DIR}/carino.db`, MIGRATIONS_DIR);
   lap('open');
   services = {
     db, config,
-    providers: createRegistry(config, aiFetch),
+    providers: createRegistry(config, aiFetch, connectionSpecs(device)),
+    online: () => navigator.onLine,
     search: createSearchService({ searxngUrl: config.SEARXNG_URL, braveKey: config.BRAVE_SEARCH_API_KEY }),
     push: phonePush,
     loadFiles: preloadFiles,
@@ -381,6 +538,13 @@ async function boot() {
   lap('owner');
 
   startScheduler(services);
+  // Keep authorised connections fresh: shortly after opening, then once a day while open.
+  const refreshConnections = () => {
+    const owner = services.db.get('SELECT id FROM users ORDER BY created_at LIMIT 1');
+    if (owner && navigator.onLine) void refreshAll(services, owner.id).then(scheduleSave).catch(() => undefined);
+  };
+  setTimeout(refreshConnections, 5000);
+  setInterval(refreshConnections, 24 * 3600_000);
   startTelegram(services);
   listenWanted = (await idbGet<{ on?: boolean }>('kv', 'listen'))?.on !== false;
   syncListening();
@@ -393,6 +557,53 @@ async function boot() {
   window.addEventListener('carino-tick', pollWhatsApp);
   // Channels are added and removed in Messaging; keep the notification in step.
   setInterval(syncListening, 30_000);
+  // Carino for Windows (desktop/app): answer a paired phone's sync requests, passed in by the window's
+  // local-network listener, and tell the Devices screen this PC's addresses.
+  const tauri = (globalThis as any).__TAURI__;
+  if (tauri?.event?.listen && tauri?.core?.invoke) {
+    const { handleSyncRequest, identity, renameDevice } = await import('../server/services/sync.ts');
+    const me = await identity(services);
+    if (me.name === 'This device') renameDevice(services.db, 'PC');
+    (globalThis as any).CarinoDesktop = {
+      isDesktop: true,
+      lanAddresses: () => tauri.core.invoke('lan_addresses'),
+      pickFolder: () => tauri.core.invoke('pick_folder'),
+      forgetFolder: (root: string) => tauri.core.invoke('forget_folder', { root }),
+    };
+    services.localFs = (await import('./localfs-native.ts')).tauriLocalFs(tauri.core.invoke);
+    services.localApps = {
+      list: () => tauri.core.invoke('list_apps'),
+      openApp: (id, root, rel) => tauri.core.invoke('open_app', { id, root, rel }),
+      openFile: (root, rel) => tauri.core.invoke('open_file', { root, rel }),
+    };
+    Object.assign((globalThis as any).CarinoDesktop, {
+      listApps: () => tauri.core.invoke('list_apps'),
+      pickApp: () => tauri.core.invoke('pick_app'),
+      forgetApp: (id: string) => tauri.core.invoke('forget_app', { id }),
+    });
+    await tauri.event.listen('carino-sync-request', async (e: { payload: { id: number; body: string } }) => {
+      const out = await handleSyncRequest(services, e.payload.body);
+      await tauri.core.invoke('sync_reply', { id: e.payload.id, body: out });
+      scheduleSave();
+    });
+  }
+  // Android: folders picked in the system's folder picker.
+  const nb = (globalThis as any).CarinoNative;
+  if (nb?.folderList) {
+    services.localFs = (await import('./localfs-native.ts')).androidLocalFs(nb);
+    services.localApps = {
+      list: async () => [],
+      openApp: async () => { throw new Error('Opening apps is only on Carino for Windows.'); },
+      openFile: async (root, rel) => {
+        const r = JSON.parse(nb.folderOpen(root, rel));
+        if (!r.ok) throw new Error(r.error);
+      },
+    };
+  }
+  // Paired PC on the same Wi-Fi: keep in step every minute while the app is open, and on opening it.
+  syncDevices();
+  setInterval(() => document.visibilityState === 'visible' && syncDevices(), 60_000);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && syncDevices());
 
   const toBackground = () => void flush();
   document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && toBackground());

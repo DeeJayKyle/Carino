@@ -29,7 +29,26 @@ export const settingsSchema = z.object({
     localOnly: z.boolean().default(false),
     /** Choose between a local and a cloud model per message (see ProviderRegistry.route). */
     autoRoute: z.boolean().default(false),
-  }).default({ effort: 'medium', localOnly: false, autoRoute: false }),
+    /** Pick the model for each message among the ones you've allowed (capability, privacy, speed, budget). */
+    autoSelect: z.boolean().default(true),
+    prefer: z.enum(['privacy', 'balanced', 'speed']).default('balanced'),
+    /** A chosen model per job ("connection::model"); empty = pick automatically. */
+    roles: z.object({
+      everyday: z.string().max(240).optional(),
+      complex: z.string().max(240).optional(),
+      vision: z.string().max(240).optional(),
+      offline: z.string().max(240).optional(),
+    }).default({}),
+    /** Models never to use ("connection::model"). */
+    disabledModels: z.array(z.string().max(240)).max(500).default([]),
+    /** Connections whose paid models may be used. Your chosen main model counts as approved. */
+    approvedPaid: z.array(z.string().max(80)).max(50).default([]),
+    /** Spending caps in USD; unset = no cap. Reaching one stops paid models (free and local ones carry on). */
+    spend: z.object({
+      dailyUsd: z.number().min(0).max(100_000).nullable().optional(),
+      monthlyUsd: z.number().min(0).max(1_000_000).nullable().optional(),
+    }).default({}),
+  }).default({ effort: 'medium', localOnly: false, autoRoute: false, autoSelect: true, prefer: 'balanced', roles: {}, disabledModels: [], approvedPaid: [], spend: {} }),
   memory: z.object({
     enabled: z.boolean().default(true),
     /** explicit: only when the user asks; ask: every assistant-initiated memory needs approval; ask_sensitive: approval for sensitive or inferred only. */
@@ -60,7 +79,9 @@ export const settingsSchema = z.object({
     language: z.string().max(20).default('en-US'),
     speakReplies: z.boolean().default(false),
     voiceName: z.string().max(120).default(''),
-  }).default({ enabled: true, language: 'en-US', speakReplies: false, voiceName: '' }),
+    /** Read the day's brief aloud the first time Carino is opened each day (off unless chosen). */
+    speakBrief: z.boolean().default(false),
+  }).default({ enabled: true, language: 'en-US', speakReplies: false, voiceName: '', speakBrief: false }),
   money: z.object({
     /** ISO 4217 code; empty = from the region setting (services/money.ts → currencyFor). */
     currency: z.string().regex(/^([A-Z]{3})?$/).default(''),

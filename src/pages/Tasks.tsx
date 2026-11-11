@@ -5,7 +5,7 @@ import { TaskItem } from '../components/TaskItem';
 import { Empty, ErrorBox, Loading, Modal, StaleNote, Switch, useConfirm, useToast } from '../components/ui';
 import { useData, useDebounced } from '../lib/hooks';
 import { del, post, get, isOffline } from '../lib/api';
-import { isQueued, writeOrQueue } from '../lib/sync';
+import { isQueued, isConflict, writeOrQueue } from '../lib/sync';
 import { navigate, useLocation } from '../lib/router';
 import { fmtDateTime, fromLocalInput, localDay, toLocalInput, getPrefs } from '../lib/format';
 import { askPlacesPermission, placesPermission } from '../../mobile/native';
@@ -225,7 +225,8 @@ export function TaskEditor({ task, onClose, onSaved }: { task: any; onClose: () 
         recurrence: f.recurrence ? { freq: f.recurrence, interval: Number(f.interval) || 1 } : null,
         ...(remindAt ? { remind_at: fromLocalInput(remindAt) } : {}),
       }, { label: `Edit to “${f.title}”`, entity: `tasks:${task.id}`, base: task.updated_at });
-      toast(isQueued(saved) ? 'Saved on this device — it will sync when you’re back online' : 'Task saved');
+      toast(isQueued(saved) ? 'Saved on this device — it will sync when you’re back online'
+        : isConflict(saved) ? 'This task was changed elsewhere since you opened it. Review it under “changes to check”.' : 'Task saved', isConflict(saved) ? 'error' : 'info');
       onSaved();
       onClose();
     } catch (e: any) {

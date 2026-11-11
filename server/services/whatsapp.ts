@@ -2,7 +2,8 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Services } from '../context.ts';
 import { badRequest } from '../context.ts';
 import type { Row } from '../db/index.ts';
-import { parseJson } from '../db/index.ts';
+import { parseJson, nowIso } from '../db/index.ts';
+import { notify } from './activity.ts';
 import { handleIncoming, channelSecret, saveChannel, type Incoming, type Outgoing } from './channels.ts';
 import { transcribe, TranscribeError } from './transcribe.ts';
 import { storeDocument, MAX_IMAGE_BYTES } from './documents.ts';
@@ -117,10 +118,28 @@ async function media(services: Services, token: string, id: string, maxBytes: nu
   return { buf: Buffer.from(await res.arrayBuffer()), mime: meta.mime_type ?? 'application/octet-stream' };
 }
 
+const MAX_ATTEMPTS = 3;
+
+function alreadyHandled(services: Services, channelId: string, msgId: string) {
+  return !!services.db.get("SELECT 1 FROM channel_inbound WHERE channel_id = ? AND message_id = ? AND status IN ('done', 'gave_up')", channelId, msgId);
+}
+
+/** Records the outcome for a message; returns how many times it has failed. */
+function markInbound(services: Services, channelId: string, msgId: string, status: 'done' | 'failed' | 'gave_up', error?: string): number {
+  services.db.run(
+    `INSERT INTO channel_inbound (channel_id, message_id, status, attempts, last_error, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(channel_id, message_id) DO UPDATE SET status = excluded.status, attempts = attempts + excluded.attempts, last_error = excluded.last_error, updated_at = excluded.updated_at,
+       reply = CASE WHEN excluded.status = 'failed' THEN reply ELSE NULL END`,
+    channelId, msgId, status, status === 'failed' ? 1 : 0, error ?? null, nowIso(),
+  );
+  return Number(services.db.get('SELECT attempts FROM channel_inbound WHERE channel_id = ? AND message_id = ?', channelId, msgId)?.attempts ?? 0);
+}
+
 /** Webhook work runs after Meta gets its quick 200; tests await this to see the result. */
 const inflight = new Set<Promise<unknown>>();
 export function queueWhatsApp(services: Services, ch: Row, payload: any) {
-  const p = processWhatsAppPayload(services, ch, payload).finally(() => inflight.delete(p));
+  // On a server, Meta itself redelivers a failed webhook later; the failure is already recorded.
+  const p = processWhatsAppPayload(services, ch, payload).catch(() => undefined).finally(() => inflight.delete(p));
   inflight.add(p);
 }
 export const whatsappIdle = () => Promise.all([...inflight]);
@@ -138,17 +157,34 @@ export async function processWhatsAppPayload(services: Services, ch: Row, payloa
       for (const m of value?.messages ?? []) {
         const from = String(m.from ?? '');
         if (!from) continue;
+        const msgId = typeof m.id === 'string' && m.id ? m.id.slice(0, 200) : null;
+        if (msgId && alreadyHandled(services, ch.id, msgId)) continue;
         try {
-          await handleOne(services, ch, secret, cfg, m, from, names.get(from) ?? from);
+          // Already answered but the answer didn't go out: send it again instead of redoing the turn
+          // (which could repeat what the assistant did, e.g. add the same to-do twice).
+          const pending = msgId ? parseJson<Outgoing | null>(services.db.get('SELECT reply FROM channel_inbound WHERE channel_id = ? AND message_id = ?', ch.id, msgId)?.reply, null) : null;
+          if (pending) await sendWhatsApp(services, ch, from, pending);
+          else await handleOne(services, ch, secret, cfg, m, from, names.get(from) ?? from, msgId);
+          if (msgId) markInbound(services, ch.id, msgId, 'done');
         } catch (err: any) {
-          console.error('[whatsapp]', err?.message ?? err);
+          const msg = String(err?.message ?? err).slice(0, 300);
+          console.error('[whatsapp]', msg);
+          if (!msgId) continue;
+          // Stop here so the delivery isn't acknowledged: it's tried again on the next collection
+          // (messages before it are already marked done). After a few failures, give up and say so.
+          if (markInbound(services, ch.id, msgId, 'failed', msg) >= MAX_ATTEMPTS) {
+            markInbound(services, ch.id, msgId, 'gave_up', msg);
+            notify(services.db, ch.user_id, { kind: 'action_failed', title: 'A WhatsApp message wasn’t answered', body: `From ${names.get(from) || from}: ${msg}`, link: '/messaging' });
+            continue;
+          }
+          throw err;
         }
       }
     }
   }
 }
 
-async function handleOne(services: Services, ch: Row, secret: Secret, cfg: WaConfig, m: any, from: string, name: string) {
+async function handleOne(services: Services, ch: Row, secret: Secret, cfg: WaConfig, m: any, from: string, name: string, msgId: string | null = null) {
   const { db } = services;
   const fetchMedia = async (id: string, max: number) => {
     if (cfg.mode !== 'shared') return media(services, secret.access_token, id, max);
@@ -197,5 +233,17 @@ async function handleOne(services: Services, ch: Row, secret: Secret, cfg: WaCon
     return;
   }
   const out = await handleIncoming(services, ch, incoming);
-  if (out) await sendWhatsApp(services, ch, from, out);
+  if (!out) return;
+  try {
+    await sendWhatsApp(services, ch, from, out);
+  } catch (err) {
+    if (msgId) {
+      services.db.run(
+        `INSERT INTO channel_inbound (channel_id, message_id, status, reply, updated_at) VALUES (?, ?, 'failed', ?, ?)
+         ON CONFLICT(channel_id, message_id) DO UPDATE SET reply = excluded.reply`,
+        ch.id, msgId, JSON.stringify(out), nowIso(),
+      );
+    }
+    throw err;
+  }
 }

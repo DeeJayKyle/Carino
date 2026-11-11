@@ -4,6 +4,7 @@ import { HttpError, badRequest } from '../context.ts';
 import type { Db, Row } from '../db/index.ts';
 import { parseJson } from '../db/index.ts';
 import { notify } from './activity.ts';
+import { ACCESS_IDS, allowedToolsFor, describeAccess } from './routine-access.ts';
 import { getSettings } from './settings.ts';
 
 export const MAX_CUSTOM_ROUTINES = 25;
@@ -136,6 +137,9 @@ export const routineInput = z.object({
   days: days.default(EVERY_DAY),
   catalog_id: z.string().max(60).optional(),
   enabled: z.boolean().default(true),
+  steps: z.array(z.string().trim().min(1).max(400)).max(12).optional(),
+  /** Access groups this routine may use; omitted or null means everything (as before). */
+  access: z.array(z.enum(ACCESS_IDS as [string, ...string[]])).max(20).nullable().optional(),
 });
 
 export const routineUpdate = z.object({
@@ -144,6 +148,8 @@ export const routineUpdate = z.object({
   time_local: time.optional(),
   days: days.optional(),
   enabled: z.boolean().optional(),
+  steps: z.array(z.string().trim().min(1).max(400)).max(12).optional(),
+  access: z.array(z.enum(ACCESS_IDS as [string, ...string[]])).max(20).nullable().optional(),
 });
 
 export function presentRoutine(r: Row): Row {
@@ -152,6 +158,9 @@ export function presentRoutine(r: Row): Row {
     enabled: !!r.enabled,
     days: parseJson(r.days, []),
     approved_actions: parseJson(r.approved_actions, []),
+    steps: parseJson(r.steps, []),
+    access: parseJson(r.access, null),
+    access_summary: describeAccess(parseJson(r.access, null)),
     custom: r.kind === 'custom',
     title: r.title || (r.kind === 'evening_review' ? 'Evening review' : r.kind === 'morning_briefing' ? 'Morning briefing' : r.kind),
   };
@@ -169,6 +178,8 @@ export function createRoutine(db: Db, userId: string, raw: unknown) {
   return presentRoutine(db.insert('routines', {
     user_id: userId, kind: 'custom', title: i.title, prompt: i.prompt, time_local: i.time_local,
     days: JSON.stringify(i.days), catalog_id: i.catalog_id ?? null, enabled: i.enabled ? 1 : 0,
+    steps: i.steps?.length ? JSON.stringify(i.steps) : null,
+    access: i.access ? JSON.stringify([...new Set(i.access)]) : null,
   }));
 }
 
@@ -178,10 +189,13 @@ export function updateRoutine(db: Db, userId: string, id: string, raw: unknown) 
   if (!existing) throw new HttpError(404, 'Routine not found', 'not_found');
   if ((i.title !== undefined || i.prompt !== undefined) && existing.kind !== 'custom') throw badRequest('Built-in routines can only change their time, days and on/off switch.');
   if (i.prompt && /\[[^\]]+\]/.test(i.prompt)) throw badRequest('Fill in the parts in [square brackets] first.');
+  if ((i.steps !== undefined || i.access !== undefined) && existing.kind !== 'custom') throw badRequest('Built-in routines can only change their time, days and on/off switch.');
   const row = db.updateOwned('routines', userId, id, {
     title: i.title, prompt: i.prompt, time_local: i.time_local,
     days: i.days ? JSON.stringify(i.days) : undefined,
     enabled: i.enabled === undefined ? undefined : i.enabled ? 1 : 0,
+    steps: i.steps === undefined ? undefined : i.steps.length ? JSON.stringify(i.steps) : null,
+    access: i.access === undefined ? undefined : i.access === null ? null : JSON.stringify([...new Set(i.access)]),
   }, false);
   return presentRoutine(row!);
 }
@@ -192,6 +206,10 @@ export function deleteRoutine(db: Db, userId: string, id: string) {
   if (r.kind !== 'custom') throw badRequest('Built-in routines can be switched off but not deleted.');
   db.deleteOwned('routines', userId, id);
   return { deleted: true, title: r.title };
+}
+
+function stepLines(steps: string[]) {
+  return steps.length ? ['', 'Steps, in order:', ...steps.map((st, n) => `${n + 1}. ${st}`)] : [];
 }
 
 /** Plain-text preview of a reply for a notification: Markdown markers stripped, first lines only. */
@@ -210,6 +228,7 @@ export function previewText(markdown: string, max = 240) {
  * Runs a custom routine as a normal agent turn in the routine's own conversation, so its
  * history (earlier lessons, stories, prices) carries forward and every step is visible.
  * Tool permissions are the user's usual ones: anything needing approval is queued, not done.
+ * A routine with an access list can use only those tools (the agent enforces it).
  */
 export async function runCustomRoutine(services: Services, routine: Row) {
   const { db } = services;
@@ -229,8 +248,10 @@ export async function runCustomRoutine(services: Services, routine: Row) {
     'Anything that needs approval will wait for them — say so if that happens.]',
     '',
     routine.prompt,
+    ...stepLines(parseJson(routine.steps, [])),
   ].join('\n');
-  const { message } = await runTurn(services, user as any, conversationId!, instruction, { emit: () => {} });
+  const allowedTools = allowedToolsFor(parseJson(routine.access, null));
+  const { message } = await runTurn(services, user as any, conversationId!, instruction, { emit: () => {}, allowedTools });
   const reply = String(message?.content ?? '').trim() || 'The routine ran but produced no reply.';
   const now = services.now().toISOString();
   db.run("UPDATE routines SET last_run_at = ?, last_status = 'ok', last_error = NULL, last_result = ? WHERE id = ?", now, reply.slice(0, 4000), routine.id);

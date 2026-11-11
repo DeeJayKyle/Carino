@@ -19,9 +19,11 @@ export default function Memory() {
   const { query } = useLocation();
   const [status, setStatus] = useState(query.get('status') ?? 'active');
   const [category, setCategory] = useState('');
+  const [context, setContext] = useState('');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const [q, setQ] = useState('');
   const dq = useDebounced(q);
-  const params = new URLSearchParams({ status, ...(category ? { category } : {}), ...(dq ? { q: dq } : {}) });
+  const params = new URLSearchParams({ status, ...(category ? { category } : {}), ...(context ? { context } : {}), ...(dq ? { q: dq } : {}) });
   const { data, error, loading, reload } = useData<any>(`/memories?${params}`);
   const proposed = useData<any>('/memories?status=proposed');
   const [editing, setEditing] = useState<any | null>(null);
@@ -34,6 +36,25 @@ export default function Memory() {
     a.download = `carino-memories-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const togglePick = (id: string) => setPicked((s) => {
+    const n = new Set(s);
+    if (n.has(id)) n.delete(id);
+    else n.add(id);
+    return n;
+  });
+  const deletePicked = async () => {
+    if (!(await confirm({ title: `Delete ${picked.size} ${picked.size === 1 ? 'memory' : 'memories'}?`, body: 'Carino will no longer know these things. This cannot be undone.', confirm: 'Delete', danger: true }))) return;
+    try {
+      const r = await post('/memories/delete', { ids: [...picked] });
+      toast(`Deleted ${r.deleted}`);
+      setPicked(new Set());
+      reload();
+      proposed.reload();
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
   };
 
   const clearAll = async () => {
@@ -62,10 +83,14 @@ export default function Memory() {
         </div>
         <div className="row wrap" style={{ marginBottom: 14 }}>
           <input className="input" style={{ maxWidth: 260 }} placeholder="Search memories" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search memories" />
+          <select className="select" style={{ maxWidth: 160 }} value={context} onChange={(e) => { setContext(e.target.value); setPicked(new Set()); }} aria-label="Personal or work">
+            <option value="">Personal and work</option><option value="personal">Personal</option><option value="work">Work</option>
+          </select>
           <select className="select" style={{ maxWidth: 220 }} value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category">
             <option value="">All categories</option>{Object.entries(CAT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <span className="spacer" />
+          {picked.size > 0 && <button className="btn danger sm" onClick={deletePicked}><Icon name="trash" size={14} />Delete {picked.size} selected</button>}
           <button className="btn sm" onClick={exportMemories} disabled={!data?.memories.length}><Icon name="download" size={14} />Export</button>
           <button className="btn danger sm" onClick={clearAll} disabled={!data?.memories.length}><Icon name="trash" size={14} />{category ? 'Clear category' : 'Clear all'}</button>
         </div>
@@ -79,10 +104,13 @@ export default function Memory() {
           <div className="card"><ul className="list divided">
             {data?.memories.map((m: any) => (
               <li key={m.id} className="list-item" style={{ alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={picked.has(m.id)} onChange={() => togglePick(m.id)} aria-label={`Select “${m.content.slice(0, 40)}”`} style={{ marginTop: 4 }} />
                 <div className="grow" style={{ minWidth: 0 }}>
                   <div>{m.content}</div>
                   <div className="row wrap faint tiny" style={{ marginTop: 4 }}>
                     <span className="badge">{CAT_LABEL[m.category] ?? m.category}</span>
+                    {m.context === 'work' && <span className="badge accent"><Icon name="briefcase" size={10} /> work</span>}
+                    {!!m.local_only && <span className="badge success"><Icon name="lock" size={10} /> on your devices only</span>}
                     {m.sensitive && <span className="badge warning"><Icon name="lock" size={10} /> sensitive{m.sensitivity ? ` · ${m.sensitivity}` : ''}</span>}
                     <span>{m.source === 'assistant' ? 'Suggested by Carino' : m.source === 'conversation_summary' ? 'From a conversation' : 'Added by you'} · {fmtDateTime(m.created_at, { time: false, year: true })}</span>
                     {m.last_used_at && <span>· last used {fmtDateTime(m.last_used_at, { time: false })}</span>}
@@ -107,12 +135,18 @@ function MemoryForm({ memory, onClose, onSaved }: { memory: any; onClose: () => 
   const toast = useToast();
   const [content, setContent] = useState(memory.content ?? '');
   const [category, setCategory] = useState(memory.category ?? 'fact');
+  const [ctx, setCtx] = useState(memory.context ?? 'personal');
   const [expires, setExpires] = useState(memory.expires_at?.slice(0, 10) ?? '');
+  const [localOnly, setLocalOnly] = useState(!!memory.local_only);
   const save = async () => {
     try {
-      const body = { content, category, expires_at: expires ? new Date(`${expires}T23:59:00Z`).toISOString() : null };
-      if (memory.id) await patch(`/memories/${memory.id}`, body);
-      else await post('/memories', body);
+      const body = { content, category, context: ctx, expires_at: expires ? new Date(`${expires}T23:59:00Z`).toISOString() : null };
+      if (memory.id) await patch(`/memories/${memory.id}`, { ...body, local_only: localOnly });
+      else {
+        const made = await post<any>('/memories', body);
+        const newId = made?.id ?? made?.memory?.id;
+        if (localOnly && newId) await patch(`/memories/${newId}`, { local_only: true });
+      }
       toast('Memory saved');
       onSaved();
       onClose();
@@ -126,8 +160,10 @@ function MemoryForm({ memory, onClose, onSaved }: { memory: any; onClose: () => 
         <div className="field"><label htmlFor="m-c">What should Carino remember?</label><textarea id="m-c" className="textarea" value={content} onChange={(e) => setContent(e.target.value)} placeholder="e.g. I prefer a morning briefing at 7:00 and short answers." /></div>
         <div className="grid two">
           <div className="field"><label htmlFor="m-cat">Category</label><select id="m-cat" className="select" value={category} onChange={(e) => setCategory(e.target.value)}>{Object.entries(CAT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+          <div className="field"><label htmlFor="m-ctx">Part of</label><select id="m-ctx" className="select" value={ctx} onChange={(e) => setCtx(e.target.value)}><option value="personal">Personal life</option><option value="work">Work or business</option></select></div>
           <div className="field"><label htmlFor="m-exp">Forget after (optional)</label><input id="m-exp" type="date" className="input" value={expires} onChange={(e) => setExpires(e.target.value)} /></div>
         </div>
+        <label className="row" style={{ gap: 8 }}><input type="checkbox" checked={localOnly} onChange={(e) => setLocalOnly(e.target.checked)} />Keep on my devices only — never shown to an online AI</label>
       </div>
     </Modal>
   );

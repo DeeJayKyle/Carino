@@ -149,6 +149,25 @@ class NativeBridge {
 
     // ---- Notifications -----------------------------------------------------------------------
 
+    /** Seals or opens Carino's master key with the Android Keystore. Returns {"ok":true,"value":…} or {"ok":false,"error":…}. */
+    @JavascriptInterface
+    public String vaultSeal(String plainB64) {
+        try {
+            return new JSONObject().put("ok", true).put("value", Vault.seal(plainB64)).toString();
+        } catch (Exception e) {
+            return "{\"ok\":false,\"error\":" + JSONObject.quote(String.valueOf(e.getMessage())) + "}";
+        }
+    }
+
+    @JavascriptInterface
+    public String vaultOpen(String sealedB64) {
+        try {
+            return new JSONObject().put("ok", true).put("value", Vault.open(sealedB64)).toString();
+        } catch (Exception e) {
+            return "{\"ok\":false,\"error\":" + JSONObject.quote(String.valueOf(e.getMessage())) + "}";
+        }
+    }
+
     @JavascriptInterface
     public void notify(String json) {
         try {
@@ -504,5 +523,86 @@ class NativeBridge {
         pool.shutdownNow();
         if (recognizer != null) recognizer.destroy();
         if (tts != null) tts.shutdown();
+    }
+
+    // ---------- Folders the user picked (LocalFolders) ----------
+
+    /** Opens Android's folder picker; the answer arrives as a 'carino-folder' event. */
+    @JavascriptInterface
+    public void pickFolder() {
+        main.post(() -> {
+            try {
+                activity.startActivityForResult(LocalFolders.pickIntent(), LocalFolders.PICK);
+            } catch (Exception e) {
+                folderPicked(null);
+            }
+        });
+    }
+
+    void folderPicked(android.net.Uri tree) {
+        String detail = "null";
+        if (tree != null) {
+            try {
+                detail = LocalFolders.picked(activity, tree).toString();
+            } catch (Exception ignored) {
+            }
+        }
+        emit("dispatchEvent(new CustomEvent('carino-folder', { detail: " + detail + " }))");
+    }
+
+    private static String ok(Object value) {
+        try {
+            return new JSONObject().put("ok", true).put("value", value).toString();
+        } catch (Exception e) {
+            return "{\"ok\":false}";
+        }
+    }
+
+    private static String fail(Exception e) {
+        try {
+            return new JSONObject().put("ok", false).put("error", e.getMessage() == null ? "That didn't work." : e.getMessage()).toString();
+        } catch (Exception x) {
+            return "{\"ok\":false}";
+        }
+    }
+
+    @JavascriptInterface
+    public void forgetFolder(String root) {
+        LocalFolders.forget(activity, root);
+    }
+
+    @JavascriptInterface
+    public String folderList(String root, String rel) {
+        try { return ok(LocalFolders.list(activity, root, rel)); } catch (Exception e) { return fail(e); }
+    }
+
+    @JavascriptInterface
+    public String folderRead(String root, String rel, double maxBytes) {
+        try { return ok(LocalFolders.b64(LocalFolders.read(activity, root, rel, (long) maxBytes))); } catch (Exception e) { return fail(e); }
+    }
+
+    @JavascriptInterface
+    public String folderRename(String root, String rel, String toRel) {
+        try { LocalFolders.rename(activity, root, rel, toRel); return ok(true); } catch (Exception e) { return fail(e); }
+    }
+
+    @JavascriptInterface
+    public String folderWrite(String root, String rel, String b64) {
+        try { LocalFolders.write(activity, root, rel, android.util.Base64.decode(b64, android.util.Base64.DEFAULT)); return ok(true); } catch (Exception e) { return fail(e); }
+    }
+
+    @JavascriptInterface
+    public String folderOpen(String root, String rel) {
+        try { LocalFolders.open(activity, root, rel); return ok(true); } catch (Exception e) { return fail(e); }
+    }
+
+    @JavascriptInterface
+    public String folderDelete(String root, String rel, String sha) {
+        try { return ok(LocalFolders.deleteWithRecovery(activity, root, rel, sha)); } catch (Exception e) { return fail(e); }
+    }
+
+    @JavascriptInterface
+    public String folderRestore(String root, String rel, String recovery, String sha) {
+        try { LocalFolders.restore(activity, root, rel, recovery, sha); return ok(true); } catch (Exception e) { return fail(e); }
     }
 }

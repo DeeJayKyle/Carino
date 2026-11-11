@@ -3,6 +3,7 @@ import { notify } from './activity.ts';
 import { getSettings } from './settings.ts';
 import { localClock, localDate, safeTimeZone } from './time.ts';
 import { buildOverview, briefingText, eveningReviewText } from './briefing.ts';
+import { refreshDigest } from './inbox.ts';
 import { expireMemories } from './memory.ts';
 import { parseJson } from '../db/index.ts';
 import { runCustomRoutine } from './routines.ts';
@@ -106,6 +107,8 @@ export async function runRoutines(services: Services) {
     }
     try {
       const user = db.get('SELECT name FROM users WHERE id = ?', r.user_id);
+      // Fresh email and calendar for the morning brief (a failure just leaves them out).
+      if (r.kind === 'morning_briefing') await refreshDigest(services, r.user_id, tz).catch(() => undefined);
       const o = buildOverview(db, r.user_id, now, tz, 0, settings.regional.locale);
       let title: string;
       let body: string;
@@ -151,6 +154,7 @@ export function startScheduler(services: Services, intervalMs = 30_000) {
       expireMemories(services.db, services.now());
       services.db.run('DELETE FROM sessions WHERE expires_at < ?', services.now().toISOString());
       services.db.run('DELETE FROM client_ops WHERE created_at < ?', new Date(services.now().getTime() - 30 * 86400_000).toISOString());
+      services.db.run('DELETE FROM channel_inbound WHERE updated_at < ?', new Date(services.now().getTime() - 30 * 86400_000).toISOString());
     } catch (err) {
       console.error('[scheduler]', err);
     } finally {

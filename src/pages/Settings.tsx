@@ -10,6 +10,9 @@ import { speak } from '../lib/voice';
 import { Link } from '../lib/router';
 import { ApiDownload } from '../components/ApiFile';
 import { DeviceAI } from '../components/DeviceAI';
+import { BackupCard } from '../components/BackupCard';
+import { Devices } from '../components/Devices';
+import { AccessOverview } from '../components/AccessOverview';
 import { MOBILE } from '../lib/device';
 
 const SECTIONS = [
@@ -17,10 +20,12 @@ const SECTIONS = [
   ['ai', 'AI service', 'sparkle'],
   ['memory', 'Memory', 'brain'],
   ['permissions', 'Permissions', 'shield'],
+  ['access', 'What Carino can reach', 'eye'],
   ['notifications', 'Notifications & routines', 'bell'],
   ['appearance', 'Appearance & accessibility', 'sun'],
   ['regional', 'Language & region', 'globe'],
   ['voice', 'Voice', 'mic'],
+  ['devices', 'Devices', 'phone'],
   ['privacy', 'Privacy, data & account', 'lock'],
 ] as const;
 
@@ -52,10 +57,12 @@ export default function Settings() {
             {section === 'ai' && <AI />}
             {section === 'memory' && <MemorySettings />}
             {section === 'permissions' && <Permissions />}
+            {section === 'access' && <Card title="What Carino can reach" desc="Every folder, app, account, tool, device and chat Carino has access to. Remove any of them here at any time."><AccessOverview /></Card>}
             {section === 'notifications' && <Notifications />}
             {section === 'appearance' && <Appearance />}
             {section === 'regional' && <Regional />}
             {section === 'voice' && <Voice />}
+            {section === 'devices' && <Card title="Devices" desc="Your phone and your PC, kept in step."><Devices /></Card>}
             {section === 'privacy' && <Privacy />}
           </div>
         </div>
@@ -133,6 +140,7 @@ function AI() {
   return (
     <Card title="AI service" desc="Carino lives on your phone and asks an AI service to write its replies. Groq, Google Gemini and OpenRouter have free tiers — pick one and paste its key. Or download a small AI that runs on the phone itself, with no internet.">
       <DeviceAI />
+      <p className="small" style={{ marginTop: 12 }}><Link to="/connections"><Icon name="sparkle" size={14} /> AI &amp; connections</Link> — add more services or local AI, test models, choose one per job and set spending limits.</p>
     </Card>
   );
 }
@@ -361,6 +369,8 @@ function Voice() {
         </select>
       </Row>
       <Row label="Read replies aloud automatically"><Switch label="Read replies aloud" checked={v.speakReplies} onChange={(x) => save({ voice: { speakReplies: x } })} /></Row>
+      <Row label="Read my brief aloud when I first open Carino each day"><Switch label="Read my brief aloud each day" checked={!!v.speakBrief} onChange={(x) => save({ voice: { speakBrief: x } })} /></Row>
+      <p className="small muted" style={{ marginTop: 8 }}>In voice mode you can say <b>“pause”</b> (mutes the microphone), <b>“repeat that”</b>, <b>“skip”</b>, <b>“read my brief”</b> or <b>“stop”</b> to end. These are handled on your device, not sent to the AI.</p>
       <Row label="Voice">
         <select className="select" style={{ width: 240 }} value={v.voiceName} onChange={(e) => save({ voice: { voiceName: e.target.value } })} aria-label="Voice">
           <option value="">Default</option>{voices.map((x) => <option key={x.name} value={x.name}>{x.name} ({x.lang})</option>)}
@@ -418,7 +428,9 @@ function PhonePrivacy() {
     <>
       <Card title="Your data" desc="Everything — to-dos, reminders, memories, files and chats — is stored on this phone only. Nothing is sold or shared. When you chat, the conversation, relevant memories and attached text are sent to the AI service you chose so it can reply.">
         <Row label="Export all data" desc="A JSON file with your to-dos, reminders, memories, chats and settings, saved to Downloads."><ApiDownload className="btn sm" href="/api/export" name="carino-export.json"><Icon name="download" size={14} />Download export</ApiDownload></Row>
-        <Row label="Back-ups" desc="Android can include app data in its own phone back-up. Export regularly if you want your own copy."><span className="badge">On this phone</span></Row>
+      </Card>
+      <Card title="Backup & restore" desc="Your data isn’t in Android’s own phone backup (it would include the key to your sign-ins). Make your own encrypted backups here instead.">
+        <BackupCard />
       </Card>
       <Card title="Erase everything" desc="Deletes every to-do, reminder, memory, file, chat, setting and your AI key from this phone. This cannot be undone — export first if you want a copy.">
         <button className="btn danger" onClick={async () => {

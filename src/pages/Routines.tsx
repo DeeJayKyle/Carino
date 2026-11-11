@@ -24,7 +24,7 @@ export function scheduleText(days: number[], time: string) {
   return `${when} at ${time}`;
 }
 
-type Draft = { id?: string; title: string; prompt: string; time_local: string; days: number[]; catalog_id?: string; needs?: string[] };
+type Draft = { id?: string; title: string; prompt: string; time_local: string; days: number[]; catalog_id?: string; needs?: string[]; steps?: string[]; access?: string[] | null };
 
 export default function Routines() {
   const toast = useToast();
@@ -93,6 +93,8 @@ export default function Routines() {
                   <div style={{ fontWeight: 600 }}>{r.title}</div>
                   <div className="small muted">{scheduleText(r.days, r.time_local)}{r.custom ? '' : ' · built in'}</div>
                   <p className="small" style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{r.custom ? r.prompt : BUILT_IN_DESC[r.kind]}</p>
+                  {r.custom && r.steps?.length > 0 && <ol className="small routine-steps">{r.steps.map((st: string, n: number) => <li key={n}>{st}</li>)}</ol>}
+                  {r.custom && r.access_summary && <AccessSummary s={r.access_summary} />}
                 </div>
                 <Switch label={`Turn ${r.title} ${r.enabled ? 'off' : 'on'}`} checked={r.enabled} onChange={(v) => toggle(r, v)} />
               </div>
@@ -105,7 +107,7 @@ export default function Routines() {
               )}
               <div className="row wrap" style={{ marginTop: 10 }}>
                 {r.custom && <button className="btn sm" disabled={running === r.id} onClick={() => runNow(r)}><Icon name="refresh" size={14} />{running === r.id ? 'Running…' : 'Run now'}</button>}
-                <button className="btn ghost sm" onClick={() => setDraft({ id: r.id, title: r.title, prompt: r.prompt ?? '', time_local: r.time_local, days: r.days })}><Icon name="edit" size={14} />Edit</button>
+                <button className="btn ghost sm" onClick={() => setDraft({ id: r.id, title: r.title, prompt: r.prompt ?? '', time_local: r.time_local, days: r.days, steps: r.steps ?? [], access: r.access ?? null })}><Icon name="edit" size={14} />Edit</button>
                 {r.conversation_id && <Link className="btn ghost sm" to={`/chat/${r.conversation_id}`}><Icon name="chat" size={14} />Open chat</Link>}
                 {r.custom && <button className="btn ghost sm" onClick={() => remove(r)}><Icon name="trash" size={14} />Delete</button>}
               </div>
@@ -156,8 +158,10 @@ function RoutineEditor({ draft, onClose, onSaved, builtIn }: { draft: Draft; onC
   const save = async () => {
     setSaving(true);
     try {
-      if (d.id) await patch(`/routines/${d.id}`, builtIn ? { time_local: d.time_local, days: d.days } : { title: d.title, prompt: d.prompt, time_local: d.time_local, days: d.days });
-      else await post('/routines', { title: d.title, prompt: d.prompt, time_local: d.time_local, days: d.days, catalog_id: d.catalog_id });
+      const steps = (d.steps ?? []).map((x) => x.trim()).filter(Boolean);
+      const custom = { title: d.title, prompt: d.prompt, time_local: d.time_local, days: d.days, steps, access: d.access ?? null };
+      if (d.id) await patch(`/routines/${d.id}`, builtIn ? { time_local: d.time_local, days: d.days } : custom);
+      else await post('/routines', { ...custom, catalog_id: d.catalog_id });
       toast(d.id ? 'Routine saved' : `“${d.title}” added — it will run ${scheduleText(d.days, d.time_local).toLowerCase()}`);
       onSaved();
     } catch (e: any) {
@@ -182,6 +186,8 @@ function RoutineEditor({ draft, onClose, onSaved, builtIn }: { draft: Draft; onC
               {blanks.length > 0 && <div className="hint warn-text">Replace {blanks.map((b, n) => <span key={n}>{n > 0 && ', '}<code>{b}</code></span>)} with your own details.</div>}
               {d.needs?.includes('connector') && <div className="hint">This idea uses a <Link to="/connectors">connected app</Link> (e.g. your email or calendar). Without one, Carino will tell you it can’t reach it.</div>}
             </div>
+            <StepsEditor steps={d.steps ?? []} onChange={(steps) => setD({ ...d, steps })} />
+            <AccessEditor access={d.access ?? null} onChange={(access) => setD({ ...d, access })} />
           </>
         )}
         <div className="row wrap">
@@ -199,5 +205,78 @@ function RoutineEditor({ draft, onClose, onSaved, builtIn }: { draft: Draft; onC
         <p className="small faint">Times are in your time zone (Settings → Regional). A routine missed by more than three hours — for example because the server was off — is skipped until its next day.</p>
       </div>
     </Modal>
+  );
+}
+
+function StepsEditor({ steps, onChange }: { steps: string[]; onChange: (s: string[]) => void }) {
+  const set = (n: number, v: string) => onChange(steps.map((x, i) => (i === n ? v : x)));
+  const move = (n: number, by: number) => {
+    const next = [...steps];
+    const [x] = next.splice(n, 1);
+    next.splice(n + by, 0, x);
+    onChange(next);
+  };
+  return (
+    <fieldset className="field">
+      <legend className="label">Steps (optional)</legend>
+      <p className="hint" style={{ marginTop: 0 }}>Break it into steps Carino follows in order, e.g. “Check bills due this week”, then “Add a to-do for each”.</p>
+      {steps.map((st, n) => (
+        <div key={n} className="row" style={{ gap: 6, marginTop: 6 }}>
+          <span className="small faint" style={{ width: 18 }}>{n + 1}.</span>
+          <input className="input grow" maxLength={400} value={st} aria-label={`Step ${n + 1}`} onChange={(e) => set(n, e.target.value)} />
+          <button type="button" className="btn ghost sm" aria-label={`Move step ${n + 1} up`} disabled={n === 0} onClick={() => move(n, -1)}>↑</button>
+          <button type="button" className="btn ghost sm" aria-label={`Remove step ${n + 1}`} onClick={() => onChange(steps.filter((_, i) => i !== n))}><Icon name="x" size={14} /></button>
+        </div>
+      ))}
+      {steps.length < 12 && <button type="button" className="btn ghost sm" style={{ marginTop: 6 }} onClick={() => onChange([...steps, ''])}><Icon name="plus" size={14} />Add a step</button>}
+    </fieldset>
+  );
+}
+
+type Group = { id: string; label: string; reads: string; does: string; asks: string };
+
+function AccessEditor({ access, onChange }: { access: string[] | null; onChange: (a: string[] | null) => void }) {
+  const { data } = useData<{ groups: Group[] }>('/routines/access');
+  const groups = data?.groups ?? [];
+  const limited = access !== null;
+  return (
+    <fieldset className="field">
+      <legend className="label">What it can use</legend>
+      <div className="row wrap" role="radiogroup" aria-label="What it can use" style={{ gap: 12 }}>
+        <label className="row" style={{ gap: 6 }}><input type="radio" name="rt-access" checked={!limited} onChange={() => onChange(null)} />Everything Carino can use</label>
+        <label className="row" style={{ gap: 6 }}><input type="radio" name="rt-access" checked={limited} onChange={() => onChange(access ?? [])} />Only what I pick</label>
+      </div>
+      {limited && (
+        <ul className="access-pick">
+          {groups.map((g) => (
+            <li key={g.id}>
+              <label className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={access!.includes(g.id)} onChange={(e) => onChange(e.target.checked ? [...access!, g.id] : access!.filter((x) => x !== g.id))} />
+                <span><b>{g.label}</b><span className="tiny muted" style={{ display: 'block' }}>{[g.reads && `Reads ${g.reads}`, g.does && `Can ${g.does}`, g.asks && `Asks you before ${g.asks}`].filter(Boolean).join(' · ')}</span></span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="hint">It can always look at your to-dos, notes and saved knowledge. Sending, deleting, posting and other big actions always wait for your OK in Approvals.</p>
+    </fieldset>
+  );
+}
+
+function AccessSummary({ s }: { s: { everything: boolean; reads: string[]; does: string[]; asks: string[] } }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="tiny muted" style={{ marginTop: 6 }}>
+      <button type="button" className="linklike tiny" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {s.everything ? 'Can use everything Carino can' : 'Limited to what you picked'} · {open ? 'hide' : 'details'}
+      </button>
+      {open && (
+        <ul className="access-summary">
+          <li><b>Reads:</b> {s.reads.join('; ')}</li>
+          {s.does.length > 0 && <li><b>Can:</b> {s.does.join('; ')}</li>}
+          {s.asks.length > 0 && <li><b>Asks you first before:</b> {s.asks.join('; ')}</li>}
+        </ul>
+      )}
+    </div>
   );
 }

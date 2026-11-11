@@ -32,12 +32,12 @@ export function relayAddress(raw: string) {
   return u.origin;
 }
 
-async function relayCall(services: Services, base: string, key: string, path: string, body?: unknown) {
+async function relayCall(services: Services, base: string, key: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}) {
   let res: Response;
   try {
     res = await fetcher(services)(`${base}${path}`, {
       method: body === undefined ? 'GET' : 'POST',
-      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json', accept: 'application/json' },
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json', accept: 'application/json', ...extraHeaders },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(20_000),
     });
@@ -46,13 +46,20 @@ async function relayCall(services: Services, base: string, key: string, path: st
   }
   const data: any = await res.json().catch(() => ({}));
   if (res.status === 401 || res.status === 403) throw new Error('Your WhatsApp relay refused Carino’s key. If you reinstalled Carino, set up a fresh relay (see the steps).');
+  if (res.status === 403 && /setup code/.test(String(data?.error))) throw new Error('This relay asks for its setup code. Enter the SETUP_CODE you set when deploying it.');
   if (res.status === 409) throw new Error('That relay is already linked to another Carino. Deploy your own relay, or delete and redeploy this one to reset it.');
   if (!res.ok) throw new Error(`Your WhatsApp relay answered with error ${res.status}${data?.error ? `: ${data.error}` : ''}.`);
   return data;
 }
 
+/** The Meta app secret, for a relay the user chose to have check signatures itself. */
+export function relayAppSecret(services: Services, userId: string) {
+  const ch = services.db.get("SELECT * FROM channels WHERE user_id = ? AND kind = 'whatsapp'", userId);
+  return ch ? channelSecret<Secret>(services, ch)?.app_secret : undefined;
+}
+
 /** Links the user's WhatsApp channel to their relay: claims it with a new key and tells it the verify token. */
-export async function connectRelay(services: Services, userId: string, rawUrl: string, newKey?: string) {
+export async function connectRelay(services: Services, userId: string, rawUrl: string, newKey?: string, setupCode?: string) {
   const ch = services.db.get("SELECT * FROM channels WHERE user_id = ? AND kind = 'whatsapp'", userId);
   if (!ch) throw badRequest('Connect WhatsApp first (phone number ID, token and app secret).');
   const base = relayAddress(rawUrl);
@@ -62,7 +69,8 @@ export async function connectRelay(services: Services, userId: string, rawUrl: s
   // Re-linking the same relay keeps the key it already knows.
   const key = newKey ?? (cfg.relay_url === base && secret.relay_key ? secret.relay_key : randomBytes(24).toString('base64url'));
   try {
-    await relayCall(services, base, key, '/setup', { verify_token: cfg.verify_token });
+    // The phone number id lets the relay turn away anything that isn't for this number.
+    await relayCall(services, base, key, '/setup', { verify_token: cfg.verify_token, phone_number_id: cfg.phone_number_id }, setupCode ? { 'x-setup-code': setupCode } : {});
   } catch (e: any) {
     throw badRequest(e.message);
   }
@@ -74,8 +82,6 @@ export async function connectRelay(services: Services, userId: string, rawUrl: s
   return services.db.get('SELECT * FROM channels WHERE id = ?', ch.id)!;
 }
 
-/** Recently handled deliveries, so one is never answered twice if an acknowledgement was lost. */
-const handled = new Set<number>();
 let busy: Promise<number> | null = null;
 /** Failed collections in a row, per channel. */
 const failures = new Map<string, number>();
@@ -113,17 +119,24 @@ async function pollAll(services: Services) {
 async function pollOne(services: Services, ch: Row, base: string, key: string) {
   const { items = [] } = (await relayCall(services, base, key, '/inbox')) as { items?: RelayItem[] };
   if (!items.length) return 0;
+  // Each message is marked done (by its WhatsApp id) only once it has been answered, so a delivery
+  // is acknowledged only after it's handled; a failure leaves it and the rest for the next collection.
   const done: number[] = [];
+  let failure: unknown = null;
   for (const item of items) {
-    done.push(item.id);
-    if (handled.has(item.id)) continue;
-    handled.add(item.id);
-    if (handled.size > 2000) handled.delete(handled.values().next().value!);
     // Anyone can post to the relay's public address; only Meta's signed deliveries count.
-    if (!signatureValid(services, ch, item.body, item.sig)) continue;
-    const payload = parseJson<any>(item.body, null);
-    if (payload) await processWhatsAppPayload(services, ch, payload);
+    if (signatureValid(services, ch, item.body, item.sig)) {
+      const payload = parseJson<any>(item.body, null);
+      try {
+        if (payload) await processWhatsAppPayload(services, ch, payload);
+      } catch (e) {
+        failure = e;
+        break;
+      }
+    }
+    done.push(item.id);
   }
-  await relayCall(services, base, key, '/ack', { ids: done });
+  if (done.length) await relayCall(services, base, key, '/ack', { ids: done });
+  if (failure) throw failure;
   return done.length;
 }

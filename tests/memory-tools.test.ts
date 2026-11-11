@@ -105,7 +105,8 @@ describe('tool registry and approvals', () => {
       expect(s.input_schema.type).toBe('object');
       expect(s.description.length).toBeGreaterThan(20);
     }
-    expect(TOOLS.filter((t) => t.risk === 'consequential').every((t) => t.name.startsWith('delete_'))).toBe(true);
+    // Built-in tools that need the user's approval: deletions, and changing or adding files in their own folders.
+    expect(TOOLS.filter((t) => t.risk === 'consequential').map((t) => t.name).filter((n) => !n.startsWith('delete_')).sort()).toEqual(['change_local_files', 'save_spreadsheet_to_folder']);
   });
 
   it('offers a smaller core tool set for local models', () => {

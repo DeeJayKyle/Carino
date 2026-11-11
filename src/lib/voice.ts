@@ -166,3 +166,5 @@ export function stopSpeaking() {
   if (nativeSpeech) return stopSpeakingNative();
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 }
+
+export { voiceCommand, speechText, type VoiceCommand } from './voice-commands';

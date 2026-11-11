@@ -26,6 +26,9 @@ const SECRETS = {
   WA_PHONE_NUMBER_ID: '5550100', WA_ACCESS_TOKEN: 'wa-token', WA_VERIFY_TOKEN: 'verify-me', WA_DISPLAY_NUMBER: '+1 555 0100',
 };
 
+/** sha256 of 'v' × 43, base64url: the fingerprint the phone puts in the state. */
+const TT_CHALLENGE = (await import('node:crypto')).createHash('sha256').update('v'.repeat(43)).digest('base64url');
+
 type Call = { url: string; method: string; headers: Record<string, string>; body: string };
 let calls: Call[];
 let env: any;
@@ -95,12 +98,35 @@ describe('Sign-in helper: one-tap sign-in', () => {
   it('uses Basic auth for X, client_key for TikTok, and swaps Meta tokens for 60-day ones', async () => {
     await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'x', code: 'c' }) });
     expect(calls.at(-1)!.headers.authorization).toBe(`Basic ${btoa('x-id:x-secret')}`);
-    await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'tiktok', code: 'c' }) });
+    await call(`/callback/tiktok?code=c&state=s.${TT_CHALLENGE}`);
+    await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'tiktok', code: 'c', code_verifier: 'v'.repeat(43) }) });
     // Pasted with stray line breaks, used without them.
     expect(new URLSearchParams(calls.at(-1)!.body).get('client_key')).toBe('tt-key');
     expect(new URLSearchParams(calls.at(-1)!.body).get('client_secret')).toBe('tt-secret');
-    const fb = await (await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'facebook', code: 'c' }) })).json() as any;
+    await call(`/callback/facebook?code=c&state=s.${TT_CHALLENGE}`);
+    const fb = await (await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'facebook', code: 'c', code_verifier: 'v'.repeat(43) }) })).json() as any;
     expect(fb.access_token).toBe('fb-long');
+  });
+
+  it('only the phone that started a sign-in can redeem its code', async () => {
+    const { createHash } = await import('node:crypto');
+    const b64 = (b: Buffer) => b.toString('base64url');
+    const verifier = 'v'.repeat(43);
+    const state = `abc123.${b64(createHash('sha256').update(verifier).digest())}`;
+    // The provider sends the browser to the helper with the code and the phone's state.
+    await call(`/callback/facebook?code=fb-code-1&state=${state}`);
+    // Another app caught the code on its way to the phone, and tries its own secret: refused.
+    const stolen = await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'facebook', code: 'fb-code-1', code_verifier: 'w'.repeat(43) }) });
+    expect(stolen.status).toBe(400);
+    expect(calls.some((c) => c.url.includes('/oauth/access_token'))).toBe(false);
+    // The code is used up by that attempt; a fresh sign-in by the phone works.
+    await call(`/callback/facebook?code=fb-code-2&state=${state}`);
+    const ok = await (await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'facebook', code: 'fb-code-2', code_verifier: verifier }) })).json() as any;
+    expect(ok.access_token).toBe('fb-long');
+    // Facebook doesn't do PKCE: the verifier isn't passed on to it.
+    expect(new URLSearchParams(calls.find((c) => c.url.includes('/oauth/access_token') && c.method === 'POST')?.body ?? '').get('code_verifier')).toBeNull();
+    // A provider without PKCE needs the fingerprint: a code with none isn't redeemed at all.
+    expect((await call('/token', { method: 'POST', body: JSON.stringify({ provider: 'tiktok', code: 'loose' }) })).status).toBe(400);
   });
 
   it('says plainly when an app isn’t set up', async () => {

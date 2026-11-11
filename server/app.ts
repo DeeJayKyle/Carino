@@ -11,8 +11,11 @@ import { dataRoutes } from './routes/data.ts';
 import { chatRoutes } from './routes/chat.ts';
 import { fileRoutes } from './routes/files.ts';
 import { miscRoutes } from './routes/misc.ts';
+import { modelRoutes } from './routes/models.ts';
+import { ensureSyncTriggers } from './services/sync.ts';
 
 export function createApp(services: Services) {
+  ensureSyncTriggers(services.db);
   const app = new Hono<AppEnv>();
 
   app.use('*', async (c, next) => {
@@ -57,6 +60,14 @@ export function createApp(services: Services) {
     return c.text('OK');
   });
 
+  // Sync from a paired phone (on a PC). No session: every request is encrypted and authenticated
+  // with the key the two devices agreed when they were paired (services/sync.ts).
+  const syncLimit = rateLimit({ name: 'sync', windowMs: 60_000, max: 120, key: clientIp });
+  app.post('/carino-sync', syncLimit, bodyLimit({ maxSize: 64 * 1024 * 1024 }), async (c) => {
+    const { handleSyncRequest } = await import('./services/sync.ts');
+    return c.body(await handleSyncRequest(services, await c.req.text()), 200, { 'content-type': 'application/json' });
+  });
+
   // Shares normally go to the service worker; this only runs if it isn't installed yet.
   app.post('/share-target', (c) => c.redirect('/share?error=no-sw', 303));
 
@@ -68,8 +79,11 @@ export function createApp(services: Services) {
   // person in-process, so it doesn't limit itself (bulk actions there must not hit a 429).
   if (!services.deviceSession) api.use('*', rateLimit({ name: 'api', windowMs: 60_000, max: 600, key: clientIp }));
   api.use('/documents', bodyLimit({ maxSize: (services.config.MAX_UPLOAD_MB + 1) * 1024 * 1024, onError: (c) => c.json({ error: `File is too large. The limit is ${services.config.MAX_UPLOAD_MB} MB.`, code: 'too_large' }, 413) }));
+  // Restoring a backup from a file sends the whole (encrypted) backup.
+  api.use('/backup/*', bodyLimit({ maxSize: 700 * 1024 * 1024, onError: (c) => c.json({ error: 'That file is too large to be a Carino backup.', code: 'too_large' }, 413) }));
   api.use('*', async (c, next) => {
     if (c.req.path.endsWith('/documents') && c.req.method === 'POST') return next();
+    if (/\/backup\/(inspect|restore)$/.test(c.req.path) && c.req.method === 'POST') return next();
     return bodyLimit({ maxSize: 2 * 1024 * 1024, onError: (cc) => cc.json({ error: 'Request is too large.', code: 'too_large' }, 413) })(c, next);
   });
   api.route('/auth', authRoutes());
@@ -80,6 +94,7 @@ export function createApp(services: Services) {
   priv.route('/', chatRoutes());
   priv.route('/', fileRoutes());
   priv.route('/', miscRoutes());
+  priv.route('/', modelRoutes());
   api.route('/', priv);
   app.route('/api', api);
   app.all('/api/*', (c) => c.json({ error: 'Not found', code: 'not_found' }, 404));

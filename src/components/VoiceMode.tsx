@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { Avatar } from './Avatar';
-import { speakAsync, stopSpeaking, useDictation } from '../lib/voice';
+import { speakAsync, stopSpeaking, useDictation, voiceCommand, speechText } from '../lib/voice';
+import { api } from '../lib/api';
 import { useSession } from '../lib/session';
 import { useMascot } from '../lib/mascot';
 
@@ -48,6 +49,28 @@ export function VoiceMode({ send, onClose }: { send: (text: string) => Promise<s
       if (!voice.error) setPhase('paused');
       return;
     }
+    const say = async (reply: string) => {
+      setSaid(reply);
+      setPhase('speaking');
+      await speakAsync(reply, { lang: v.language, voiceName: v.voiceName });
+    };
+    // Spoken commands are handled here, on the device; they are not sent to the AI.
+    const cmd = voiceCommand(text);
+    if (cmd === 'end') return onClose();
+    if (cmd === 'pause') return setPhase('paused');
+    if (cmd === 'skip') return listen();
+    if (cmd === 'repeat' || cmd === 'brief') {
+      void (async () => {
+        if (cmd === 'repeat') await say(said || 'I haven’t said anything yet.');
+        else {
+          setPhase('thinking');
+          const d = await api<any>('/dashboard').catch(() => null);
+          await say(d?.briefing ? speechText(d.briefing) : 'I couldn’t get your brief just now.');
+        }
+        listen();
+      })();
+      return;
+    }
     setPhase('thinking');
     void (async () => {
       const reply = await send(text).catch(() => null);
@@ -61,12 +84,14 @@ export function VoiceMode({ send, onClose }: { send: (text: string) => Promise<s
     })();
   }, [voice.listening]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const micOn = phase === 'listening' && voice.listening;
   const label = phase === 'listening' ? 'Listening…' : phase === 'thinking' ? 'Thinking…' : phase === 'speaking' ? `${name} is talking` : 'Paused';
   return (
     <div className="voice-mode" role="dialog" aria-modal="true" aria-label="Voice conversation">
       <button className="btn ghost icon voice-close" onClick={onClose} aria-label="End voice conversation"><Icon name="x" /></button>
       <Avatar state={phase === 'paused' ? 'idle' : phase} size={170} accessory={accessory} />
       <div className="voice-status" aria-live="polite">{label}</div>
+      <div className={`mic-state ${micOn ? 'on' : ''}`} role="status"><Icon name={micOn ? 'mic' : 'stop'} size={13} />{micOn ? 'Microphone on' : 'Microphone off'}</div>
       <p className="voice-text">{phase === 'speaking' ? said.replace(/[#*_`>]/g, '').slice(0, 400) : heard || voice.interim || (phase === 'paused' ? 'Tap the mic and say something.' : 'Say something — pause when you’re done.')}</p>
       {!voice.supported && <p className="small" style={{ color: 'var(--danger)' }}>This browser can’t listen. Voice mode works in Chrome and Edge (on Android and Windows). You can still type in the chat.</p>}
       {voice.supported && voice.error && <p className="small" style={{ color: 'var(--danger)' }}>{voice.error}</p>}
@@ -74,9 +99,11 @@ export function VoiceMode({ send, onClose }: { send: (text: string) => Promise<s
         {phase === 'speaking' && <button className="btn" onClick={() => { stopSpeaking(); }}><Icon name="stop" size={16} />Skip</button>}
         {phase === 'paused' && <button className="btn primary" onClick={listen}><Icon name="mic" size={16} />Talk</button>}
         {phase === 'listening' && <button className="btn" onClick={() => { voice.stop(); }}><Icon name="send" size={16} />Done talking</button>}
+        {phase === 'listening' && <button className="btn" onClick={() => { pending.current = ''; setHeard(''); setPhase('paused'); voice.stop(); }}><Icon name="stop" size={16} />Mute mic</button>}
         <button className="btn danger" onClick={onClose}><Icon name="x" size={16} />End</button>
       </div>
-      <p className="tiny faint" style={{ marginTop: 18 }}>Uses your browser’s speech service and voices (choose a voice in Settings → Voice). Everything is saved in this chat.</p>
+      <p className="tiny faint" style={{ marginTop: 18 }}>Say “pause”, “repeat that”, “read my brief” or “stop”. Uses your browser’s speech service and voices (choose a voice in Settings → Voice). Everything is saved in this chat.</p>
     </div>
   );
 }
+

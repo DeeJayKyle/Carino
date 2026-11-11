@@ -15,7 +15,7 @@ type Seen = { method: string; url: string; headers: Record<string, string>; body
 function fakeProviders() {
   const seen: Seen[] = [];
   const relay: { items: { id: number; at: number; sig: string; body: string }[]; key?: string; verify?: string; deployed?: boolean; meta?: any; source?: string; subdomain?: string; claim?: string } = { items: [] };
-  const state = { googleToken: 'g-at-1', refreshFails: false, msUsed: { rowIndex: 0, rowCount: 3 }, noIg: false, gmail401: false };
+  const state = { googleToken: 'g-at-1', waSendFails: 0, refreshFails: false, msUsed: { rowIndex: 0, rowCount: 3 }, noIg: false, gmail401: false };
   const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'content-type': 'application/json' } });
   const fetchImpl = (async (input: any, init: any = {}) => {
     const req = new Request(input, init);
@@ -124,7 +124,13 @@ function fakeProviders() {
       }
     }
     if (url.startsWith('https://graph.facebook.com/v23.0/5551234567?')) return json({ display_phone_number: '+256 700 000000' });
-    if (url === 'https://graph.facebook.com/v23.0/5551234567/messages') return json({ messages: [{ id: 'wamid.1' }] });
+    if (url === 'https://graph.facebook.com/v23.0/5551234567/messages') {
+      if (state.waSendFails > 0) {
+        state.waSendFails--;
+        return json({ error: { message: 'Service temporarily unavailable' } }, 503);
+      }
+      return json({ messages: [{ id: 'wamid.1' }] });
+    }
     throw new Error(`unexpected fetch ${req.method} ${url}`);
   }) as typeof fetch;
   return { seen, fetchImpl, relay, state, last: (part: string) => [...seen].reverse().find((s) => s.url.includes(part)) };
@@ -332,9 +338,13 @@ describe('My apps: tools', () => {
     expect(put.url).toContain('conflictBehavior=rename');
     expect(Buffer.from(put.raw!.subarray(0, 2)).toString('latin1')).toBe('PK');
 
+    // Changing an existing workbook always waits for the user's OK (even when set to "auto").
     const x: any = await executeTool('excel_update', { file: 'item123', append: true, rows: [['Amoxicillin', 12, 'extra']] }, ctxFor(c));
-    expect(x.status).toBe('executed');
-    expect(x.result.range).toBe('Sheet1!A4:C4');
+    expect(x.status).toBe('pending_approval');
+    expect(net.last('range(address=')).toBeUndefined();
+    const done: any = await approveAction(ctx.services, c.user.id, x.actionId);
+    expect(done.status).toBe('executed');
+    expect(done.result.range).toBe('Sheet1!A4:C4');
     expect(net.last("range(address=")!.body).toEqual({ values: [['Amoxicillin', 12, 'extra']] });
   });
 
@@ -490,6 +500,56 @@ describe('WhatsApp through the relay', () => {
     await pollRelay(ctx.services);
     expect(net.seen.filter((s) => s.url.endsWith('/5551234567/messages')).at(-1)!.body.text.body).toBe('Added “Buy milk”.');
     expect(ctx.services.db.get("SELECT title FROM tasks WHERE title = 'Buy milk'")).toBeTruthy();
+  });
+
+  it('answers a message delivered twice only once, and never loses one that failed', async () => {
+    const c = await signup(ctx);
+    const ch = (await c.post('/api/channels/whatsapp', { phone_number_id: '5551234567', access_token: 'EAAG-access-token-xxxxxxxxxxxx', app_secret: SECRET })).data;
+    await c.post('/api/channels/whatsapp/relay', { url: 'https://relay.test/' });
+    deliver(msg('256700000000', ch.pairing_code, 'wamid.link'));
+    await pollRelay(ctx.services);
+    const sends = () => net.seen.filter((s) => s.url.endsWith('/5551234567/messages')).length;
+    const before = sends();
+
+    // Meta retried a delivery: the second copy is acknowledged but not answered again.
+    ctx.provider.steps.push(() => text('Hello!'));
+    deliver(msg('256700000000', 'hi', 'wamid.dup'));
+    deliver(msg('256700000000', 'hi', 'wamid.dup'));
+    expect(await pollRelay(ctx.services)).toBe(2);
+    expect(sends()).toBe(before + 1);
+    expect(net.relay.items).toEqual([]);
+
+    // Sending the answer fails once: the delivery stays on the relay and is answered next time.
+    // The assistant's work isn't redone: the same answer is re-sent, and the to-do exists once.
+    net.state.waSendFails = 1;
+    ctx.provider.steps.push(() => toolCall('create_task', { title: 'Call the bank' }), () => text('Added “Call the bank”.'));
+    deliver(msg('256700000000', 'add call the bank', 'wamid.retry'));
+    await pollRelay(ctx.services);
+    expect(net.relay.items).toHaveLength(1);
+    expect(await pollRelay(ctx.services)).toBe(1);
+    expect(net.relay.items).toEqual([]);
+    expect(net.seen.filter((s) => s.url.endsWith('/5551234567/messages')).at(-1)!.body.text.body).toBe('Added “Call the bank”.');
+    expect(ctx.services.db.all("SELECT id FROM tasks WHERE title = 'Call the bank'")).toHaveLength(1);
+
+    // One that keeps failing is given up on after 3 tries and reported, without blocking the rest.
+    net.state.waSendFails = 99;
+    deliver(msg('256700000000', 'stuck', 'wamid.stuck'));
+    for (let i = 0; i < 3; i++) await pollRelay(ctx.services);
+    expect(net.relay.items).toEqual([]);
+    const notes = (await c.get('/api/notifications')).data.notifications;
+    expect(notes[0]).toMatchObject({ kind: 'action_failed', title: 'A WhatsApp message wasn’t answered' });
+    net.state.waSendFails = 0;
+  });
+
+  it('gives the relay the app secret only when asked to, and tells it the number', async () => {
+    const c = await signup(ctx);
+    await c.post('/api/channels/whatsapp', { phone_number_id: '5551234567', access_token: 'EAAG-access-token-xxxxxxxxxxxx', app_secret: SECRET });
+    await c.post('/api/channels/whatsapp/relay/create', { token: 'cf-token-0123456789abcdefghij' });
+    expect(net.relay.meta.bindings.some((b: any) => b.name === 'APP_SECRET')).toBe(false);
+    await c.post('/api/channels/whatsapp/relay/create', { token: 'cf-token-0123456789abcdefghij', verify_at_relay: true });
+    expect(net.relay.meta.bindings.find((b: any) => b.name === 'APP_SECRET')?.text).toBe(SECRET);
+    const setup = net.seen.filter((s) => s.url.endsWith('/setup')).at(-1)!;
+    expect(setup.body).toMatchObject({ phone_number_id: '5551234567' });
   });
 
   it('creates the relay on the user’s Cloudflare account and links it', async () => {

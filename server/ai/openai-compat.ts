@@ -6,23 +6,34 @@ import { ProviderError } from './types.ts';
  * Ollama and llama.cpp (local, free), LM Studio, Groq, OpenRouter, Google Gemini's
  * compatibility endpoint, etc. Streaming via SSE; tool calls when the model supports them.
  */
+export interface OpenAICompatOptions {
+  baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string;
+  toolset?: 'core' | 'full' | 'phone'; vision?: boolean; fallbackModels?: string[];
+  /** Registry id (default openai_compat); extra connections have their own. */
+  id?: string;
+  /** Content stays on the user's own devices (this device, the on-phone model, their PC). */
+  local?: boolean;
+  pricing?: { input: number; output: number };
+}
+
 export class OpenAICompatProvider implements AIProvider {
-  private opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full' | 'phone'; vision?: boolean; fallbackModels?: string[] };
+  private opts: OpenAICompatOptions;
   private fetchImpl: typeof fetch;
 
-  constructor(opts: { baseUrl?: string; apiKey?: string; model?: string; label: string; tools: boolean; reasoningEffort?: string; toolset?: 'core' | 'full' | 'phone'; vision?: boolean; fallbackModels?: string[] }, fetchImpl: typeof fetch = fetch) {
+  constructor(opts: OpenAICompatOptions, fetchImpl: typeof fetch = fetch) {
     this.opts = opts;
     this.fetchImpl = fetchImpl;
   }
 
   info(): ProviderInfo {
     const configured = !!(this.opts.baseUrl && this.opts.model);
-    let local = false;
+    let local = this.opts.local ?? false;
     try {
-      local = !!this.opts.baseUrl && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(this.opts.baseUrl).hostname);
+      local ||= !!this.opts.baseUrl && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(this.opts.baseUrl).hostname);
     } catch {}
     return {
-      id: 'openai_compat',
+      id: this.opts.id ?? 'openai_compat',
+      pricing: this.opts.pricing,
       label: this.opts.label,
       model: this.opts.model ?? '',
       configured,
@@ -241,7 +252,7 @@ function toOpenAI(system: string, messages: ChatMessage[]) {
   return out;
 }
 
-async function* sseData(body: ReadableStream<Uint8Array>) {
+export async function* sseData(body: ReadableStream<Uint8Array>) {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buf = '';
@@ -260,7 +271,7 @@ async function* sseData(body: ReadableStream<Uint8Array>) {
 }
 
 /** True for an AI server on the user's own machine or home network (e.g. Ollama on a PC). */
-function onOwnNetwork(url: string): boolean {
+export function onOwnNetwork(url: string): boolean {
   try {
     const h = new URL(url).hostname;
     return h === 'localhost' || h === '[::1]' || h.endsWith('.local') || /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);

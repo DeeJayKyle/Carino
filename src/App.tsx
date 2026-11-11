@@ -18,12 +18,15 @@ const Ramble = lazy(() => import('./pages/Ramble'));
 const Share = lazy(() => import('./pages/Share'));
 const Connectors = lazy(() => import('./pages/Connectors'));
 const Apps = lazy(() => import('./pages/Apps'));
+const Connections = lazy(() => import('./pages/Connections'));
 const Messaging = lazy(() => import('./pages/Messaging'));
 const Discover = lazy(() => import('./pages/Discover'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Stuff = lazy(() => import('./pages/Stuff'));
 const Me = lazy(() => import('./pages/Me'));
 const Money = lazy(() => import('./pages/Money'));
+const Applications = lazy(() => import('./pages/Applications'));
+const Files = lazy(() => import('./pages/Files'));
 
 function Router() {
   const { pathname } = useLocation();
@@ -50,12 +53,15 @@ function Router() {
     ['/share', () => <Share />],
     ['/connectors', () => <Connectors />],
     ['/apps', () => <Apps />],
+    ['/connections', () => <Connections />],
     ['/apps/:id', (p) => <Apps id={p.id} />],
     ['/messaging', () => <Messaging />],
     ['/discover', () => <Discover />],
     ['/stuff', () => <Stuff />],
     ['/me', () => <Me />],
     ['/money', () => <Money />],
+    ['/applications', () => <Applications />],
+    ['/files', () => <Files />],
   ];
   for (const [pattern, render] of routes) {
     const params = match(pattern, pathname);

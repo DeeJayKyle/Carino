@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Shell } from '../components/Shell';
+import { HandoffButton } from '../components/Handoff';
 import { Icon, Mark } from '../components/Icon';
 import { Empty, ErrorBox, Markdown, Modal, Spinner, useConfirm, useToast } from '../components/ui';
 import { ApprovalCard } from '../components/ApprovalCard';
@@ -41,6 +42,8 @@ export default function Chat({ id }: { id?: string }) {
     <Shell title={<ChatTitle id={isNew ? undefined : id} />} actions={
       <>
         <button className="btn ghost sm mobile-only" onClick={() => setListOpen((o) => !o)} aria-expanded={listOpen}><Icon name="chat" size={16} /> Chats</button>
+        {id && id !== 'new' && <PrivateToggle id={id} />}
+        {id && id !== 'new' && <HandoffButton kind="chat" refId={id} />}
         <Link to="/chat/new" className="btn sm"><Icon name="plus" size={16} /><span className="desktop-only">New chat</span></Link>
       </>
     }>
@@ -194,6 +197,9 @@ function Conversation({ id, onChanged }: { id: string; onChanged: () => void }) 
       await streamPost(`/conversations/${id}/messages`, { text, attachments }, (event, payload) => {
         if (event === 'start') {
           setData((d: any) => d && ({ ...d, messages: d.messages.map((m: Msg) => (m.id === temp.id ? { ...payload.userMessage, meta: payload.userMessage.meta } : m)) }));
+        } else if (event === 'switch') {
+          // The chosen model failed before answering; another allowed one took over.
+          toast(payload.provider?.reason ?? 'Switched to another model', 'info');
         } else if (event === 'text') {
           setStreaming((s) => s && { ...s, text: s.text + payload.delta });
           scrollDown();
@@ -574,6 +580,7 @@ function Composer({ onSend, busy, onCancel, disabled, onVoice }: { onSend: (text
           )}
         </div>
       </div>
+      <PrivacyLine />
     </div>
   );
 }
@@ -612,4 +619,47 @@ async function videoFrames(file: File, count = 4): Promise<File[]> {
 /** Phones and tablets: no keyboard hints in the message box (they wrap and don't apply). */
 function coarsePointer() {
   return typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+}
+
+/** Says plainly where a message goes: kept on this device, or sent to an online AI service. */
+function PrivacyLine() {
+  const { me } = useSession();
+  const providers = me!.server.providers;
+  const active = providers.find((p) => p.id === me!.settings.ai.provider && p.configured) ?? providers.find((p) => p.configured);
+  if (!active) return null;
+  const local = active.capabilities.local;
+  return (
+    <p className={`privacy-line tiny ${local ? 'local' : ''}`}>
+      <Icon name={local ? 'lock' : 'globe'} size={12} />
+      {local
+        ? <> Stays on this device: answered by {active.label}.</>
+        : <> Sent to {active.label} (online) to be answered, with the memories and file text it needs. <Link to="/settings#ai">Change</Link></>}
+    </p>
+  );
+}
+
+/**
+ * Keeps this chat on the user's own devices: only local models answer it, and nothing from it is
+ * sent online. Once it has used content kept on the devices, it stays private.
+ */
+function PrivateToggle({ id }: { id: string }) {
+  const toast = useToast();
+  const { data, setData } = useData<any>(`/conversations/${id}`);
+  const lo = Number(data?.conversation?.local_only ?? 0);
+  if (!data) return null;
+  const toggle = async () => {
+    try {
+      const r = await patch<any>(`/conversations/${id}/local-only`, { local_only: !lo });
+      setData((d: any) => d && ({ ...d, conversation: { ...d.conversation, local_only: r.local_only ? (r.locked ? 2 : 1) : 0 } }));
+      toast(r.local_only ? 'Private: only AI on your devices will answer this chat' : 'Online AI may answer this chat again');
+    } catch (e: any) {
+      toast(e.message, 'error');
+    }
+  };
+  return (
+    <button className={`btn ghost sm ${lo ? 'on' : ''}`} aria-pressed={!!lo} onClick={toggle} disabled={lo === 2}
+      title={lo === 2 ? 'This chat used content you keep on your devices, so it stays private' : lo ? 'Private: only AI on your devices' : 'Make this chat private'}>
+      <Icon name="lock" size={15} /><span className="desktop-only">{lo ? 'Private' : 'Make private'}</span>
+    </button>
+  );
 }

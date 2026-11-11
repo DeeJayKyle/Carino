@@ -12,6 +12,8 @@ import { formatLocal, localDate, localClock, safeTimeZone } from '../services/ti
 import { indexEntity } from '../services/indexer.ts';
 import { connectorToolSpecs } from '../services/connectors.ts';
 import { appToolSpecs } from '../services/apps/index.ts';
+import { selectProvider } from './router.ts';
+import { markConversationLocalOnly } from '../services/localonly.ts';
 
 export const MAX_TOOL_ROUNDS = 8;
 
@@ -76,7 +78,7 @@ export function buildPhonePrompt(user: SessionUser, settings: Settings): string 
 }
 
 export interface TurnEvent {
-  type: 'start' | 'text' | 'tool' | 'message' | 'done' | 'error';
+  type: 'start' | 'text' | 'tool' | 'message' | 'done' | 'error' | 'switch';
   [k: string]: unknown;
 }
 
@@ -153,9 +155,12 @@ function turnContext(services: Services, ctx: ToolContext, conv: Row, userText: 
   parts.push(`<now>${formatLocal(now.toISOString(), ctx.timeZone, s.regional.locale)} (${ctx.timeZone}; local date ${localDate(now, ctx.timeZone)})</now>`);
   let memoriesUsed: Row[] = [];
   if (s.memory.enabled && !restricted) {
-    memoriesUsed = retrieveMemories(services.db, ctx.userId, userText, { projectId: conv.project_id, disabledCategories: s.memory.disabledCategories });
+    // Local-only memories never go to an online model; a local one may use them (and the chat becomes local-only).
+    memoriesUsed = retrieveMemories(services.db, ctx.userId, userText, { projectId: conv.project_id, disabledCategories: s.memory.disabledCategories })
+      .filter((m) => !m.local_only || !ctx.cloud);
+    if (memoriesUsed.some((m) => m.local_only)) ctx.touchedLocalOnly = true;
     if (memoriesUsed.length) {
-      parts.push(`<memories note="approved long-term memories that may be relevant">\n${memoriesUsed.map((m) => `- [${m.category}] ${m.content} (id ${m.id})`).join('\n')}\n</memories>`);
+      parts.push(`<memories note="approved long-term memories that may be relevant; work ones are about the user's job or business">\n${memoriesUsed.map((m) => `- [${m.context === 'work' ? 'work · ' : ''}${m.category}] ${m.content} (id ${m.id})`).join('\n')}\n</memories>`);
     }
   }
   // Decisions the user made on queued actions that the assistant hasn't been told about yet.
@@ -208,17 +213,27 @@ export async function runTurn(
   user: SessionUser,
   conversationId: string,
   userText: string,
-  opts: { attachments?: string[]; signal?: AbortSignal; emit: (e: TurnEvent) => void; /** Group chats: no memories, only GROUP_TOOLS. */ restricted?: boolean },
+  opts: {
+    attachments?: string[]; signal?: AbortSignal; emit: (e: TurnEvent) => void;
+    /** Group chats: no memories, only GROUP_TOOLS. */ restricted?: boolean;
+    /** A routine limited to some tools: only these are offered or run. */ allowedTools?: (name: string) => boolean;
+  },
 ) {
   const { db } = services;
   const conv = db.getOwned('conversations', user.id, conversationId);
   if (!conv) throw new HttpError(404, 'Conversation not found', 'not_found');
   const settings = getSettings(db, user.id);
   const prior = Number(db.get('SELECT COALESCE(SUM(LENGTH(content)), 0) AS n FROM messages WHERE conversation_id = ? AND user_id = ?', conversationId, user.id)!.n);
-  const { provider, reason: routeReason } = services.providers.route(settings.ai, {
-    text: userText, attachments: opts.attachments?.length ?? 0, historyChars: prior, sensitive: sensitivityOf(userText),
+  const attachIds = (opts.attachments ?? []).slice(0, 5);
+  const imageCount = attachIds.filter((id) => db.getOwned('documents', user.id, id)?.kind === 'image').length;
+  const choice = selectProvider(services, user.id, settings, {
+    text: userText, attachments: attachIds.length - imageCount, images: imageCount, historyChars: prior, sensitive: sensitivityOf(userText),
+    localOnly: !!conv.local_only, offline: services.online ? !services.online() : false,
   });
-  const info = provider.info();
+  let provider = choice.provider;
+  let info = provider.info();
+  let routeReason = choice.reason;
+  const fallbacks = [...choice.fallbacks];
   const limit = settings.ai.dailyTokenLimit ?? services.config.DAILY_TOKEN_LIMIT;
   if (limit > 0 && usageToday(services, user.id) >= limit) {
     throw new ProviderError('rate_limited', `You have reached your daily AI usage limit (${limit.toLocaleString()} tokens in 24 hours). Raise it in Settings → AI, or try again later.`);
@@ -229,6 +244,7 @@ export async function runTurn(
   }
 
   const ctx = makeContext(services, user.id, conversationId);
+  ctx.cloud = !info.capabilities.local;
   const { text: apiText, memoriesUsed, attachments, images } = turnContext(services, ctx, conv, userText, opts.attachments ?? [], opts.restricted);
   const history = db.all('SELECT * FROM messages WHERE conversation_id = ? AND user_id = ? ORDER BY created_at, rowid', conversationId, user.id);
   const userMsg = db.insert('messages', {
@@ -244,15 +260,28 @@ export async function runTurn(
   opts.emit({ type: 'start', userMessage: { ...userMsg, meta: { attachments } }, provider: { id: info.id, label: info.label, model: info.model, reason: routeReason } });
 
   // The on-phone model always gets the short prompt (conversations store the full one when created).
-  const onPhone = info.capabilities.toolset === 'phone';
-  const system = onPhone ? buildPhonePrompt(user, settings) + (conv.system_prompt?.endsWith(GROUP_RULES) ? GROUP_RULES : '')
-    : conv.system_prompt || buildSystemPrompt(user, settings);
-  if (!conv.system_prompt && !onPhone) db.run('UPDATE conversations SET system_prompt = ? WHERE id = ?', system, conversationId);
-  const messages = expandImages(services, user.id, replayable([...history, userMsg]), !!info.capabilities.vision);
-  const tools = !info.capabilities.tools ? []
+  // Once local-only content is in this turn, only models on the user's devices may continue it.
+  const keepLocal = () => {
+    if (!ctx.touchedLocalOnly) return;
+    markConversationLocalOnly(db, user.id, conversationId);
+    for (let i = fallbacks.length - 1; i >= 0; i--) if (!fallbacks[i].provider().info().capabilities.local) fallbacks.splice(i, 1);
+  };
+  keepLocal();
+  const systemFor = (inf: typeof info) => {
+    const onPhone = inf.capabilities.toolset === 'phone';
+    const sys = onPhone ? buildPhonePrompt(user, settings) + (conv.system_prompt?.endsWith(GROUP_RULES) ? GROUP_RULES : '')
+      : conv.system_prompt || buildSystemPrompt(user, settings);
+    if (!conv.system_prompt && !onPhone) db.run('UPDATE conversations SET system_prompt = ? WHERE id = ?', sys, conversationId);
+    return sys;
+  };
+  const toolsFor = (inf: typeof info) => !inf.capabilities.tools ? []
     : opts.restricted ? toolSpecs('full').filter((t) => GROUP_TOOLS.has(t.name))
-    : info.capabilities.toolset === 'phone' ? toolSpecs('phone')
-    : [...toolSpecs(info.capabilities.toolset ?? 'full'), ...appToolSpecs(services, user.id), ...connectorToolSpecs(db, user.id)];
+    : inf.capabilities.toolset === 'phone' ? toolSpecs('phone')
+    : [...toolSpecs(inf.capabilities.toolset ?? 'full'), ...appToolSpecs(services, user.id), ...connectorToolSpecs(db, user.id)]
+      .filter((t) => !opts.allowedTools || opts.allowedTools(t.name));
+  let system = systemFor(info);
+  const messages = expandImages(services, user.id, replayable([...history, userMsg]), !!info.capabilities.vision);
+  let tools = toolsFor(info);
   const toolEvents: unknown[] = [];
   let finalText = '';
   let assistantRow: Row | null = null;
@@ -263,10 +292,29 @@ export async function runTurn(
     let streamed = '';
     let result;
     try {
-      result = await provider.chat({
-        system, messages, tools, signal: opts.signal,
-        onText: (delta) => { streamed += delta; opts.emit({ type: 'text', delta }); },
-      });
+      // A model that's unavailable, rate-limited or rejects the key before answering: move on to the
+      // next allowed one (same rules), and say so.
+      for (;;) {
+        try {
+          result = await provider.chat({
+            system, messages, tools, signal: opts.signal,
+            onText: (delta) => { streamed += delta; opts.emit({ type: 'text', delta }); },
+          });
+          break;
+        } catch (err) {
+          const switchable = err instanceof ProviderError && err.kind !== 'aborted' && err.kind !== 'bad_request' && err.kind !== 'refused';
+          if (!switchable || streamed || !fallbacks.length) throw err;
+          const next = fallbacks.shift()!;
+          const was = info.label;
+          provider = next.provider();
+          info = provider.info();
+          ctx.cloud = !info.capabilities.local;
+          routeReason = `${was} wasn’t available (${(err as Error).message.slice(0, 80)}), so ${next.label} answered`;
+          system = systemFor(info);
+          tools = toolsFor(info);
+          opts.emit({ type: 'switch', provider: { id: info.id, label: info.label, model: info.model, reason: routeReason } });
+        }
+      }
     } catch (err) {
       // Stop pressed: keep what the person has already read instead of throwing it away.
       const sofar = finalText + (finalText && streamed ? '\n\n' : '') + streamed;
@@ -288,6 +336,7 @@ export async function runTurn(
       opts.emit({ type: 'done' });
       return { userMessage: userMsg, message };
     }
+    if (!result) throw new ProviderError('unavailable', 'No model answered.');
     totalIn += result.usage.inputTokens;
     totalOut += result.usage.outputTokens;
     recordUsage(services, user.id, info.id, result.model, result.usage, info.pricing);
@@ -324,7 +373,9 @@ export async function runTurn(
       // The tool list is the model's menu, not a permission: enforce it here too.
       const outcome = opts.restricted && !GROUP_TOOLS.has(tu.name)
         ? { status: 'error' as const, error: 'That tool is not available in group chats.' }
-        : await executeTool(tu.name, tu.input, ctx);
+        : opts.allowedTools && !opts.allowedTools(tu.name)
+          ? { status: 'error' as const, error: 'This routine isn’t allowed to use that. The user can change what it may use on the Routines page.' }
+          : await executeTool(tu.name, tu.input, ctx);
       const ev = {
         id: tu.id, name: tu.name, status: outcome.status, actionId: outcome.actionId,
         summary: outcome.summary, risk: outcome.risk,
@@ -349,6 +400,7 @@ export async function runTurn(
       api_content: JSON.stringify(results), meta: JSON.stringify({ tools: toolEvents.slice(-results.length) }),
     });
     messages.push({ role: 'user', content: results });
+    keepLocal();
     if (round === MAX_TOOL_ROUNDS - 1) {
       const note = '\n\n_I stopped after several tool steps. Tell me if you want me to continue._';
       opts.emit({ type: 'text', delta: note });
@@ -439,7 +491,7 @@ export function recordUsage(
   const plain = Math.max(0, usage.inputTokens - read - write);
   const cost = pricing ? ((plain + read * 0.1 + write * 1.25) * pricing.input + usage.outputTokens * pricing.output) / 1_000_000 : 0;
   services.db.insert('usage', {
-    user_id: userId, provider, model, input_tokens: usage.inputTokens, output_tokens: usage.outputTokens, cost_usd: cost, purpose,
+    user_id: userId, provider, conn_id: provider, model, input_tokens: usage.inputTokens, output_tokens: usage.outputTokens, cost_usd: cost, purpose,
   });
 }
 

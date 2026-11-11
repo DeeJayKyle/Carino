@@ -33,7 +33,7 @@ function item(file: string) {
 }
 
 /** Saves bytes as a file in the user's OneDrive "Carino" folder, renaming on a clash. */
-async function upload(services: Services, a: Row, name: string, mime: string, data: Buffer) {
+export async function upload(services: Services, a: Row, name: string, mime: string, data: Buffer) {
   const safe = name.replace(/[\\/:*?"<>|#%]/g, '-').slice(0, 180);
   if (data.length > 200 * 1024 * 1024) throw new AppError('That file is too large to upload (over 200 MB).');
   const f = await api(services, a, `${GRAPH}/me/drive/root:/Carino/${enc(safe)}:/content?@microsoft.graph.conflictBehavior=rename`, {
@@ -141,12 +141,16 @@ export const MICROSOFT_TOOLS: AppToolDef[] = [
   }),
   appTool('microsoft', {
     name: 'outlook_draft',
-    description: 'Save an email as a draft in Outlook (not sent), so the user can review and send it.',
+    description: 'Save an email as a draft in Outlook (not sent), so the user can review and send it. For a reply, pass reply_to_message_id: the draft goes in the same conversation, to the sender.',
     risk: 'reversible',
-    input: z.object(emailFields),
-    summarize: (i) => `Save an Outlook draft to ${i.to}: “${i.subject}”`,
+    input: z.object({ ...emailFields, reply_to_message_id: z.string().max(400).optional() }),
+    summarize: (i) => `Save an Outlook draft${i.reply_to_message_id ? ' reply' : ''} to ${i.to}: “${i.subject}”`,
     run: async (i, ctx) => {
       const a = account(ctx, 'microsoft', i);
+      if (i.reply_to_message_id) {
+        const d = await api(ctx.services, a, `${GRAPH}/me/messages/${enc(i.reply_to_message_id)}/createReply`, { body: { comment: i.body } });
+        return { drafted: true, reply: true, id: d.id, link: d.webLink };
+      }
       const d = await api(ctx.services, a, `${GRAPH}/me/messages`, { body: message(i) });
       return { drafted: true, id: d.id, link: d.webLink };
     },
@@ -169,7 +173,7 @@ export const MICROSOFT_TOOLS: AppToolDef[] = [
   appTool('microsoft', {
     name: 'outlook_calendar_create_event',
     description: 'Add an event to the user’s Outlook calendar. Times as ISO 8601 (local times are in the user’s time zone); a plain date makes an all-day event. Attendees get an invitation.',
-    risk: 'reversible',
+    risk: 'consequential',
     input: z.object({
       title: z.string().min(1).max(300), start: z.string().min(4).max(100), end: z.string().max(100).optional(),
       location: z.string().max(500).optional(), description: z.string().max(8000).optional(),
@@ -272,7 +276,7 @@ export const MICROSOFT_TOOLS: AppToolDef[] = [
   appTool('microsoft', {
     name: 'excel_update',
     description: 'Write values into an Excel workbook in OneDrive, either over a range ("B2:C5", rows must match its size) or, with append=true, as new rows under the existing data.',
-    risk: 'reversible',
+    risk: 'consequential',
     input: z.object({ file: fileInput, sheet: z.string().max(100).optional(), range: z.string().max(50).optional(), append: z.boolean().optional(), rows: rowsInput.min(1) }),
     summarize: (i) => (i.append ? `Add ${i.rows.length} row${i.rows.length === 1 ? '' : 's'} to an Excel workbook` : `Update ${i.range ?? 'cells'} in an Excel workbook`),
     run: async (i, ctx) => {

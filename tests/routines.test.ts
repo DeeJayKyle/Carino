@@ -109,6 +109,45 @@ describe('custom routines', () => {
     expect((await b.post(`/api/routines/${r.id}/run`)).status).toBe(404);
   });
 
+  it('builds a routine from steps and limits it to what the user picked', async () => {
+    const c = await signup(ctx);
+    const groups = (await c.get('/api/routines/access')).data.groups;
+    expect(groups.map((g: any) => g.id)).toEqual(expect.arrayContaining(['tasks', 'money', 'email', 'files']));
+    expect(JSON.stringify(groups)).not.toContain('gmail_'); // plain words only, no tool names
+    expect((await c.post('/api/routines', { title: 'Bad', prompt: 'Do things please.', time_local: '09:00', access: ['root'] })).status).toBe(400);
+    const r = (await c.post('/api/routines', {
+      title: 'Bills check', prompt: 'Look after my bills.', time_local: '09:00',
+      steps: ['Check bills due this week', 'Add a to-do for each'], access: ['money', 'tasks'],
+    })).data;
+    expect(r).toMatchObject({ steps: ['Check bills due this week', 'Add a to-do for each'], access: ['money', 'tasks'] });
+    expect(r.access_summary.everything).toBe(false);
+    expect(r.access_summary.asks).toContain('deleting a to-do');
+    // The model tries a tool outside the routine's access, then one inside it.
+    ctx.provider.steps.push(() => toolCall('web_search', { query: 'anything' }));
+    ctx.provider.steps.push(() => toolCall('create_task', { title: 'Pay water bill' }));
+    ctx.provider.steps.push(() => toolCall('delete_task', { task_id: 'x' }));
+    ctx.provider.steps.push(() => text('Added a to-do for the water bill.'));
+    expect((await c.post(`/api/routines/${r.id}/run`)).status).toBe(200);
+    const first = ctx.provider.calls[0];
+    const offered = (first.tools ?? []).map((t: any) => t.name);
+    expect(offered).toContain('create_task');
+    expect(offered).toContain('log_expense');
+    expect(offered).not.toContain('web_search');
+    expect(offered).not.toContain('save_memory');
+    const sent = JSON.stringify(first.messages);
+    expect(sent).toContain('1. Check bills due this week');
+    const later = JSON.stringify(ctx.provider.calls.at(-1)!.messages);
+    expect(later).toContain('isn’t allowed to use that');
+    expect((await c.get('/api/tasks')).data.tasks.some((t: any) => t.title === 'Pay water bill')).toBe(true);
+    // Allowed but consequential: still waits for approval.
+    const pending = (await c.get('/api/actions?status=pending')).data;
+    expect(JSON.stringify(pending)).toContain('delete_task');
+    // Back to everything.
+    const back = (await c.patch(`/api/routines/${r.id}`, { access: null, steps: [] })).data;
+    expect(back).toMatchObject({ access: null, steps: [] });
+    expect(back.access_summary.everything).toBe(true);
+  });
+
   it('turns a Markdown reply into a short plain notification', () => {
     expect(previewText('## Today\n\n**Three** things: [link](https://x.y)\n\n> note', 100)).toBe('Today\nThree things: link');
     expect(previewText('a'.repeat(300), 20)).toHaveLength(20);

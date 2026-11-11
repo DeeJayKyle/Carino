@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Carino",
+  "version": "1.5.0",
+  "identifier": "app.carino.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:4430",
+    "beforeBuildCommand": "npm run build:desktop --prefix ../.."
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      { "title": "Carino", "width": 1200, "height": 820, "minWidth": 380, "minHeight": 600 }
+    ],
+    "security": {
+      "csp": null,
+      "headers": {
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "credentialless"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "icon": ["icons/icon.png", "icons/icon.ico"],
+    "windows": { "webviewInstallMode": { "type": "embedBootstrapper" } }
+  }
+}

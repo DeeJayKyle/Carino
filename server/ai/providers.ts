@@ -1,8 +1,40 @@
 import type { AIProvider, ProviderInfo } from './types.ts';
 import { ProviderError } from './types.ts';
-import { AnthropicProvider, type Effort } from './anthropic.ts';
+import { AnthropicProvider, ANTHROPIC_MODELS, type Effort } from './anthropic.ts';
 import { OpenAICompatProvider } from './openai-compat.ts';
+import { ResponsesProvider } from './responses.ts';
 import type { Config } from '../config.ts';
+
+/**
+ * An AI service Carino can use: the main one chosen in settings, Claude, or an extra service
+ * (another key, a local server on this PC, the on-phone model). Keys stay in memory here; they are
+ * stored sealed on the device (mobile/vault.ts) and never returned to the UI.
+ */
+export interface ConnectionSpec {
+  id: string;
+  label: string;
+  api: 'chat' | 'responses' | 'anthropic';
+  baseUrl: string;
+  apiKey?: string;
+  /** Content sent here stays on the user's own devices. */
+  local: boolean;
+  /** free: the listed models cost nothing; paid: billed per use; unknown: treated as paid. */
+  billing: 'free' | 'paid' | 'unknown';
+  /** Models known from the preset or setup, best first. */
+  models: { id: string; label?: string; vision?: boolean }[];
+  toolset?: 'core' | 'full' | 'phone';
+  tools?: boolean;
+  /** The main connection (chosen in Settings): its chosen model counts as approved even if paid. */
+  main?: boolean;
+  preset?: string;
+}
+
+/** "connection::model" — how settings refer to a model. */
+export const modelRef = (connId: string, model: string) => `${connId}::${model}`;
+export function parseRef(ref: string): { connId: string; model: string } | null {
+  const i = ref.indexOf('::');
+  return i > 0 ? { connId: ref.slice(0, i), model: ref.slice(i + 2) } : null;
+}
 
 export interface AISettings {
   provider?: string;
@@ -19,6 +51,8 @@ export interface RouteSignals {
   historyChars: number;
   /** Label of a detected sensitive category in the message, if any. */
   sensitive?: string | null;
+  /** Photos attached to this message. */
+  images?: number;
 }
 
 const COMPLEX = /\b(analy[sz]e|analysis|research|compare|plan|strategy|report|summari[sz]e|draft|write|essay|lesson plan|code|debug|calculate|forecast|budget|explain why|step[- ]by[- ]step)\b/i;
@@ -27,6 +61,46 @@ const COMPLEX = /\b(analy[sz]e|analysis|research|compare|plan|strategy|report|su
 export class ProviderRegistry {
   private providers = new Map<string, AIProvider>();
   private defaultId: string | undefined;
+  private conns = new Map<string, ConnectionSpec>();
+  /** The fetch used for AI calls (on the phone, it also answers the on-device model). */
+  fetchImpl: typeof fetch = fetch;
+
+  /** Extra services are only used through the model router, never by resolve()'s fallback order. */
+  addConnection(spec: ConnectionSpec) {
+    this.conns.set(spec.id, spec);
+  }
+
+  connections(): ConnectionSpec[] {
+    return [...this.conns.values()];
+  }
+
+  connection(id: string) {
+    return this.conns.get(id);
+  }
+
+  /** True when there is more than one service or model to choose between. */
+  hasChoices() {
+    return this.conns.size > 1 || [...this.conns.values()].some((c) => c.models.length > 1);
+  }
+
+  /** A provider for one model of one connection. */
+  providerFor(connId: string, model: string, extra: { vision?: boolean; tools?: boolean; pricing?: { input: number; output: number }; api?: 'chat' | 'responses'; effort?: Effort } = {}): AIProvider {
+    const c = this.conns.get(connId);
+    if (!c) throw new ProviderError('not_configured', 'That AI service is no longer set up.');
+    if (c.api === 'anthropic') {
+      const a = this.providers.get('anthropic');
+      if (!(a instanceof AnthropicProvider)) throw new ProviderError('not_configured', 'Claude is not set up.');
+      return a.withSettings(model, extra.effort);
+    }
+    const api = extra.api ?? c.api;
+    if (api === 'responses') {
+      return new ResponsesProvider({ id: c.id, label: c.label, baseUrl: c.baseUrl, apiKey: c.apiKey, model, vision: extra.vision, local: c.local, pricing: extra.pricing }, this.fetchImpl);
+    }
+    return new OpenAICompatProvider({
+      id: c.id, label: c.label, baseUrl: c.baseUrl, apiKey: c.apiKey, model, local: c.local, pricing: extra.pricing,
+      tools: extra.tools ?? c.tools ?? true, toolset: c.toolset ?? (c.local ? 'core' : 'full'), vision: !!extra.vision,
+    }, this.fetchImpl);
+  }
 
   register(id: string, provider: AIProvider) {
     this.providers.set(id, provider);
@@ -98,12 +172,19 @@ export class ProviderRegistry {
 }
 
 /** fetchImpl lets the phone app answer the OpenAI-compatible provider itself (mobile/ondevice.ts). */
-export function createRegistry(config: Config, fetchImpl: typeof fetch = fetch): ProviderRegistry {
+export function createRegistry(config: Config, fetchImpl: typeof fetch = fetch, extras: ConnectionSpec[] = []): ProviderRegistry {
   const reg = new ProviderRegistry();
+  reg.fetchImpl = fetchImpl;
   reg.register('anthropic', new AnthropicProvider({ apiKey: config.ANTHROPIC_API_KEY, model: config.ANTHROPIC_MODEL }));
+  const compatLocal = config.OPENAI_COMPAT_LOCAL === 'true';
   reg.register(
     'openai_compat',
-    new OpenAICompatProvider({
+    config.OPENAI_COMPAT_API === 'responses' && config.OPENAI_COMPAT_BASE_URL && config.OPENAI_COMPAT_MODEL
+      ? new ResponsesProvider({
+        id: 'openai_compat', label: config.OPENAI_COMPAT_LABEL, baseUrl: config.OPENAI_COMPAT_BASE_URL, apiKey: config.OPENAI_COMPAT_API_KEY,
+        model: config.OPENAI_COMPAT_MODEL, vision: config.OPENAI_COMPAT_VISION === 'true', local: compatLocal,
+      }, fetchImpl)
+      : new OpenAICompatProvider({
       baseUrl: config.OPENAI_COMPAT_BASE_URL,
       apiKey: config.OPENAI_COMPAT_API_KEY,
       model: config.OPENAI_COMPAT_MODEL,
@@ -113,8 +194,34 @@ export function createRegistry(config: Config, fetchImpl: typeof fetch = fetch):
       toolset: config.OPENAI_COMPAT_TOOLSET,
       vision: config.OPENAI_COMPAT_VISION === 'true',
       fallbackModels: config.OPENAI_COMPAT_FALLBACK_MODELS?.split(',').map((m) => m.trim()).filter(Boolean),
+      local: compatLocal,
     }, fetchImpl),
   );
   reg.setDefault(config.DEFAULT_PROVIDER);
+  if (config.ANTHROPIC_API_KEY) {
+    reg.addConnection({
+      id: 'anthropic', label: 'Claude (Anthropic)', api: 'anthropic', baseUrl: 'https://api.anthropic.com', local: false, billing: 'paid',
+      models: [config.ANTHROPIC_MODEL, ...ANTHROPIC_MODELS.filter((m) => m !== config.ANTHROPIC_MODEL)].map((id) => ({ id, vision: true })), toolset: 'full', main: config.DEFAULT_PROVIDER === 'anthropic',
+    });
+  }
+  if (config.OPENAI_COMPAT_BASE_URL && config.OPENAI_COMPAT_MODEL) {
+    const fallback = config.OPENAI_COMPAT_FALLBACK_MODELS?.split(',').map((m) => m.trim()).filter(Boolean) ?? [];
+    const local = compatLocal || ['localhost', '127.0.0.1', '[::1]'].includes(hostOf(config.OPENAI_COMPAT_BASE_URL));
+    reg.addConnection({
+      id: 'openai_compat', label: config.OPENAI_COMPAT_LABEL, api: config.OPENAI_COMPAT_API, baseUrl: config.OPENAI_COMPAT_BASE_URL,
+      apiKey: config.OPENAI_COMPAT_API_KEY, local, billing: local ? 'free' : config.OPENAI_COMPAT_BILLING,
+      models: [config.OPENAI_COMPAT_MODEL, ...fallback].map((id, i) => ({ id, vision: i === 0 ? config.OPENAI_COMPAT_VISION === 'true' : undefined })),
+      toolset: config.OPENAI_COMPAT_TOOLSET, tools: config.OPENAI_COMPAT_TOOLS === 'true', main: config.DEFAULT_PROVIDER !== 'anthropic',
+    });
+  }
+  for (const e of extras) if (!reg.connection(e.id)) reg.addConnection({ ...e, main: false });
   return reg;
+}
+
+function hostOf(url: string) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return '';
+  }
 }

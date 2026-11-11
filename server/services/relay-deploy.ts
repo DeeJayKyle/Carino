@@ -31,7 +31,11 @@ async function cf(services: Services, token: string, path: string, init: { metho
 const why = (r: { errors: { message: string }[]; status: number }) => r.errors.map((e) => e.message).join('; ') || `error ${r.status}`;
 
 /** `claimKey` is stored as the relay's secret, so this Carino can claim it even if another once did. */
-export async function deployRelay(services: Services, rawToken: string, claimKey: string) {
+/**
+ * `appSecret`, when the user opts in, lets the relay check Meta's signature itself and refuse
+ * forged deliveries outright (it's then also kept on their own Cloudflare account).
+ */
+export async function deployRelay(services: Services, rawToken: string, claimKey: string, appSecret?: string) {
   const token = rawToken.trim();
   if (token.length < 20) throw badRequest('Paste the Cloudflare API token you created.');
   const accounts = await cf(services, token, '/accounts?per_page=5');
@@ -44,7 +48,10 @@ export async function deployRelay(services: Services, rawToken: string, claimKey
     const form = new FormData();
     form.set('metadata', new Blob([JSON.stringify({
       main_module: 'worker.js', compatibility_date: COMPAT_DATE,
-      bindings: [{ type: 'durable_object_namespace', name: 'INBOX', class_name: 'Inbox' }, { type: 'secret_text', name: 'CLAIM_KEY', text: claimKey }],
+      bindings: [
+        { type: 'durable_object_namespace', name: 'INBOX', class_name: 'Inbox' }, { type: 'secret_text', name: 'CLAIM_KEY', text: claimKey },
+        ...(appSecret ? [{ type: 'secret_text', name: 'APP_SECRET', text: appSecret }] : []),
+      ],
       ...(withMigration ? { migrations: { new_tag: 'v1', new_sqlite_classes: ['Inbox'] } } : {}),
     })], { type: 'application/json' }));
     form.set('worker.js', new Blob([RELAY_SOURCE], { type: 'application/javascript+module' }), 'worker.js');

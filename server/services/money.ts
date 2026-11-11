@@ -49,24 +49,64 @@ export const expenseInput = z.object({
   source: z.enum(['manual', 'chat', 'receipt']).default('manual'),
 });
 
-export const expensePatch = expenseInput.omit({ source: true }).partial();
+/**
+ * An edit changes only the fields sent. (No defaults here: a default would quietly overwrite the
+ * stored value, e.g. reset the category when only the amount changes.) The source — chat, receipt
+ * or manual — is never changed by an edit.
+ */
+export const expensePatch = z.object({
+  amount: z.number().positive().max(1e12),
+  currency,
+  category: z.enum(CATEGORIES),
+  note: z.string().trim().max(300),
+  merchant: z.string().trim().max(120),
+  spent_on: day,
+}).partial().strict();
 
 /** What a budget check found after spending was added: warnings sent at 80% and when it goes over. */
 export interface BudgetAlert { category: Category | 'total'; level: 80 | 100; spent: number; amount: number; currency: string; title: string; body: string }
 
-export function addExpense(db: Db, userId: string, raw: unknown, ctx: { today: string; currency: string; locale?: string }) {
-  const i = expenseInput.parse(raw);
-  const row = db.insert('expenses', {
-    user_id: userId, amount: i.amount, currency: i.currency ?? ctx.currency, category: i.category,
-    note: i.note ?? '', merchant: i.merchant ?? '', spent_on: i.spent_on ?? ctx.today, source: i.source,
-  });
-  const alerts = checkBudgets(db, userId, String(row.spent_on).slice(0, 7), ctx.today, ctx.locale);
-  return { expense: row, alerts };
+export class MoneyError extends Error {}
+
+/** Which book: null is the Personal book (where everything from before books lives). */
+export type Book = string | null;
+const inBook = (book: Book): [string, (string)[]] => (book ? ['book_id = ?', [book]] : ['book_id IS NULL', []]);
+
+function notFuture(day: string | undefined, today: string) {
+  if (day && day > today) throw new MoneyError('That date is in the future. Spending is logged on the day it happened.');
 }
 
-export function updateExpense(db: Db, userId: string, id: string, raw: unknown) {
+/** Same amount, category and day logged in the last 10 minutes: probably the same purchase twice. */
+export function findDuplicate(db: Db, userId: string, e: { amount: number; currency: string; category: string; spent_on: string }, now: Date, exceptId?: string, book: Book = null) {
+  const [bw, bp] = inBook(book);
+  return db.get(
+    `SELECT * FROM expenses WHERE user_id = ? AND ${bw} AND amount = ? AND currency = ? AND category = ? AND spent_on = ? AND created_at >= ?${exceptId ? ' AND id <> ?' : ''} ORDER BY created_at DESC LIMIT 1`,
+    userId, ...bp, e.amount, e.currency, e.category, e.spent_on, new Date(now.getTime() - 10 * 60_000).toISOString(), ...(exceptId ? [exceptId] : []),
+  ) ?? null;
+}
+
+export function addExpense(db: Db, userId: string, raw: unknown, ctx: { today: string; currency: string; locale?: string; now?: Date; book?: Book; source?: string }) {
+  const i = expenseInput.parse(raw);
+  notFuture(i.spent_on, ctx.today);
+  const book = ctx.book ?? null;
+  const values = { amount: i.amount, currency: i.currency ?? ctx.currency, category: i.category, spent_on: i.spent_on ?? ctx.today };
+  const duplicate = ctx.now ? findDuplicate(db, userId, values, ctx.now, undefined, book) : null;
+  const row = db.insert('expenses', {
+    user_id: userId, book_id: book, ...values, note: i.note ?? '', merchant: i.merchant ?? '', source: ctx.source ?? i.source, updated_at: nowIso(),
+  });
+  const alerts = checkBudgets(db, userId, String(row.spent_on).slice(0, 7), ctx.today, ctx.locale, book);
+  return { expense: row, alerts, possible_duplicate: duplicate ? { id: String(duplicate.id), created_at: String(duplicate.created_at) } : null };
+}
+
+export function updateExpense(db: Db, userId: string, id: string, raw: unknown, ctx: { today: string; locale?: string }) {
   const i = expensePatch.parse(raw);
-  return db.updateOwned('expenses', userId, id, { ...i }, false);
+  notFuture(i.spent_on, ctx.today);
+  const before = db.getOwned('expenses', userId, id);
+  if (!before) return null;
+  const row = db.updateOwned('expenses', userId, id, { ...i }, true);
+  // A bigger amount (or a move to another category or month) can cross a budget line.
+  const alerts = row ? checkBudgets(db, userId, String(row.spent_on).slice(0, 7), ctx.today, ctx.locale, (row.book_id as string | null) ?? null) : [];
+  return row ? { expense: row, alerts } : null;
 }
 
 export function deleteExpense(db: Db, userId: string, id: string) {
@@ -79,20 +119,21 @@ export const budgetInput = z.object({
   currency: currency.optional(),
 });
 
-export function setBudget(db: Db, userId: string, raw: unknown, mainCurrency: string): Row | null {
+export function setBudget(db: Db, userId: string, raw: unknown, mainCurrency: string, book: Book = null): Row | null {
   const i = budgetInput.parse(raw);
+  const [bw, bp] = inBook(book);
   if (i.amount === 0) {
-    db.run('DELETE FROM budgets WHERE user_id = ? AND category = ?', userId, i.category);
+    db.run(`DELETE FROM budgets WHERE user_id = ? AND ${bw} AND category = ?`, userId, ...bp, i.category);
     return null;
   }
   const cur = i.currency ?? mainCurrency;
-  const existing = db.get('SELECT id FROM budgets WHERE user_id = ? AND category = ?', userId, i.category);
+  const existing = db.get(`SELECT id FROM budgets WHERE user_id = ? AND ${bw} AND category = ?`, userId, ...bp, i.category);
   if (existing) {
     // A new amount gets fresh warnings.
     db.run("UPDATE budgets SET amount = ?, currency = ?, alerted = '', updated_at = ? WHERE id = ?", i.amount, cur, nowIso(), existing.id);
     return db.get('SELECT * FROM budgets WHERE id = ?', existing.id)!;
   }
-  return db.insert('budgets', { user_id: userId, category: i.category, amount: i.amount, currency: cur });
+  return db.insert('budgets', { user_id: userId, book_id: book, category: i.category, amount: i.amount, currency: cur });
 }
 
 const monthEnd = (month: string) => {
@@ -101,11 +142,12 @@ const monthEnd = (month: string) => {
 };
 
 /** Totals per currency and category for spending between two local dates (inclusive). */
-function totals(db: Db, userId: string, from: string, to: string) {
+function totals(db: Db, userId: string, from: string, to: string, book: Book) {
+  const [bw, bp] = inBook(book);
   return db.all(
     `SELECT currency, category, SUM(amount) AS total, COUNT(*) AS n FROM expenses
-     WHERE user_id = ? AND spent_on >= ? AND spent_on <= ? GROUP BY currency, category`,
-    userId, from, to,
+     WHERE user_id = ? AND ${bw} AND spent_on >= ? AND spent_on <= ? GROUP BY currency, category`,
+    userId, ...bp, from, to,
   ).map((r) => ({ currency: String(r.currency), category: String(r.category) as Category, total: Number(r.total), n: Number(r.n) }));
 }
 
@@ -113,10 +155,11 @@ function totals(db: Db, userId: string, from: string, to: string) {
  * A month of spending in the main currency, with each budget's progress. Spending in other
  * currencies is listed separately rather than converted (no exchange rates are guessed).
  */
-export function monthSummary(db: Db, userId: string, month: string, today: string, mainCurrency: string) {
+export function monthSummary(db: Db, userId: string, month: string, today: string, mainCurrency: string, book: Book = null) {
   const from = `${month}-01`;
   const to = monthEnd(month);
-  const rows = totals(db, userId, from, to);
+  const rows = totals(db, userId, from, to, book);
+  const [bw, bp] = inBook(book);
   const main = rows.filter((r) => r.currency === mainCurrency);
   const byCategory = CATEGORIES.map((c) => ({ category: c, label: CATEGORY_LABELS[c], total: main.find((r) => r.category === c)?.total ?? 0 }))
     .filter((c) => c.total > 0).sort((a, b) => b.total - a.total);
@@ -126,7 +169,7 @@ export function monthSummary(db: Db, userId: string, month: string, today: strin
   const daysInMonth = Number(to.slice(8));
   const isCurrent = today.slice(0, 7) === month;
   const daysLeft = isCurrent ? daysInMonth - Number(today.slice(8)) + 1 : 0;
-  const budgets = db.all('SELECT * FROM budgets WHERE user_id = ? ORDER BY category = \'total\' DESC, category', userId).map((b) => {
+  const budgets = db.all(`SELECT * FROM budgets WHERE user_id = ? AND ${bw} ORDER BY category = 'total' DESC, category`, userId, ...bp).map((b) => {
     const cat = String(b.category) as Category | 'total';
     const spent = b.currency === mainCurrency || rows.some((r) => r.currency === b.currency)
       ? rows.filter((r) => r.currency === b.currency && (cat === 'total' || r.category === cat)).reduce((a, r) => a + r.total, 0)
@@ -138,12 +181,13 @@ export function monthSummary(db: Db, userId: string, month: string, today: strin
       perDayLeft: isCurrent && daysLeft > 0 && amount > spent ? (amount - spent) / daysLeft : null,
     };
   });
-  return { month, currency: mainCurrency, total, count: main.reduce((a, r) => a + r.n, 0), byCategory, other, budgets, daysLeft };
+  const income = Number(db.get(`SELECT COALESCE(SUM(amount), 0) AS s FROM income WHERE user_id = ? AND ${bw} AND currency = ? AND received_on >= ? AND received_on <= ?`, userId, ...bp, mainCurrency, from, to)!.s);
+  return { month, currency: mainCurrency, total, count: main.reduce((a, r) => a + r.n, 0), byCategory, other, budgets, daysLeft, income, net: income - total };
 }
 
 /** The last 7 days (ending today) against the 7 before, in the main currency. */
-export function weekSummary(db: Db, userId: string, today: string, mainCurrency: string) {
-  const sum = (from: string, to: string) => totals(db, userId, from, to).filter((r) => r.currency === mainCurrency);
+export function weekSummary(db: Db, userId: string, today: string, mainCurrency: string, book: Book = null) {
+  const sum = (from: string, to: string) => totals(db, userId, from, to, book).filter((r) => r.currency === mainCurrency);
   const week = sum(addDays(today, -6), today);
   const prev = sum(addDays(today, -13), addDays(today, -7));
   const total = week.reduce((a, r) => a + r.total, 0);
@@ -158,14 +202,16 @@ export function weekSummary(db: Db, userId: string, today: string, mainCurrency:
  * Warns once per month per budget at 80% and again when it goes over. Only the month that the
  * spending landed in is checked, and only while it is the current month.
  */
-export function checkBudgets(db: Db, userId: string, month: string, today: string, locale = 'en-GB'): BudgetAlert[] {
+export function checkBudgets(db: Db, userId: string, month: string, today: string, locale = 'en-GB', book: Book = null): BudgetAlert[] {
   if (today.slice(0, 7) !== month) return [];
   const out: BudgetAlert[] = [];
-  for (const b of db.all('SELECT * FROM budgets WHERE user_id = ?', userId)) {
+  const [bw, bp] = inBook(book);
+  const bookName = book ? String(db.get('SELECT name FROM money_books WHERE id = ?', book)?.name ?? '') : '';
+  for (const b of db.all(`SELECT * FROM budgets WHERE user_id = ? AND ${bw}`, userId, ...bp)) {
     const cat = String(b.category) as Category | 'total';
     const spent = Number(db.get(
-      `SELECT COALESCE(SUM(amount), 0) AS s FROM expenses WHERE user_id = ? AND currency = ? AND spent_on >= ? AND spent_on <= ?${cat === 'total' ? '' : ' AND category = ?'}`,
-      userId, b.currency, `${month}-01`, monthEnd(month), ...(cat === 'total' ? [] : [cat]),
+      `SELECT COALESCE(SUM(amount), 0) AS s FROM expenses WHERE user_id = ? AND ${bw} AND currency = ? AND spent_on >= ? AND spent_on <= ?${cat === 'total' ? '' : ' AND category = ?'}`,
+      userId, ...bp, b.currency, `${month}-01`, monthEnd(month), ...(cat === 'total' ? [] : [cat]),
     )!.s);
     const amount = Number(b.amount);
     const level: 0 | 80 | 100 = spent > amount ? 100 : spent >= amount * 0.8 ? 80 : 0;
@@ -173,7 +219,7 @@ export function checkBudgets(db: Db, userId: string, month: string, today: strin
     const [m, done] = String(b.alerted).split(':');
     if (m === month && Number(done) >= level) continue;
     db.run('UPDATE budgets SET alerted = ? WHERE id = ?', `${month}:${level}`, b.id);
-    const label = CATEGORY_LABELS[cat] ?? cat;
+    const label = `${bookName ? `${bookName}: ` : ''}${CATEGORY_LABELS[cat] ?? cat}`;
     const money = (n: number) => formatMoney(n, String(b.currency), locale);
     const n = level === 100
       ? { title: `Over budget: ${label}`, body: `${money(spent)} spent this month, ${money(spent - amount)} over the ${money(amount)} budget.` }
@@ -184,10 +230,11 @@ export function checkBudgets(db: Db, userId: string, month: string, today: strin
   return out;
 }
 
-export function listExpenses(db: Db, userId: string, opts: { from: string; to: string; limit?: number }) {
+export function listExpenses(db: Db, userId: string, opts: { from: string; to: string; limit?: number; book?: Book }) {
+  const [bw, bp] = inBook(opts.book ?? null);
   return db.all(
-    'SELECT * FROM expenses WHERE user_id = ? AND spent_on >= ? AND spent_on <= ? ORDER BY spent_on DESC, created_at DESC LIMIT ?',
-    userId, opts.from, opts.to, opts.limit ?? 200,
+    `SELECT * FROM expenses WHERE user_id = ? AND ${bw} AND spent_on >= ? AND spent_on <= ? ORDER BY spent_on DESC, created_at DESC LIMIT ?`,
+    userId, ...bp, opts.from, opts.to, opts.limit ?? 200,
   );
 }
 

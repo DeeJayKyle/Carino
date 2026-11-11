@@ -178,7 +178,8 @@ describe('WhatsApp channel', () => {
     const body = JSON.stringify(payload);
     return ctx.app.request(`http://localhost/hooks/whatsapp/${id}`, { method: 'POST', body, headers: { 'content-type': 'application/json', 'x-hub-signature-256': sign(secret, body) } });
   };
-  const msg = (from: string, textBody: string) => ({ entry: [{ changes: [{ value: { metadata: { phone_number_id: '5551234567' }, contacts: [{ wa_id: from, profile: { name: 'Herbert' } }], messages: [{ from, id: 'm1', type: 'text', text: { body: textBody } }] } }] }] });
+  let msgSeq = 0;
+  const msg = (from: string, textBody: string) => ({ entry: [{ changes: [{ value: { metadata: { phone_number_id: '5551234567' }, contacts: [{ wa_id: from, profile: { name: 'Herbert' } }], messages: [{ from, id: `wamid.t${++msgSeq}`, type: 'text', text: { body: textBody } }] } }] }] });
 
   it('verifies the webhook, links by code and replies through the Graph API', async () => {
     const c = await signup(ctx);

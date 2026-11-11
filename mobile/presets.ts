@@ -30,6 +30,10 @@ export interface Preset {
   ownAddress?: boolean;
   /** Runs on the phone itself: no key, no internet once downloaded. */
   onDevice?: boolean;
+  /** Which API the service speaks (default: Chat Completions). */
+  api?: 'chat' | 'responses';
+  /** Paid services: every call costs money; used only with the user's approval. */
+  paid?: boolean;
 }
 
 const preset = (p: Omit<Preset, 'model' | 'vision'> & { vision?: boolean }): Preset => ({
@@ -152,7 +156,14 @@ export const PRESETS: Preset[] = [
     ],
   }),
   {
-    id: 'anthropic', label: 'Claude (Anthropic)', free: 'Paid.', hidden: true,
+    id: 'openai', label: 'OpenAI', free: 'Paid: uses your OpenAI credit. Carino asks before using it, and you can set a spending limit.',
+    baseUrl: 'https://api.openai.com/v1', keyUrl: 'https://platform.openai.com/api-keys', api: 'responses', paid: true,
+    // Checked Aug 2025; the app also reads the current list from OpenAI and tests each model.
+    models: [{ id: 'gpt-5-mini', label: 'GPT-5 mini — quick', vision: true }, { id: 'gpt-5', label: 'GPT-5 — strongest', vision: true }],
+    model: 'gpt-5-mini', vision: true,
+  },
+  {
+    id: 'anthropic', label: 'Claude (Anthropic)', free: 'Paid.', hidden: true, paid: true,
     baseUrl: '', models: [], model: 'claude-sonnet-5-5', vision: true, keyUrl: 'https://console.anthropic.com/settings/keys',
   },
 ];
@@ -173,6 +184,27 @@ export interface DeviceConfig {
   searxngUrl?: string;
   braveKey?: string;
   githubToken?: string;
+  /** More AI services, used alongside the main one when Carino picks a model per message. */
+  connections?: ExtraConnection[];
+}
+
+/** An extra AI service: a preset (with its key) or a local server found on this device. */
+export interface ExtraConnection {
+  id: string;
+  preset: string;
+  label?: string;
+  baseUrl?: string;
+  apiKey?: string;
+}
+
+/** True for addresses on this device or the home network (content stays with the user). */
+export function ownNetwork(url: string): boolean {
+  try {
+    const h = new URL(url).hostname;
+    return h === 'localhost' || h === '[::1]' || h.endsWith('.local') || /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
+  } catch {
+    return false;
+  }
 }
 
 /** Server settings (the same names as the server's .env) for a device configuration. */
@@ -189,6 +221,8 @@ export function configToEnv(c: DeviceConfig): Record<string, string> {
     env.OPENAI_COMPAT_LABEL = 'Carino on this phone';
     env.OPENAI_COMPAT_TOOLSET = 'phone';
     env.OPENAI_COMPAT_VISION = 'false';
+    env.OPENAI_COMPAT_LOCAL = 'true';
+    env.OPENAI_COMPAT_BILLING = 'free';
     env.DEFAULT_PROVIDER = 'openai_compat';
   } else if (p) {
     const model = c.model || p.model;
@@ -197,9 +231,13 @@ export function configToEnv(c: DeviceConfig): Record<string, string> {
     if (c.apiKey) env.OPENAI_COMPAT_API_KEY = c.apiKey;
     env.OPENAI_COMPAT_LABEL = p.label;
     env.OPENAI_COMPAT_TOOLSET = p.ownAddress ? 'core' : 'full';
+    const own = !!p.ownAddress && ownNetwork(env.OPENAI_COMPAT_BASE_URL);
+    env.OPENAI_COMPAT_LOCAL = String(own);
+    env.OPENAI_COMPAT_BILLING = own ? 'free' : p.paid ? 'paid' : p.ownAddress ? 'unknown' : 'free';
+    if (p.api === 'responses') env.OPENAI_COMPAT_API = 'responses';
     env.OPENAI_COMPAT_VISION = String(c.vision ?? modelVision(p, model));
     // If the chosen model is retired, busy or rate-limited, try the service's other free models.
-    if (!p.ownAddress) {
+    if (!p.ownAddress && !p.paid) {
       const rest = p.models.map((m) => m.id).filter((id) => id !== model);
       if (rest.length) env.OPENAI_COMPAT_FALLBACK_MODELS = rest.join(',');
     }
@@ -220,4 +258,20 @@ export function configToEnv(c: DeviceConfig): Record<string, string> {
 export function maskConfig(c: DeviceConfig) {
   const mask = (k?: string) => (k ? `••••${k.slice(-4)}` : '');
   return { ...c, apiKey: mask(c.apiKey), groqKey: mask(c.groqKey), braveKey: mask(c.braveKey), githubToken: mask(c.githubToken), hasKey: !!c.apiKey };
+}
+
+/** The connection descriptions for extra services (keys included; they stay in memory). */
+export function connectionSpecs(c: DeviceConfig) {
+  return (c.connections ?? []).flatMap((x) => {
+    const p = PRESETS.find((y) => y.id === x.preset);
+    if (!p) return [];
+    const baseUrl = (p.ownAddress || x.baseUrl ? x.baseUrl : p.baseUrl) || p.baseUrl;
+    const local = !!p.onDevice || (!!p.ownAddress && ownNetwork(baseUrl));
+    return [{
+      id: x.id, label: x.label || p.label, api: (p.api ?? 'chat') as 'chat' | 'responses', baseUrl: p.onDevice ? ON_DEVICE_BASE_URL : baseUrl,
+      apiKey: x.apiKey, local, billing: (local ? 'free' : p.paid ? 'paid' : p.ownAddress ? 'unknown' : 'free') as 'free' | 'paid' | 'unknown',
+      models: p.ownAddress ? [] : p.models.map((m) => ({ id: m.id, label: m.label, vision: m.vision })),
+      toolset: (p.onDevice ? 'phone' : local ? 'core' : 'full') as 'core' | 'full' | 'phone', preset: p.id,
+    }];
+  });
 }

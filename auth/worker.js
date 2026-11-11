@@ -24,6 +24,30 @@ const PROVIDERS = {
 };
 
 const LOOPBACK = 'http://127.0.0.1:47823/callback';
+/** Providers that check PKCE themselves; for the others this helper does the check (see bindCode). */
+const PKCE = new Set(['google', 'microsoft', 'x']);
+const BIND_TTL_MS = 5 * 60_000;
+
+const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const challengeOf = async (verifier) => b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier)));
+
+/**
+ * The phone puts a fingerprint of a secret only it knows in the sign-in state ("<random>.<sha256 of
+ * the secret>"). The provider brings the browser here with the code and that state, before the code
+ * goes on to the phone over the local address, where another app could be listening. Remembering
+ * which fingerprint came with which code means only the phone that started the sign-in can redeem it.
+ */
+async function bindCode(env, code, state) {
+  const challenge = String(state ?? '').split('.')[1];
+  if (!code || !challenge || !/^[A-Za-z0-9_-]{43}$/.test(challenge) || !env.WA) return;
+  await env.WA.get(env.WA.idFromName('signin')).fetch(new Request('https://helper/signin/bind', { method: 'POST', body: JSON.stringify({ code_hash: await sha256(code), challenge }) }));
+}
+
+async function boundChallenge(env, code) {
+  if (!env.WA) return null;
+  const r = await env.WA.get(env.WA.idFromName('signin')).fetch(new Request('https://helper/signin/take', { method: 'POST', body: JSON.stringify({ code_hash: await sha256(code) }) }));
+  return ((await r.json().catch(() => ({}))).challenge) ?? null;
+}
 const PKG = 'app.carino';
 
 const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST, OPTIONS' };
@@ -110,6 +134,7 @@ async function signIn(req, env, url, path) {
   const cb = path.match(/^\/callback\/([a-z]+)$/);
   if (cb && req.method === 'GET') {
     if (!PROVIDERS[cb[1]]) return new Response('Unknown app', { status: 404 });
+    await bindCode(env, url.searchParams.get('code'), url.searchParams.get('state')).catch(() => undefined);
     return callbackPage(cb[1], url);
   }
   if ((path === '/token' || path === '/refresh') && req.method === 'POST') {
@@ -117,10 +142,20 @@ async function signIn(req, env, url, path) {
     const provider = String(b.provider ?? '');
     if (!PROVIDERS[provider]) return json({ error: 'Unknown app.' }, 404);
     if (!configured(env, provider)) return json({ error: 'This app isn’t set up on Carino’s sign-in helper yet.' }, 503);
+    const code = String(b.code ?? '').slice(0, 4000);
+    const verifier = b.code_verifier ? String(b.code_verifier).slice(0, 200) : undefined;
+    if (path === '/token') {
+      // A code that came with a fingerprint is only redeemed with the secret behind it. Providers
+      // without PKCE always need one (otherwise a code caught by another app would be enough).
+      const challenge = await boundChallenge(env, code);
+      if (challenge ? !(verifier && same(await challengeOf(verifier), challenge)) : !PKCE.has(provider)) {
+        return json({ error: challenge ? 'This sign-in belongs to another device. Start again.' : 'This sign-in can’t be finished safely. Update Carino and start again.' }, 400);
+      }
+    }
     const r = path === '/token'
       ? await tokenRequest(env, provider, {
-        grant_type: 'authorization_code', code: String(b.code ?? '').slice(0, 4000),
-        redirect_uri: `${url.origin}/callback/${provider}`, code_verifier: b.code_verifier ? String(b.code_verifier).slice(0, 200) : undefined,
+        grant_type: 'authorization_code', code,
+        redirect_uri: `${url.origin}/callback/${provider}`, code_verifier: PKCE.has(provider) ? verifier : undefined,
       })
       : await tokenRequest(env, provider, { grant_type: 'refresh_token', refresh_token: String(b.refresh_token ?? '').slice(0, 4000), scope: PROVIDERS[provider].refreshScope });
     return json(r, r.error ? 400 : 200);
@@ -173,6 +208,19 @@ export class WaHub extends DurableObject {
     const env = this.env;
     const now = Date.now();
 
+    // Sign-in codes and the fingerprint they came with (see bindCode): kept 5 minutes, used once.
+    if (path === '/signin/bind' || path === '/signin/take') {
+      this.sql.exec('CREATE TABLE IF NOT EXISTS binds (code_hash TEXT PRIMARY KEY, challenge TEXT NOT NULL, expires INTEGER NOT NULL)');
+      this.sql.exec('DELETE FROM binds WHERE expires < ?', now);
+      const b = await req.json().catch(() => ({}));
+      if (path === '/signin/bind') {
+        this.sql.exec('INSERT OR REPLACE INTO binds (code_hash, challenge, expires) VALUES (?, ?, ?)', String(b.code_hash), String(b.challenge), now + BIND_TTL_MS);
+        return json({ ok: true });
+      }
+      const row = this.one('SELECT challenge FROM binds WHERE code_hash = ?', String(b.code_hash));
+      if (row) this.sql.exec('DELETE FROM binds WHERE code_hash = ?', String(b.code_hash));
+      return json({ challenge: row?.challenge ?? null });
+    }
     if (path === '/whatsapp/webhook') return this.webhook(await req.text(), now);
 
     if (path === '/wa/register' && req.method === 'POST') {

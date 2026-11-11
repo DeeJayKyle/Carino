@@ -30,6 +30,13 @@ export default function Stuff() {
       sub: d.money?.over ? `${plural(d.money.over, 'budget')} over` : d.money?.budgets ? plural(d.money.budgets, 'budget') + ' set' : 'Spending and monthly budgets',
       warn: d.money?.over > 0,
     },
+    {
+      to: '/applications', icon: 'briefcase', title: 'Applications',
+      main: d.applications?.open ? plural(d.applications.open, 'open application') : 'None yet',
+      sub: d.applications?.dueSoon ? `${plural(d.applications.dueSoon, 'deadline')} this week` : 'Jobs and scholarships',
+      warn: d.applications?.dueSoon > 0,
+    },
+    { to: '/files', icon: 'folder', title: 'Files', main: d.folders ? plural(d.files, 'file') : 'No folders yet', sub: d.folders ? `In ${plural(d.folders, 'folder')} you chose` : 'Search your documents on this device' },
     { to: '/routines', icon: 'clock', title: 'Routines', main: plural(d.routines.active, 'routine') + ' on', sub: d.routines.custom ? plural(d.routines.custom, 'of your own', 'of your own') : 'Add your first one' },
     { to: '/memory', icon: 'brain', title: `What ${name} remembers`, main: plural(d.memories.active, 'memory', 'memories'), sub: d.memories.waiting ? `${d.memories.waiting} waiting for your OK` : 'You’re in control of all of it', warn: d.memories.waiting > 0 },
     { to: '/apps', icon: 'link', title: 'My apps', main: d.apps ? plural(d.apps, 'account') : 'None yet', sub: 'Gmail, Outlook, Drive, Instagram and more' },

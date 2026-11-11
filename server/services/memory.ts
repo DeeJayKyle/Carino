@@ -6,13 +6,29 @@ import { notFound } from '../context.ts';
 
 export const MEMORY_CATEGORIES = ['profile', 'preference', 'goal', 'routine', 'project', 'date', 'fact', 'summary'] as const;
 
+export const MEMORY_CONTEXTS = ['personal', 'work'] as const;
+
 export const memoryInput = z.object({
   content: z.string().trim().min(2).max(2000),
   category: z.enum(MEMORY_CATEGORIES).default('fact'),
+  context: z.enum(MEMORY_CONTEXTS).default('personal'),
   project_id: z.string().max(64).nullable().optional(),
   expires_at: z.string().nullable().optional(),
   sensitive: z.boolean().optional(),
 });
+
+/** An edit changes only what's sent (no defaults: they would reset the category or context). */
+const memoryPatch = z.object({
+  content: z.string().trim().min(2).max(2000),
+  category: z.enum(MEMORY_CATEGORIES),
+  context: z.enum(MEMORY_CONTEXTS),
+  project_id: z.string().max(64).nullable(),
+  expires_at: z.string().nullable(),
+  sensitive: z.boolean(),
+  status: z.enum(['active', 'proposed']),
+  /** Never sent to an online AI. */
+  local_only: z.boolean(),
+}).partial();
 
 /** Heuristics for information that needs explicit consent before Carino stores it long-term. */
 const SENSITIVE_PATTERNS: [RegExp, string][] = [
@@ -51,6 +67,7 @@ export function saveMemory(db: Db, userId: string, raw: unknown, opts: { status?
     user_id: userId,
     content: input.content,
     category: input.category,
+    context: input.context,
     project_id: input.project_id ?? null,
     expires_at: input.expires_at ?? null,
     sensitive: sensitive ? 1 : 0,
@@ -63,14 +80,16 @@ export function saveMemory(db: Db, userId: string, raw: unknown, opts: { status?
 }
 
 export function updateMemory(db: Db, userId: string, id: string, raw: unknown) {
-  const input = memoryInput.partial().extend({ status: z.enum(['active', 'proposed']).optional() }).parse(raw);
+  const input = memoryPatch.parse(raw);
   const m = db.updateOwned('memories', userId, id, {
     content: input.content,
     category: input.category,
+    context: input.context,
     project_id: input.project_id,
     expires_at: input.expires_at,
     sensitive: input.sensitive === undefined ? undefined : input.sensitive ? 1 : 0,
     status: input.status,
+    local_only: input.local_only === undefined ? undefined : input.local_only ? 1 : 0,
   });
   if (!m) throw notFound('Memory');
   reindex(db, userId, m);
@@ -135,4 +154,15 @@ export function retrieveMemories(db: Db, userId: string, query: string, opts: { 
     for (const m of list) db.run('UPDATE memories SET last_used_at = ? WHERE id = ?', ts, m.id);
   }
   return list;
+}
+
+/** Deletes the given memories (only the user's own); returns how many went. */
+export function deleteMemories(db: Db, userId: string, ids: string[]) {
+  let n = 0;
+  for (const id of ids) {
+    if (!db.getOwned('memories', userId, id)) continue;
+    deleteMemory(db, userId, id);
+    n++;
+  }
+  return { deleted: n };
 }

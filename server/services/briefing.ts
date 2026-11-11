@@ -3,6 +3,9 @@ import { localDate, startOfLocalDay, addDays, formatLocal } from './time.ts';
 import { presentTask } from './tasks.ts';
 import { getSettings } from './settings.ts';
 import * as money from './money.ts';
+import { billsDueSoon } from './finance.ts';
+import { applicationsDue } from './applications.ts';
+import { cachedDigest, awaitingReplies } from './inbox.ts';
 
 /**
  * A factual snapshot of the user's stored data for a day. Everything here comes
@@ -73,6 +76,21 @@ export function buildOverview(db: Db, userId: string, now: Date, timeZone: strin
     over: month.budgets.filter((b) => b.spent > b.amount).map((b) => b.label),
     near: month.budgets.filter((b) => b.spent <= b.amount && b.percent >= 80).map((b) => `${b.label} (${b.percent}%)`),
   } : null;
+  // Connected email and calendars (a saved summary, so this works offline); ignored once it's half a day old.
+  const digest = cachedDigest(db, userId);
+  const fresh = digest && now.getTime() - Date.parse(digest.fetched_at) < 12 * 3600_000 ? digest : null;
+  const timeOf = (iso: string, allDay: boolean) => (allDay ? 'All day' : formatLocal(new Date(iso).toISOString(), timeZone, locale, true).replace(/^.*?(\d{1,2}[:.]\d{2}.*)$/, '$1'));
+  const connected = fresh ? {
+    fetched_at: fresh.fetched_at,
+    events: fresh.events.filter((e) => (e.all_day ? String(e.start).slice(0, 10) : localDate(new Date(e.start), timeZone)) === day)
+      .map((e) => ({ title: e.title, at: timeOf(e.start, e.all_day), location: e.location ?? null, account: e.account })),
+    unread: fresh.unread_total,
+    unreadFrom: fresh.unread.slice(0, 3).map((m) => ({ from: m.from, subject: m.subject })),
+    awaiting: awaitingReplies(db, userId, fresh).slice(0, 5).map((m) => ({ id: m.id, from: m.from, subject: m.subject, account: m.account, provider: m.provider })),
+    errors: fresh.errors.map((e) => e.account),
+  } : null;
+  const bills = billsDueSoon(db, userId, today, 3).map((b) => ({ id: b.id, name: b.name, amount: money.formatMoney(Number(b.amount), String(b.currency), locale), due: b.next_due, overdue: String(b.next_due) < today, book: b.book_name ?? null }));
+  const apps = applicationsDue(db, userId, today);
   return {
     date: day,
     dateLabel: formatLocal(dayStart.toISOString(), timeZone, locale, false),
@@ -88,6 +106,9 @@ export function buildOverview(db: Db, userId: string, now: Date, timeZone: strin
     proposedMemories,
     workload: { estimatedMinutes: estimate, tasksWithoutEstimate: unestimated },
     money: spending,
+    connected,
+    bills,
+    applications: { deadlines: apps.deadlines.map((a) => ({ id: a.id, title: a.title, organisation: a.organisation, deadline: a.deadline })), followUps: apps.followUps.map((a) => ({ id: a.id, title: a.title, organisation: a.organisation })) },
   };
 }
 
@@ -109,6 +130,15 @@ export function briefingText(o: Overview, name: string, hourLocal: number): stri
   if (o.completedYesterday.length) lines.push(`Yesterday you completed ${o.completedYesterday.length} task${o.completedYesterday.length === 1 ? '' : 's'}.`);
   if (o.pendingActions) lines.push(`${o.pendingActions} action${o.pendingActions === 1 ? ' is' : 's are'} waiting for your approval.`);
   if (o.proposedMemories) lines.push(`${o.proposedMemories} suggested memor${o.proposedMemories === 1 ? 'y is' : 'ies are'} waiting for review.`);
+  const c = o.connected;
+  if (c) {
+    if (c.events.length) lines.push(`On your calendar: ${c.events.slice(0, 3).map((e) => `${e.at} ${e.title}`).join('; ')}${c.events.length > 3 ? ` and ${c.events.length - 3} more` : ''}.`);
+    if (c.unread) lines.push(`${c.unread} unread email${c.unread === 1 ? '' : 's'}${c.unreadFrom[0] ? `, including ${c.unreadFrom[0].from}: “${c.unreadFrom[0].subject}”` : ''}.`);
+    if (c.awaiting.length) lines.push(`${c.awaiting.length} email${c.awaiting.length === 1 ? ' is' : 's are'} waiting for your reply${c.awaiting[0] ? ` (${c.awaiting[0].from}: “${c.awaiting[0].subject}”)` : ''}.`);
+  }
+  if (o.bills.length) lines.push(`Bills due: ${o.bills.slice(0, 3).map((b) => `${b.name} (${b.amount}${b.overdue ? ', overdue' : ''})`).join('; ')}.`);
+  if (o.applications.deadlines.length) lines.push(`Application deadline${o.applications.deadlines.length === 1 ? '' : 's'} this week: ${o.applications.deadlines.map((a) => `${a.title} (${a.deadline})`).join('; ')}.`);
+  if (o.applications.followUps.length) lines.push(`Time to follow up: ${o.applications.followUps.map((a) => `${a.title}${a.organisation ? ` at ${a.organisation}` : ''}`).join('; ')}.`);
   const m = o.money;
   if (m) {
     if (m.weekTotal > 0) lines.push(`In the last 7 days you spent ${m.week}${m.top ? `, most on ${m.top}` : ''}.`);
@@ -143,6 +173,8 @@ export function suggestions(o: Overview, db: Db, userId: string, now = new Date(
   const out: { text: string; basis: string; action?: string }[] = [];
   if (o.overdue.length) out.push({ text: `Reschedule or close ${o.overdue.length} overdue to-do(s)`, basis: 'Overdue to-dos' });
   void db; void userId; void now;
+  for (const a of o.connected?.awaiting ?? []) out.push({ text: `Reply to ${a.from}: “${a.subject}”`, basis: 'No reply for 2+ days', action: 'reply' });
+  for (const b of o.bills) if (b.overdue) out.push({ text: `Pay ${b.name} (${b.amount})`, basis: `Due ${b.due}`, action: 'money' });
   if (o.proposedMemories) out.push({ text: 'Review suggested memories', basis: `${o.proposedMemories} awaiting approval`, action: 'memories' });
   return out.slice(0, 6);
 }

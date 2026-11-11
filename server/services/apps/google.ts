@@ -56,6 +56,17 @@ async function gmailSummary(services: Services, a: Row, id: string) {
   return { id: m.id, thread_id: m.threadId, from: header(m, 'From'), to: header(m, 'To'), subject: header(m, 'Subject'), date: header(m, 'Date'), snippet: m.snippet, unread: (m.labelIds ?? []).includes('UNREAD') };
 }
 
+/** What a reply needs to stay in its Gmail thread. */
+async function replyHeaders(services: Services, a: Row, messageId: string, subject: string) {
+  const orig = await api(services, a, `${GMAIL}/messages/${enc(messageId)}?format=metadata&metadataHeaders=Message-ID&metadataHeaders=References&metadataHeaders=Subject`);
+  const inReplyTo = header(orig, 'Message-ID') || undefined;
+  return {
+    threadId: orig.threadId as string | undefined, inReplyTo,
+    references: [header(orig, 'References'), inReplyTo].filter(Boolean).join(' ') || undefined,
+    subject: subject.trim() ? subject : /^re:/i.test(header(orig, 'Subject')) ? header(orig, 'Subject') : `Re: ${header(orig, 'Subject')}`,
+  };
+}
+
 const emailFields = {
   to: z.string().min(3).max(1000).describe('Recipient address(es), comma-separated'),
   cc: z.string().max(1000).optional(),
@@ -89,6 +100,13 @@ function multipart(meta: Record<string, unknown>, mime: string, data: Buffer) {
   const head = Buffer.from(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: ${mime}\r\n\r\n`);
   const tail = Buffer.from(`\r\n--${boundary}--`);
   return { body: Buffer.concat([head, data, tail]), type: `multipart/related; boundary=${boundary}` };
+}
+
+/** Saves bytes as a file in the user's Google Drive (used for opt-in cloud backups). */
+export async function driveUploadBytes(services: Services, a: Row, name: string, mime: string, data: Buffer) {
+  const mp = multipart({ name }, mime, data);
+  const f = await api(services, a, `${UPLOAD}?uploadType=multipart&fields=id,name,webViewLink`, { method: 'POST', raw: new Uint8Array(mp.body), headers: { 'content-type': mp.type }, timeoutMs: 300_000 });
+  return { uploaded: true, id: f.id as string, name: f.name as string, link: f.webViewLink as string };
 }
 
 const tsv = (rows: unknown[][]) => rows.map((r) => r.map((c) => String(c ?? '').replace(/[\t\n]/g, ' ')).join('\t')).join('\n');
@@ -134,31 +152,26 @@ export const GOOGLE_TOOLS: AppToolDef[] = [
     summarize: (i) => `Send email to ${i.to}: “${i.subject}”\n\n${i.body.slice(0, 400)}${i.body.length > 400 ? '…' : ''}`,
     run: async (i, ctx) => {
       const a = account(ctx, 'google', i);
-      let threadId: string | undefined;
-      let inReplyTo: string | undefined;
-      let references: string | undefined;
-      let subject = i.subject;
-      if (i.reply_to_message_id) {
-        const orig = await api(ctx.services, a, `${GMAIL}/messages/${enc(i.reply_to_message_id)}?format=metadata&metadataHeaders=Message-ID&metadataHeaders=References&metadataHeaders=Subject`);
-        threadId = orig.threadId;
-        inReplyTo = header(orig, 'Message-ID') || undefined;
-        references = [header(orig, 'References'), inReplyTo].filter(Boolean).join(' ') || undefined;
-        if (!subject.trim()) subject = /^re:/i.test(header(orig, 'Subject')) ? header(orig, 'Subject') : `Re: ${header(orig, 'Subject')}`;
-      }
+      const r = i.reply_to_message_id ? await replyHeaders(ctx.services, a, i.reply_to_message_id, i.subject) : null;
+      const threadId = r?.threadId;
+      const inReplyTo = r?.inReplyTo;
+      const references = r?.references;
+      const subject = r?.subject ?? i.subject;
       const sent = await api(ctx.services, a, `${GMAIL}/messages/send`, { body: { raw: mimeMessage({ ...i, subject, inReplyTo, references }), threadId } });
       return { sent: true, id: sent.id, from: a.label, to: i.to };
     },
   }),
   appTool('google', {
     name: 'gmail_draft',
-    description: 'Save an email as a draft in the user’s Gmail (not sent), so they can review and send it themselves.',
+    description: 'Save an email as a draft in the user’s Gmail (not sent), so they can review and send it themselves. For a reply, pass reply_to_message_id: the draft goes in the same thread.',
     risk: 'reversible',
-    input: z.object(emailFields),
-    summarize: (i) => `Save a Gmail draft to ${i.to}: “${i.subject}”`,
+    input: z.object({ ...emailFields, reply_to_message_id: z.string().max(100).optional() }),
+    summarize: (i) => `Save a Gmail draft${i.reply_to_message_id ? ' reply' : ''} to ${i.to}: “${i.subject}”`,
     run: async (i, ctx) => {
       const a = account(ctx, 'google', i);
-      const d = await api(ctx.services, a, `${GMAIL}/drafts`, { body: { message: { raw: mimeMessage(i) } } });
-      return { drafted: true, id: d.id, account: a.label };
+      const r = i.reply_to_message_id ? await replyHeaders(ctx.services, a, i.reply_to_message_id, i.subject) : null;
+      const d = await api(ctx.services, a, `${GMAIL}/drafts`, { body: { message: { raw: mimeMessage({ ...i, subject: r?.subject ?? i.subject, inReplyTo: r?.inReplyTo, references: r?.references }), threadId: r?.threadId } } });
+      return { drafted: true, reply: !!r, id: d.id, account: a.label };
     },
   }),
   appTool('google', {
@@ -180,7 +193,7 @@ export const GOOGLE_TOOLS: AppToolDef[] = [
   appTool('google', {
     name: 'google_calendar_create_event',
     description: 'Add an event to the user’s Google Calendar. Times as ISO 8601 (local times are in the user’s time zone); a plain date makes an all-day event. Attendees get an invitation email.',
-    risk: 'reversible',
+    risk: 'consequential',
     input: z.object({
       title: z.string().min(1).max(300), start: z.string().min(4).max(100), end: z.string().max(100).optional(),
       location: z.string().max(500).optional(), description: z.string().max(8000).optional(),
@@ -277,7 +290,7 @@ export const GOOGLE_TOOLS: AppToolDef[] = [
   appTool('google', {
     name: 'sheets_append',
     description: 'Add rows to the end of a table in a Google Sheet. Values are entered as if typed (numbers, dates and formulas work).',
-    risk: 'reversible',
+    risk: 'consequential',
     input: z.object({ spreadsheet: z.string().min(5).max(500), range: z.string().max(200).optional().describe('Tab or table, e.g. "Expenses" (defaults to the first tab)'), rows: rowsInput }),
     summarize: (i) => `Add ${i.rows.length} row${i.rows.length === 1 ? '' : 's'} to a Google Sheet`,
     run: async (i, ctx) => {
@@ -290,7 +303,7 @@ export const GOOGLE_TOOLS: AppToolDef[] = [
   appTool('google', {
     name: 'sheets_update',
     description: 'Overwrite a range of cells in a Google Sheet, e.g. "Budget!B2:C5". Values are entered as if typed.',
-    risk: 'reversible',
+    risk: 'consequential',
     input: z.object({ spreadsheet: z.string().min(5).max(500), range: z.string().min(2).max(200), rows: rowsInput }),
     summarize: (i) => `Update ${i.range} in a Google Sheet`,
     run: async (i, ctx) => {
@@ -331,7 +344,7 @@ export const GOOGLE_TOOLS: AppToolDef[] = [
   appTool('google', {
     name: 'docs_append',
     description: 'Add text to the end of an existing Google Doc (id or link).',
-    risk: 'reversible',
+    risk: 'consequential',
     input: z.object({ document: z.string().min(5).max(500), text: z.string().min(1).max(100_000) }),
     summarize: () => 'Add text to a Google Doc',
     run: async (i, ctx) => {

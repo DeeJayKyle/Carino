@@ -100,4 +100,19 @@ export function statSync(path: string) {
   return { size: d?.length ?? 0, isFile: () => true, isDirectory: () => false };
 }
 
-export default { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync };
+export function copyFileSync(from: string, to: string) {
+  writeFileSync(to, readFileSync(from) as Uint8Array);
+}
+
+export function renameSync(from: string, to: string) {
+  copyFileSync(from, to);
+  rmSync(from);
+}
+
+/** No links in this in-memory store: a path is already its real path. */
+export function realpathSync(path: string) {
+  if (!existsSync(path)) throw enoent(path);
+  return norm(path);
+}
+
+export default { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync, readdirSync, statSync, copyFileSync, renameSync, realpathSync };

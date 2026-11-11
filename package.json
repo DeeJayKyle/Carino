@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite -c vite.mobile.config.ts",
     "build": "vite build -c vite.mobile.config.ts",
+    "build:desktop": "vite build -c vite.mobile.config.ts --outDir desktop/dist --emptyOutDir",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.client.json",
     "test": "vitest run",
     "check": "npm run typecheck && npm run build && npm test",
@@ -23,6 +24,7 @@
     "mammoth": "^1.13.0",
     "papaparse": "^5.7.0",
     "pptxgenjs": "^4.0.1",
+    "qrcode-generator": "^2.0.4",
     "unpdf": "^1.9.0",
     "web-push": "^3.6.7",
     "zod": "^4.6.7"

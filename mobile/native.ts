@@ -12,6 +12,8 @@ interface Bridge {
   takeReminderEvents?(): string;
   placesPermission?(): string;
   askPlacesPermission?(): void;
+  pickFolder?(): void;
+  forgetFolder?(root: string): void;
   listen(lang: string): void;
   stopListening(): void;
   speak(text: string, lang: string): void;
@@ -269,3 +271,27 @@ export function appInfo(): { version: string; flavor: string } {
   if (!bridge) return { version: 'dev', flavor: 'web' };
   return JSON.parse(bridge.appInfo());
 }
+
+/** Opens the system's folder picker (Windows app or Android). Resolves to the folder, or null if cancelled or not available. */
+export function pickFolder(): Promise<{ root: string; label: string } | null> {
+  const desk = (globalThis as any).CarinoDesktop;
+  if (desk?.pickFolder) return desk.pickFolder();
+  if (!bridge?.pickFolder) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const done = (e: Event) => {
+      window.removeEventListener('carino-folder', done);
+      resolve((e as CustomEvent).detail ?? null);
+    };
+    window.addEventListener('carino-folder', done);
+    bridge.pickFolder!();
+  });
+}
+
+/** Tells the system Carino no longer needs a folder (the permission is given back). */
+export function forgetFolder(root: string) {
+  const desk = (globalThis as any).CarinoDesktop;
+  if (desk?.forgetFolder) return desk.forgetFolder(root).catch(() => undefined);
+  bridge?.forgetFolder?.(root);
+}
+
+export const canPickFolders = () => !!((globalThis as any).CarinoDesktop?.pickFolder || bridge?.pickFolder);

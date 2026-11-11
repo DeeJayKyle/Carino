@@ -3,7 +3,7 @@ import { api, ApiError } from './api';
 import { queueAll, queueDelete, queuePut } from './offline';
 
 /**
- * Offline write queue for tasks and notes. A change that cannot reach the server is stored in
+ * Offline write queue for tasks, notes and spending. A change that cannot reach the server is stored in
  * IndexedDB with a unique op id and replayed in order when the connection returns. The server
  * runs each op id at most once and refuses edits whose base version is stale (409), which are
  * kept as conflicts for the user to resolve. Deletions and AI actions are never queued.
@@ -54,11 +54,18 @@ const newId = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${
  */
 export async function writeOrQueue<T = any>(
   method: QueuedOp['method'], path: string, body: unknown, opts: { label: string; entity?: string; base?: string },
-): Promise<T | { queued: true }> {
+): Promise<T | { queued: true } | { conflict: true }> {
   const id = newId();
   try {
-    return await api<T>(path, { method, body, headers: { 'x-op-id': id } });
+    // Live edits carry their base version too: a page left open while the record changed elsewhere gives a conflict, not an overwrite.
+    return await api<T>(path, { method, body, headers: { 'x-op-id': id, ...(opts.base ? { 'x-base-version': opts.base } : {}) } });
   } catch (err) {
+    if (err instanceof ApiError && err.status === 409 && err.code === 'version_conflict' && currentUser) {
+      const ops = await queueAll<QueuedOp>();
+      await queuePut({ id, user: currentUser, seq: Date.now() * 1000 + ops.length, method, path, body, label: opts.label, entity: opts.entity, base: opts.base, status: 'conflict', error: err.message, current: (err as any).data?.current } satisfies QueuedOp);
+      await refresh();
+      return { conflict: true };
+    }
     if (!(err instanceof ApiError) || err.status !== 0 || !currentUser) throw err;
     const ops = await queueAll<QueuedOp>();
     await queuePut({ id, user: currentUser, seq: Date.now() * 1000 + ops.length, method, path, body, label: opts.label, entity: opts.entity, base: opts.base, status: 'pending' } satisfies QueuedOp);
@@ -68,6 +75,7 @@ export async function writeOrQueue<T = any>(
 }
 
 export const isQueued = (r: unknown): r is { queued: true } => !!r && (r as any).queued === true;
+export const isConflict = (r: unknown): r is { conflict: true } => !!r && (r as any).conflict === true;
 
 /** Replays pending ops in order. Stops at the first network failure; keeps conflicts for review. */
 export async function syncQueue() {

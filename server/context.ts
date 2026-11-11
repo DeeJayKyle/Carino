@@ -18,6 +18,16 @@ export interface Services {
   netFetch?: typeof fetch;
   /** Phone app only: loads large stored files into memory before they're read. */
   loadFiles?: (paths: string[]) => Promise<void>;
+  /** Folders on this device the user granted (Windows app, Android, or a PC server). Absent: no local file access. */
+  localFs?: import('./services/localfs.ts').LocalFs;
+  /** Opening things on this device: apps the user approved (Windows) and files from chosen folders. */
+  localApps?: {
+    list(): Promise<{ id: string; name: string }[]>;
+    openApp(id: string, root?: string, rel?: string): Promise<void>;
+    openFile(root: string, rel: string): Promise<void>;
+  };
+  /** The device's internet connection (the app sets this; absent = assume online). */
+  online?: () => boolean;
   /** Phone app only: holds the session token, since in-app API calls carry no cookies. */
   deviceSession?: { get(): string | undefined; set(token: string | null): void };
 }

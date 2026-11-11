@@ -106,7 +106,9 @@ export async function startSignIn(services: Services, userId: string, provider: 
   if (n >= MAX_ACCOUNTS_PER_PROVIDER) throw badRequest(`You can connect up to ${MAX_ACCOUNTS_PER_PROVIDER} ${p.label} accounts.`);
 
   const verifier = b64url(randomBytes(32));
-  const state = b64url(randomBytes(24));
+  // Through Carino's helper, the state also carries a fingerprint of the verifier: the helper ties
+  // the code to it, so a code caught by another app on the phone can't be redeemed (auth/worker.js).
+  const state = managed ? `${b64url(randomBytes(24))}.${b64url(createHash('sha256').update(verifier).digest())}` : b64url(randomBytes(24));
   const redirect = managed ? `${helperUrl(services)}/callback/${provider}` : redirectFor(services, provider);
   const pkce = managed ? HELPER_PKCE[provider] ?? 'none' : p.pkce;
   services.db.run('DELETE FROM oauth_states WHERE created_at < ?', new Date(services.now().getTime() - OAUTH_STATE_TTL_MS).toISOString());
@@ -191,7 +193,7 @@ export async function finishSignIn(services: Services, userId: string, state: st
   let tokens: TokenSet;
   if (d.managed) {
     // The helper adds the app's secret (and, for Meta, swaps for a 60-day sign-in).
-    tokens = await helperTokens(services, provider, { code, code_verifier: pkce === 'none' ? undefined : d.verifier });
+    tokens = await helperTokens(services, provider, { code, code_verifier: d.verifier });
   } else {
     const c = client(services, userId, p.group);
     if (!c) throw new AppError('That sign-in can no longer be completed. Start again.');
@@ -216,9 +218,45 @@ export async function finishSignIn(services: Services, userId: string, state: st
   return { provider, account: { id: a.id as string, label: who.label } };
 }
 
-export function disconnect(services: Services, userId: string, accountId: string) {
-  if (!services.db.deleteOwned('app_accounts', userId, accountId)) throw new HttpError(404, 'Account not found', 'not_found');
-  return { deleted: true };
+/** Where the user can see and remove Carino's access at each provider. */
+export const MANAGE_ACCESS_URL: Record<ProviderId, string> = {
+  google: 'https://myaccount.google.com/permissions',
+  microsoft: 'https://account.live.com/consent/Manage',
+  facebook: 'https://www.facebook.com/settings?tab=business_tools',
+  instagram: 'https://www.facebook.com/settings?tab=business_tools',
+  x: 'https://x.com/settings/connected_apps',
+  linkedin: 'https://www.linkedin.com/mypreferences/d/data-sharing-for-permitted-services',
+  tiktok: 'https://www.tiktok.com/setting',
+};
+
+/**
+ * Signs out: asks the provider to cancel Carino's access where it offers a way to (Google, Meta),
+ * then deletes the saved sign-in. Elsewhere it points to the provider's own page for that.
+ */
+export async function disconnect(services: Services, userId: string, accountId: string) {
+  const acct = services.db.getOwned('app_accounts', userId, accountId);
+  if (!acct) throw new HttpError(404, 'Account not found', 'not_found');
+  const provider = acct.provider as ProviderId;
+  const t = parseJson<TokenSet | null>(decryptSecret(services.config.DATA_DIR, acct.secret), null);
+  let revoked = false;
+  const f = fetcher(services);
+  try {
+    if (t && provider === 'google') {
+      const res = await f('https://oauth2.googleapis.com/revoke', {
+        method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: t.refresh_token ?? t.access_token }).toString(), signal: AbortSignal.timeout(10_000),
+      });
+      revoked = res.ok;
+    } else if (t && (provider === 'facebook' || provider === 'instagram')) {
+      const res = await f(`https://graph.facebook.com/v23.0/me/permissions?access_token=${encodeURIComponent(t.access_token)}`, { method: 'DELETE', signal: AbortSignal.timeout(10_000) });
+      revoked = res.ok;
+    }
+  } catch {
+    revoked = false;
+  }
+  services.db.deleteOwned('app_accounts', userId, accountId);
+  services.db.run("DELETE FROM connection_status WHERE kind = 'account' AND ref = ?", accountId);
+  return { deleted: true, revoked, manage_url: MANAGE_ACCESS_URL[provider] };
 }
 
 // ---- Using an account ----------------------------------------------------------------------

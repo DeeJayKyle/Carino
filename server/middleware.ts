@@ -90,7 +90,7 @@ export function clientIp(c: any): string {
   return c.env?.incoming?.socket?.remoteAddress ?? 'local';
 }
 
-const VERSIONED = /^\/api\/(tasks|notes|projects)\/([A-Za-z0-9_-]{1,64})$/;
+const VERSIONED = /^\/api\/(tasks|notes|projects|expenses)\/([A-Za-z0-9_-]{1,64})$/;
 
 /**
  * Safe replay for writes queued offline. A request carrying `X-Op-Id` runs at most once per user:

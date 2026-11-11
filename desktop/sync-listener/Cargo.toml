@@ -1,0 +1,10 @@
+[package]
+name = "carino-sync-listener"
+version = "0.1.0"
+edition = "2021"
+description = "Carino for Windows: the local-network endpoint a paired phone syncs with."
+license = "MIT"
+publish = false
+
+[dependencies]
+tiny_http = "0.12"

@@ -14,3 +14,8 @@ android/local.properties
 *.p12
 # The app bundle inside the APK (built by npm run build)
 android/app/src/main/assets/www/
+# Carino for Windows build outputs
+desktop/dist/
+desktop/app/target/
+desktop/app/gen/
+desktop/sync-listener/target/

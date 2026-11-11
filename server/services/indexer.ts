@@ -1,6 +1,6 @@
 import type { Db } from '../db/index.ts';
 
-export type Entity = 'note' | 'task' | 'memory' | 'project' | 'doc_chunk' | 'conversation' | 'message';
+export type Entity = 'note' | 'task' | 'memory' | 'project' | 'doc_chunk' | 'conversation' | 'message' | 'local_chunk';
 
 /** Keeps the FTS5 search index in step with the source tables. */
 export function indexEntity(db: Db, userId: string, entity: Entity, id: string, title: string, body: string, locator = '') {

@@ -3,14 +3,14 @@ import type { AIProvider, ChatRequest, ChatResult, ProviderInfo, Block, StopReas
 import { ProviderError } from './types.ts';
 
 /** First-party API prices in USD per million tokens (checked Oct 2026; verify on anthropic.com/pricing). */
-const PRICING: Record<string, { input: number; output: number }> = {
+export const ANTHROPIC_PRICING: Record<string, { input: number; output: number }> = {
   'claude-opus-5-5': { input: 4, output: 20 },
   'claude-sonnet-5-5': { input: 2, output: 10 },
   'claude-haiku-5-5': { input: 0.1, output: 0.5 },
   'claude-fable-5-1': { input: 10, output: 50 },
 };
 
-export const ANTHROPIC_MODELS = Object.keys(PRICING);
+export const ANTHROPIC_MODELS = Object.keys(ANTHROPIC_PRICING);
 
 export type Effort = 'low' | 'medium' | 'high';
 
@@ -60,7 +60,7 @@ export class AnthropicProvider implements AIProvider {
       model: this.model,
       configured: !!this.apiKey,
       capabilities: { tools: true, streaming: true, local: false, vision: true },
-      pricing: PRICING[this.model],
+      pricing: ANTHROPIC_PRICING[this.model],
       note: this.apiKey ? undefined : 'Set ANTHROPIC_API_KEY on the server to enable Claude.',
     };
   }

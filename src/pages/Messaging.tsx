@@ -167,6 +167,8 @@ function WhatsAppCard({ ch, reload }: { ch: any; reload: () => void }) {
   const [f, setF] = useState({ phone_number_id: '', access_token: '', app_secret: '' });
   const [relay, setRelay] = useState(ch?.config?.relay_url ?? '');
   const [cfToken, setCfToken] = useState('');
+  const [verifyAtRelay, setVerifyAtRelay] = useState(false);
+  const [setupCode, setSetupCode] = useState('');
   const [busy, setBusy] = useState(false);
   const run = async (fn: () => Promise<unknown>, done: string) => {
     setBusy(true);
@@ -212,14 +214,20 @@ function WhatsAppCard({ ch, reload }: { ch: any; reload: () => void }) {
             <div className="stack" style={{ marginTop: 8 }}>
               <div className="row wrap">
                 <input className="input mono grow" type="password" autoComplete="off" placeholder="Cloudflare API token" value={cfToken} onChange={(e) => setCfToken(e.target.value)} aria-label="Cloudflare API token" />
-                <button className="btn primary" disabled={busy || cfToken.trim().length < 20} onClick={() => run(async () => { await post('/channels/whatsapp/relay/create', { token: cfToken }); setCfToken(''); }, 'Relay created and linked')}>{busy ? 'Setting up…' : linked ? 'Create again' : 'Create my relay'}</button>
+                <button className="btn primary" disabled={busy || cfToken.trim().length < 20} onClick={() => run(async () => { await post('/channels/whatsapp/relay/create', { token: cfToken, verify_at_relay: verifyAtRelay }); setCfToken(''); }, 'Relay created and linked')}>{busy ? 'Setting up…' : linked ? 'Create again' : 'Create my relay'}</button>
               </div>
+              <label className="row small" style={{ gap: 8, alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={verifyAtRelay} onChange={(e) => setVerifyAtRelay(e.target.checked)} style={{ marginTop: 3 }} />
+                <span>Let the relay check Meta’s signature too, so fake messages can’t fill it up. <span className="muted">Your app secret is then also kept on your own Cloudflare account. Off: the relay turns away anything not shaped like a WhatsApp delivery for your number, and limits how often one address can post.</span></span>
+              </label>
               <details className="small">
                 <summary className="muted">I already have a relay</summary>
                 <div className="row wrap" style={{ marginTop: 6 }}>
                   <input className="input mono grow" inputMode="url" placeholder="https://…workers.dev" value={relay} onChange={(e) => setRelay(e.target.value)} aria-label="Relay address" />
-                  <button className="btn" disabled={busy || relay.trim().length < 12} onClick={() => run(() => post('/channels/whatsapp/relay', { url: relay }), 'Relay linked')}>{linked ? 'Link again' : 'Link relay'}</button>
+                  <input className="input mono" style={{ maxWidth: 180 }} type="password" autoComplete="off" placeholder="Setup code (if set)" value={setupCode} onChange={(e) => setSetupCode(e.target.value)} aria-label="Relay setup code" />
+                  <button className="btn" disabled={busy || relay.trim().length < 12} onClick={() => run(() => post('/channels/whatsapp/relay', { url: relay, setup_code: setupCode || undefined }), 'Relay linked')}>{linked ? 'Link again' : 'Link relay'}</button>
                 </div>
+                <p className="tiny faint" style={{ marginTop: 4 }}>Deploying the relay yourself? Set a <span className="mono">SETUP_CODE</span> secret on it (<span className="mono">wrangler secret put SETUP_CODE</span>) so nobody else can claim it first, and enter it here.</p>
               </details>
               {linked && <p className="tiny faint">Relay: <span className="mono">{ch.config.relay_url}</span></p>}
             </div>

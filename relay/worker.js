@@ -9,6 +9,29 @@ const KEEP_MS = 7 * 86400_000;
 const MAX_ITEMS = 5000;
 const MAX_BODY = 1024 * 1024;
 const BATCH = 50;
+/** Posts a minute from one address before it's turned away (Meta sends from many addresses). */
+const PER_MINUTE = 120;
+
+/** Meta signs every delivery with the app secret; only checked here if you chose to give the relay the secret (APP_SECRET). */
+async function metaSignatureOk(secret, body, header) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  const hex = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return same(hex, header.slice(7));
+}
+
+/** Looks like a WhatsApp Business delivery (cheap check that turns away most junk). */
+function looksLikeWhatsApp(body, phoneId) {
+  let d;
+  try {
+    d = JSON.parse(body);
+  } catch {
+    return false;
+  }
+  if (d?.object !== 'whatsapp_business_account' || !Array.isArray(d.entry)) return false;
+  if (!phoneId) return true;
+  return d.entry.some((e) => (e?.changes ?? []).some((c) => c?.value?.metadata?.phone_number_id === phoneId));
+}
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
@@ -31,6 +54,21 @@ export class Inbox extends DurableObject {
     this.sql = ctx.storage.sql;
     this.sql.exec('CREATE TABLE IF NOT EXISTS items (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, sig TEXT NOT NULL, body TEXT NOT NULL)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS conf (k TEXT PRIMARY KEY, v TEXT NOT NULL)');
+    this.recent = new Map();
+  }
+
+  /** True when this address has posted too often in the last minute. */
+  limited(req) {
+    const ip = req.headers.get('cf-connecting-ip') ?? 'unknown';
+    const now = Date.now();
+    const r = this.recent.get(ip);
+    if (!r || now - r.start > 60_000) {
+      if (this.recent.size > 5000) this.recent.clear();
+      this.recent.set(ip, { start: now, n: 1 });
+      return false;
+    }
+    r.n++;
+    return r.n > PER_MINUTE;
   }
 
   conf(k) {
@@ -51,19 +89,24 @@ export class Inbox extends DurableObject {
       // Meta's one-time check when you save the webhook in its dashboard.
       const q = url.searchParams;
       const token = this.conf('verify_token');
-      if (q.get('hub.mode') === 'subscribe' && token && q.get('hub.verify_token') === token) return new Response(q.get('hub.challenge') ?? '', { headers: { 'content-type': 'text/plain' } });
+      if (q.get('hub.mode') === 'subscribe' && token && same(q.get('hub.verify_token') ?? '', token)) return new Response(q.get('hub.challenge') ?? '', { headers: { 'content-type': 'text/plain' } });
       return new Response('Forbidden', { status: 403 });
     }
 
     if (path === '/webhook' && req.method === 'POST') {
       const sig = req.headers.get('x-hub-signature-256') ?? '';
       if (!sig.startsWith('sha256=')) return new Response('Missing signature', { status: 401 });
+      if (this.limited(req)) return new Response('Too many requests', { status: 429 });
       const body = await req.text();
       if (body.length > MAX_BODY) return new Response('Too large', { status: 413 });
+      // With the app secret, junk is refused outright; without it, only things shaped like a delivery are kept.
+      const secret = typeof this.env?.APP_SECRET === 'string' ? this.env.APP_SECRET.trim() : '';
+      if (secret ? !(await metaSignatureOk(secret, body, sig)) : !looksLikeWhatsApp(body, this.conf('phone_number_id'))) return new Response('Not a WhatsApp delivery', { status: 403 });
       const now = Date.now();
       this.sql.exec('DELETE FROM items WHERE at < ?', now - KEEP_MS);
       const n = this.sql.exec('SELECT COUNT(*) AS n FROM items').one().n;
-      if (n >= MAX_ITEMS) this.sql.exec('DELETE FROM items WHERE id IN (SELECT id FROM items ORDER BY id LIMIT ?)', n - MAX_ITEMS + 1);
+      // Full: turn new deliveries away (Meta tries again for days) rather than dropping waiting ones.
+      if (n >= MAX_ITEMS) return new Response('Inbox full', { status: 503 });
       this.sql.exec('INSERT INTO items (at, sig, body) VALUES (?, ?, ?)', now, sig, body);
       return new Response('ok');
     }
@@ -77,10 +120,14 @@ export class Inbox extends DurableObject {
       // CLAIM_KEY is set by Carino's "Create my relay" (only possible with access to the Cloudflare account).
       const claimed = typeof this.env?.CLAIM_KEY === 'string' && same(this.env.CLAIM_KEY, key);
       if (owner && !same(owner, hash) && !claimed) return json({ error: 'This relay already belongs to another Carino.' }, 409);
-      const { verify_token } = await req.json().catch(() => ({}));
+      // A relay deployed by hand can require a setup code (SETUP_CODE) to be claimed the first time.
+      const code = typeof this.env?.SETUP_CODE === 'string' ? this.env.SETUP_CODE.trim() : '';
+      if (!owner && !claimed && code && !same(req.headers.get('x-setup-code') ?? '', code)) return json({ error: 'This relay needs its setup code.' }, 403);
+      const { verify_token, phone_number_id } = await req.json().catch(() => ({}));
       if (typeof verify_token !== 'string' || verify_token.length < 8) return json({ error: 'Missing verify token.' }, 400);
       this.sql.exec('INSERT OR REPLACE INTO conf (k, v) VALUES (?, ?)', 'key_hash', hash);
       this.sql.exec('INSERT OR REPLACE INTO conf (k, v) VALUES (?, ?)', 'verify_token', verify_token);
+      if (typeof phone_number_id === 'string' && /^\d{5,30}$/.test(phone_number_id)) this.sql.exec('INSERT OR REPLACE INTO conf (k, v) VALUES (?, ?)', 'phone_number_id', phone_number_id);
       return json({ ok: true });
     }
 

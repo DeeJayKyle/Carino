@@ -30,6 +30,12 @@ const schema = z.object({
   OPENAI_COMPAT_VISION: z.enum(['true', 'false']).default('false'),
   /** Comma-separated models to try in order when the main one is retired, busy or rate-limited. */
   OPENAI_COMPAT_FALLBACK_MODELS: z.string().max(2000).optional(),
+  /** free: the service's listed models cost nothing; paid: every call is billed; unknown (default): treat as paid. */
+  OPENAI_COMPAT_BILLING: z.enum(['free', 'paid', 'unknown']).default('unknown'),
+  /** true: the server runs on the user's own devices (their PC, this phone), so content stays with them. */
+  OPENAI_COMPAT_LOCAL: z.enum(['true', 'false']).default('false'),
+  /** chat (Chat Completions) or responses (OpenAI Responses API). */
+  OPENAI_COMPAT_API: z.enum(['chat', 'responses']).default('chat'),
   DEFAULT_PROVIDER: z.enum(['anthropic', 'openai_compat']).optional(),
 
   // Web research

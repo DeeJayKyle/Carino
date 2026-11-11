@@ -75,7 +75,6 @@ export async function sharedMedia(services: Services, ch: Row, id: string, maxBy
   return { buf, mime: res.headers.get('content-type') ?? 'application/octet-stream' };
 }
 
-const handled = new Set<number>();
 
 /** Collects and answers this phone's waiting messages on the shared number. */
 export async function pollShared(services: Services, ch: Row) {
@@ -86,15 +85,22 @@ export async function pollShared(services: Services, ch: Row) {
   if (!items.length) return 0;
   // A message can arrive before the app noticed the link (e.g. the code was sent while it was closed).
   if (!services.db.get('SELECT 1 FROM channel_chats WHERE channel_id = ?', ch.id)) await sharedLinkStatus(services, ch.user_id);
+  // Acknowledged only once handled (see whatsapp-relay.ts); answered messages are remembered by id.
+  const done: number[] = [];
+  let failure: unknown = null;
   for (const item of items) {
-    if (handled.has(item.id)) continue;
-    handled.add(item.id);
-    if (handled.size > 2000) handled.delete(handled.values().next().value!);
-    // The same shape as a delivery from Meta (the helper already checked Meta's signature).
-    await processWhatsAppPayload(services, ch, {
-      entry: [{ changes: [{ value: { contacts: [{ wa_id: item.from, profile: { name: item.name } }], messages: [item.message] } }] }],
-    });
+    try {
+      // The same shape as a delivery from Meta (the helper already checked Meta's signature).
+      await processWhatsAppPayload(services, ch, {
+        entry: [{ changes: [{ value: { contacts: [{ wa_id: item.from, profile: { name: item.name } }], messages: [item.message] } }] }],
+      });
+    } catch (e) {
+      failure = e;
+      break;
+    }
+    done.push(item.id);
   }
-  await helperPost(services, '/wa/ack', { ids: items.map((i) => i.id) }, key);
-  return items.length;
+  if (done.length) await helperPost(services, '/wa/ack', { ids: done }, key);
+  if (failure) throw failure;
+  return done.length;
 }

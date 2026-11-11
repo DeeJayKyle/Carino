@@ -157,3 +157,98 @@ describe('the assistant handles money', () => {
     expect(summary).toContain('Boda');
   });
 });
+
+describe('editing spending safely', () => {
+  it('changes only what was sent, and never the source', async () => {
+    const c = await user();
+    const e = (await c.post('/api/expenses', { amount: 5000, category: 'food', note: 'Lunch', merchant: 'Cafe', source: 'receipt' })).data.expense;
+    const after = (await c.patch(`/api/expenses/${e.id}`, { amount: 7000 })).data;
+    expect(after).toMatchObject({ amount: 7000, category: 'food', note: 'Lunch', merchant: 'Cafe', currency: 'UGX', source: 'receipt' });
+    expect(after.updated_at).toBeTruthy();
+    expect((await c.patch(`/api/expenses/${e.id}`, { source: 'manual' })).status).toBe(400); // unknown field
+    expect((await c.patch(`/api/expenses/${e.id}`, { category: 'other' })).data.source).toBe('receipt');
+  });
+
+  it('refuses future days when adding or editing', async () => {
+    const c = await user();
+    expect((await c.post('/api/expenses', { amount: 5, category: 'food', spent_on: '2026-10-17' })).status).toBe(400);
+    const e = (await c.post('/api/expenses', { amount: 5, category: 'food' })).data.expense;
+    const r = await c.patch(`/api/expenses/${e.id}`, { spent_on: '2099-01-01' });
+    expect(r.status).toBe(400);
+    expect(r.data.error).toContain('future');
+    expect((await c.patch(`/api/expenses/${e.id}`, { spent_on: '2026-10-01' })).data.spent_on).toBe('2026-10-01');
+  });
+
+  it('an edit based on an old version is a conflict, not an overwrite', async () => {
+    const c = await user();
+    const e = (await c.post('/api/expenses', { amount: 5000, category: 'food' })).data.expense;
+    ctx.clock.now = new Date('2026-10-16T08:01:00Z');
+    await c.patch(`/api/expenses/${e.id}`, { amount: 6000 }); // changed elsewhere
+    const stale = await c.req('PATCH', `/api/expenses/${e.id}`, { amount: 9000 }, { 'x-op-id': 'stale-edit-1', 'x-base-version': e.updated_at });
+    expect(stale.status).toBe(409);
+    expect(stale.data).toMatchObject({ code: 'version_conflict', current: { amount: 6000 } });
+    const fresh = (await c.get('/api/money')).data.expenses[0];
+    expect(fresh.amount).toBe(6000);
+    const ok = await c.req('PATCH', `/api/expenses/${e.id}`, { amount: 9000 }, { 'x-op-id': 'fresh-edit-1', 'x-base-version': fresh.updated_at });
+    expect(ok.status).toBe(200);
+  });
+
+  it('a retried add is saved once; a quick repeat is flagged', async () => {
+    const c = await user();
+    const a = await c.req('POST', '/api/expenses', { amount: 100, category: 'food' }, { 'x-op-id': 'retry-op-0001' });
+    const b = await c.req('POST', '/api/expenses', { amount: 100, category: 'food' }, { 'x-op-id': 'retry-op-0001' });
+    expect([a.status, b.status, b.headers.get('x-op-replayed')]).toEqual([201, 201, '1']);
+    expect((await c.get('/api/money')).data.count).toBe(1);
+    const again = (await c.post('/api/expenses', { amount: 100, category: 'food' })).data;
+    expect(again.possible_duplicate?.id).toBe(a.data.expense.id);
+    expect((await c.post('/api/expenses', { amount: 100, category: 'transport' })).data.possible_duplicate).toBeNull();
+  });
+
+  it('an edit that crosses a budget line warns', async () => {
+    const c = await user();
+    await c.put('/api/budgets', { category: 'food', amount: 10000 });
+    const e = (await c.post('/api/expenses', { amount: 1000, category: 'food' })).data.expense;
+    const r = (await c.patch(`/api/expenses/${e.id}`, { amount: 12000 })).data;
+    expect(r.alerts).toMatchObject([{ level: 100 }]);
+  });
+
+  it('the assistant asks before logging the same thing twice', async () => {
+    const c = await user();
+    ctx.provider.steps.push(() => toolCall('log_expense', { amount: 15000, category: 'food' }));
+    ctx.provider.steps.push(() => toolCall('log_expense', { amount: 15000, category: 'food' }));
+    ctx.provider.steps.push(() => text('Was that a second lunch?'));
+    await chat(c, 'spent 15k on lunch');
+    expect((await c.get('/api/money')).data.count).toBe(1);
+    expect(JSON.stringify(ctx.provider.calls[2].messages.at(-1))).toContain('second purchase');
+    ctx.provider.steps.push(() => toolCall('log_expense', { amount: 15000, category: 'food', confirm_duplicate: true }));
+    ctx.provider.steps.push(() => text('Logged the second one.'));
+    await chat(c, 'yes, two lunches');
+    expect((await c.get('/api/money')).data.count).toBe(2);
+  });
+});
+
+describe('upgrading from 1.4/1.5 data', () => {
+  it('keeps every expense, currency and receipt source, and adds a version', async () => {
+    const { Db } = await import('../server/db/index.ts');
+    const { mkdtempSync, readdirSync, copyFileSync, mkdirSync, rmSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+    const dir = mkdtempSync(join(tmpdir(), 'carino-mig-'));
+    const src = join(process.cwd(), 'server/db/migrations');
+    const old = join(dir, 'old');
+    mkdirSync(old);
+    for (const f of readdirSync(src)) if (f < '014') copyFileSync(join(src, f), join(old, f));
+    let db = new Db(join(dir, 'c.db'), old);
+    db.run("INSERT INTO users (id, email, name, password_hash) VALUES ('u1', 'a@example.com', 'A', 'x')");
+    db.run("INSERT INTO expenses (id, user_id, amount, currency, category, note, spent_on, source, created_at) VALUES ('e1', 'u1', 87500, 'UGX', 'groceries', 'Shop', '2026-10-01', 'receipt', '2026-10-01T10:00:00.000Z'), ('e2', 'u1', 20, 'USD', 'bills', '', '2026-10-02', 'chat', '2026-10-02T10:00:00.000Z')");
+    db.close?.();
+    db = new Db(join(dir, 'c.db'), src);
+    const rows = db.all('SELECT id, amount, currency, source, updated_at FROM expenses ORDER BY id');
+    expect(rows).toEqual([
+      { id: 'e1', amount: 87500, currency: 'UGX', source: 'receipt', updated_at: '2026-10-01T10:00:00.000Z' },
+      { id: 'e2', amount: 20, currency: 'USD', source: 'chat', updated_at: '2026-10-02T10:00:00.000Z' },
+    ]);
+    db.close?.();
+    rmSync(dir, { recursive: true, force: true });
+  });
+});
