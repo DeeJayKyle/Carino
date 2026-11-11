@@ -43,6 +43,7 @@ const P: Record<string, string> = {
   flag: 'M5 21V4M5 4h12l-2 4 2 4H5',
   link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  wallet: 'M4 7a2 2 0 0 1 2-2h11v4M4 7v11a2 2 0 0 0 2 2h14V9H6a2 2 0 0 1-2-2ZM16 14.5h.01',
   briefcase: 'M3 8h18v12H3zM8 8V5h8v3M3 13h18',
   heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z',
   code: 'm8 8-4 4 4 4M16 8l4 4-4 4M14 4l-4 16',

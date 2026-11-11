@@ -82,3 +82,20 @@ function tzOffset(at: Date) {
   const g = (t: string) => Number(parts.find((p) => p.type === t)?.value);
   return Math.round((Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute')) - Math.floor(at.getTime() / 60000) * 60000) / 60000);
 }
+
+/** Money in the user's locale, with the currency code ("UGX 15,000"). */
+export function money(n: number, currency: string) {
+  try {
+    return new Intl.NumberFormat(prefs.locale || undefined, { style: 'currency', currency, currencyDisplay: 'code', maximumFractionDigits: n % 1 ? 2 : 0 }).format(n).replace(/ /g, ' ');
+  } catch {
+    return `${currency} ${Math.round(n * 100) / 100}`;
+  }
+}
+
+/** Accepts "15000", "15,000", "15k" and "1.5m". */
+export function parseAmount(v: string): number | null {
+  const m = v.trim().toLowerCase().replace(/[\s,]/g, '').match(/^(\d+(?:\.\d+)?)([km]?)$/);
+  if (!m) return null;
+  const n = Number(m[1]) * (m[2] === 'k' ? 1e3 : m[2] === 'm' ? 1e6 : 1);
+  return n > 0 ? n : null;
+}

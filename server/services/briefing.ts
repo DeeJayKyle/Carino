@@ -1,6 +1,8 @@
 import type { Db } from '../db/index.ts';
 import { localDate, startOfLocalDay, addDays, formatLocal } from './time.ts';
 import { presentTask } from './tasks.ts';
+import { getSettings } from './settings.ts';
+import * as money from './money.ts';
 
 /**
  * A factual snapshot of the user's stored data for a day. Everything here comes
@@ -58,6 +60,19 @@ export function buildOverview(db: Db, userId: string, now: Date, timeZone: strin
     id: t.id, title: t.title, priority: t.priority, project: t.project_name ?? null,
     due: t.due_at ? fmt(t.due_at, !t.all_day) : null, due_at: t.due_at, estimate_minutes: t.estimate_minutes ?? null,
   });
+  const cur = money.currencyFor(getSettings(db, userId));
+  const week = money.weekSummary(db, userId, today, cur);
+  const month = money.monthSummary(db, userId, today.slice(0, 7), today, cur);
+  const cash = (n: number) => money.formatMoney(n, cur, locale);
+  const spending = week.total > 0 || month.budgets.length ? {
+    week: cash(week.total),
+    weekTotal: week.total,
+    previousWeek: cash(week.previous),
+    top: week.top ? `${week.top.label} (${cash(week.top.total)})` : null,
+    month: cash(month.total),
+    over: month.budgets.filter((b) => b.spent > b.amount).map((b) => b.label),
+    near: month.budgets.filter((b) => b.spent <= b.amount && b.percent >= 80).map((b) => `${b.label} (${b.percent}%)`),
+  } : null;
   return {
     date: day,
     dateLabel: formatLocal(dayStart.toISOString(), timeZone, locale, false),
@@ -72,6 +87,7 @@ export function buildOverview(db: Db, userId: string, now: Date, timeZone: strin
     pendingActions,
     proposedMemories,
     workload: { estimatedMinutes: estimate, tasksWithoutEstimate: unestimated },
+    money: spending,
   };
 }
 
@@ -93,6 +109,12 @@ export function briefingText(o: Overview, name: string, hourLocal: number): stri
   if (o.completedYesterday.length) lines.push(`Yesterday you completed ${o.completedYesterday.length} task${o.completedYesterday.length === 1 ? '' : 's'}.`);
   if (o.pendingActions) lines.push(`${o.pendingActions} action${o.pendingActions === 1 ? ' is' : 's are'} waiting for your approval.`);
   if (o.proposedMemories) lines.push(`${o.proposedMemories} suggested memor${o.proposedMemories === 1 ? 'y is' : 'ies are'} waiting for review.`);
+  const m = o.money;
+  if (m) {
+    if (m.weekTotal > 0) lines.push(`In the last 7 days you spent ${m.week}${m.top ? `, most on ${m.top}` : ''}.`);
+    if (m.over.length) lines.push(`Over budget this month: ${m.over.join(', ')}.`);
+    else if (m.near.length) lines.push(`Close to budget: ${m.near.join(', ')}.`);
+  }
   return lines.join(' ');
 }
 

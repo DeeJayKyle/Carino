@@ -4,7 +4,7 @@ import { ErrorBox, Loading, useToast } from '../components/ui';
 import { del } from '../lib/api';
 import { useData } from '../lib/hooks';
 import { Link } from '../lib/router';
-import { fmtDateTime } from '../lib/format';
+import { fmtDateTime, money } from '../lib/format';
 import { useMascot } from '../lib/mascot';
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -24,6 +24,12 @@ export default function Stuff() {
       sub: [d.tasks.overdue && `${d.tasks.overdue} overdue`, d.tasks.dueToday && `${d.tasks.dueToday} due today`, d.reminders.upcoming && plural(d.reminders.upcoming, 'reminder') + ' this week'].filter(Boolean).join(' · ') || 'Nothing urgent',
       warn: d.tasks.overdue > 0,
     },
+    {
+      to: '/money', icon: 'wallet', title: 'Money',
+      main: d.money?.spent ? `${money(d.money.spent, d.money.currency)} this month` : 'Nothing logged yet',
+      sub: d.money?.over ? `${plural(d.money.over, 'budget')} over` : d.money?.budgets ? plural(d.money.budgets, 'budget') + ' set' : 'Spending and monthly budgets',
+      warn: d.money?.over > 0,
+    },
     { to: '/routines', icon: 'clock', title: 'Routines', main: plural(d.routines.active, 'routine') + ' on', sub: d.routines.custom ? plural(d.routines.custom, 'of your own', 'of your own') : 'Add your first one' },
     { to: '/memory', icon: 'brain', title: `What ${name} remembers`, main: plural(d.memories.active, 'memory', 'memories'), sub: d.memories.waiting ? `${d.memories.waiting} waiting for your OK` : 'You’re in control of all of it', warn: d.memories.waiting > 0 },
     { to: '/apps', icon: 'link', title: 'My apps', main: d.apps ? plural(d.apps, 'account') : 'None yet', sub: 'Gmail, Outlook, Drive, Instagram and more' },
@@ -35,7 +41,7 @@ export default function Stuff() {
       <div className="page">
         <div className="page-head"><div>
           <h1>Your stuff</h1>
-          <p className="sub">Everything {name} is holding for you — to-dos, reminders, routines, memories and the apps it can use.</p>
+          <p className="sub">Everything {name} is holding for you — to-dos, reminders, money, routines, memories and the apps it can use.</p>
         </div></div>
         {d?.approvals > 0 && (
           <Link to="/actions" className="callout warning stuff-alert"><Icon name="shield" size={18} /><span className="grow"><b>{plural(d.approvals, 'action')}</b> waiting for your approval</span><Icon name="send" size={16} /></Link>

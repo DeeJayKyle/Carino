@@ -17,6 +17,7 @@ const PRIMARY = [
 /** What "Your stuff" holds. */
 const STUFF = [
   { to: '/tasks', label: 'To-dos & reminders', icon: 'tasks' },
+  { to: '/money', label: 'Money', icon: 'wallet' },
   { to: '/routines', label: 'Routines', icon: 'clock' },
   { to: '/memory', label: 'Memory', icon: 'brain' },
 ];
@@ -163,6 +164,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
     { label: 'Add a to-do', icon: 'plus', go: '/tasks?new=1' },
     { label: 'Ramble it out (brain-dump into to-dos)', icon: 'mic', go: '/ramble' },
     { label: 'New routine', icon: 'clock', go: '/routines' },
+    { label: 'Log spending', icon: 'wallet', go: '/money' },
     { label: 'Connect an app (Gmail, Outlook, Instagram…)', icon: 'link', go: '/apps' },
     ...NAV.map((n) => ({ label: `Go to ${n.label}`, icon: n.icon, go: n.to })),
     { label: 'Approvals', icon: 'shield', go: '/actions' },

@@ -23,6 +23,7 @@ const Discover = lazy(() => import('./pages/Discover'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 const Stuff = lazy(() => import('./pages/Stuff'));
 const Me = lazy(() => import('./pages/Me'));
+const Money = lazy(() => import('./pages/Money'));
 
 function Router() {
   const { pathname } = useLocation();
@@ -54,6 +55,7 @@ function Router() {
     ['/discover', () => <Discover />],
     ['/stuff', () => <Stuff />],
     ['/me', () => <Me />],
+    ['/money', () => <Money />],
   ];
   for (const [pattern, render] of routes) {
     const params = match(pattern, pathname);

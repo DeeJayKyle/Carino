@@ -8,7 +8,7 @@ import { navigate } from '../lib/router';
 import { relative } from '../lib/format';
 import { useSession } from '../lib/session';
 
-const ICON: Record<string, string> = { reminder: 'bell', action_failed: 'alert', routine: 'sparkle', info: 'info' };
+const ICON: Record<string, string> = { reminder: 'bell', budget: 'wallet', action_failed: 'alert', routine: 'sparkle', info: 'info' };
 
 export default function Notifications() {
   const { refreshCounts } = useSession();

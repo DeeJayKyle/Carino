@@ -5,6 +5,7 @@ import type { AppEnv } from '../context.ts';
 import { notFound, badRequest } from '../context.ts';
 import { parseJson } from '../db/index.ts';
 import * as tasks from '../services/tasks.ts';
+import * as money from '../services/money.ts';
 import { notify } from '../services/activity.ts';
 import * as memory from '../services/memory.ts';
 import * as routines from '../services/routines.ts';
@@ -77,6 +78,11 @@ export function dataRoutes() {
       apps: n('SELECT (SELECT COUNT(*) FROM connectors WHERE user_id = ?1 AND enabled = 1) + (SELECT COUNT(*) FROM app_accounts WHERE user_id = ?1) AS n'),
       chats: n('SELECT COUNT(*) AS n FROM channel_chats WHERE user_id = ?'),
       approvals: n("SELECT COUNT(*) AS n FROM actions WHERE user_id = ? AND status = 'pending'"),
+      money: (() => {
+        const s = getSettings(db(c), u);
+        const m = money.monthSummary(db(c), u, today.slice(0, 7), today, money.currencyFor(s));
+        return { spent: m.total, currency: m.currency, budgets: m.budgets.length, over: m.budgets.filter((b) => b.spent > b.amount).length };
+      })(),
     });
   });
   r.get('/discover', (c) => {
@@ -216,6 +222,45 @@ export function dataRoutes() {
     const p = tasks.firePlaceReminder(db(c), uid(c), c.req.param('id'), c.var.services.now());
     if (p) notify(db(c), uid(c), { kind: 'reminder', title: `📍 ${p.title}`, body: p.body || `You're at ${p.place_name}`, link: '/tasks' });
     return c.json({ fired: !!p });
+  });
+
+  // ---------- Money ----------
+  const moneyCtx = (c: any) => {
+    const s = getSettings(db(c), uid(c));
+    return { today: localDate(c.var.services.now(), safeTimeZone(s.regional.timeZone)), currency: money.currencyFor(s), locale: s.regional.locale };
+  };
+  r.get('/money', (c) => {
+    const m = moneyCtx(c);
+    const q = c.req.query('month');
+    const month = q && /^\d{4}-\d{2}$/.test(q) ? q : m.today.slice(0, 7);
+    return c.json({
+      ...money.monthSummary(db(c), uid(c), month, m.today, m.currency),
+      week: money.weekSummary(db(c), uid(c), m.today, m.currency),
+      today: m.today,
+      expenses: money.listExpenses(db(c), uid(c), { from: `${month}-01`, to: money.monthEnd(month) }),
+      categories: money.CATEGORIES.map((id) => ({ id, label: money.CATEGORY_LABELS[id] })),
+    });
+  });
+  r.post('/expenses', async (c) => {
+    const res = money.addExpense(db(c), uid(c), await body(c), moneyCtx(c));
+    await money.pushAlerts(c.var.services, uid(c), res.alerts);
+    return c.json(res, 201);
+  });
+  r.patch('/expenses/:id', async (c) => {
+    const e = money.updateExpense(db(c), uid(c), c.req.param('id'), await body(c));
+    if (!e) throw notFound('Expense');
+    return c.json(e);
+  });
+  r.delete('/expenses/:id', (c) => {
+    if (!money.deleteExpense(db(c), uid(c), c.req.param('id'))) throw notFound('Expense');
+    return c.json({ deleted: true });
+  });
+  r.put('/budgets', async (c) => {
+    const m = moneyCtx(c);
+    const b = money.setBudget(db(c), uid(c), await body(c), m.currency);
+    const alerts = money.checkBudgets(db(c), uid(c), m.today.slice(0, 7), m.today, m.locale);
+    await money.pushAlerts(c.var.services, uid(c), alerts);
+    return c.json({ budget: b });
   });
 
   // ---------- Memories ----------
@@ -484,7 +529,7 @@ export function dataRoutes() {
   r.get('/export', (c) => {
     const u = uid(c);
     const d = db(c);
-    const tables = ['workspaces', 'projects', 'project_items', 'tasks', 'task_dependencies', 'reminders', 'notes', 'memories', 'conversations', 'routines', 'actions', 'activity', 'links'];
+    const tables = ['workspaces', 'projects', 'project_items', 'tasks', 'task_dependencies', 'reminders', 'place_reminders', 'expenses', 'budgets', 'notes', 'memories', 'conversations', 'routines', 'actions', 'activity', 'links'];
     const data: Record<string, unknown> = { exported_at: new Date().toISOString(), format: 'carino-export-v1', user: c.var.user, settings: getSettings(d, u) };
     for (const t of tables) data[t] = d.all(`SELECT * FROM ${t} WHERE user_id = ?`, u);
     data.messages = d.all("SELECT id, conversation_id, role, content, created_at FROM messages WHERE user_id = ? AND role IN ('user','assistant')", u);

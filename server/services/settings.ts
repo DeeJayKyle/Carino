@@ -61,6 +61,10 @@ export const settingsSchema = z.object({
     speakReplies: z.boolean().default(false),
     voiceName: z.string().max(120).default(''),
   }).default({ enabled: true, language: 'en-US', speakReplies: false, voiceName: '' }),
+  money: z.object({
+    /** ISO 4217 code; empty = from the region setting (services/money.ts → currencyFor). */
+    currency: z.string().regex(/^([A-Z]{3})?$/).default(''),
+  }).default({ currency: '' }),
   notifications: z.object({
     push: z.boolean().default(true),
     quietHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),

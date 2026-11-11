@@ -6,6 +6,7 @@ import { nowIso, parseJson } from '../db/index.ts';
 import type { ToolSpec } from '../ai/types.ts';
 import { getSettings, CONSEQUENTIAL_GUARD, type Settings } from '../services/settings.ts';
 import * as tasks from '../services/tasks.ts';
+import * as money from '../services/money.ts';
 import * as memory from '../services/memory.ts';
 import * as routines from '../services/routines.ts';
 import { findPlaces, PlacesError } from '../services/places.ts';
@@ -372,6 +373,104 @@ export const TOOLS: ToolDef[] = [
       return {
         place_reminder: { id: r.id, place: p.name, address: p.address, radius_m: r.radius_m },
         note: 'Rings once on arrival. On Android, location must be allowed "all the time" for Carino (the app asks when needed). Data © OpenStreetMap contributors.',
+      };
+    },
+  }),
+  def({
+    name: 'log_expense',
+    description: 'Record money the user spent ("spent 15k on lunch", "paid 120,000 for electricity"). Also use it when the user sends a photo of a receipt or a mobile-money message: read the total, the shop and the date from it and set source to "receipt". Amounts like "15k" mean 15000. Leave currency out to use the user\'s main currency. Log each purchase once; for a receipt log the total, not each line.',
+    risk: 'reversible',
+    input: z.object({
+      amount: z.number().positive().max(1e12).describe('The amount paid, e.g. 15000'),
+      category: z.enum(money.CATEGORIES).describe('food = eating out and drinks; groceries = food shopping; transport = fuel, boda, taxi, fares; bills = rent, power, water, airtime, data, subscriptions; home; health; shopping = clothes and things; fun; family = gifts and support; education; other'),
+      note: z.string().max(300).optional().describe('What it was for, e.g. "Lunch with Sam"'),
+      merchant: z.string().max(120).optional().describe('Shop or person paid'),
+      currency: z.string().length(3).optional().describe('3-letter code, only if the user named a different currency'),
+      date: z.string().max(100).optional().describe('When it was spent: a date such as 2026-11-10, or "yesterday". Leave out for today.'),
+      source: z.enum(['chat', 'receipt']).default('chat'),
+    }),
+    summarize: (i, ctx) => `Log ${money.formatMoney(i.amount, (i.currency ?? money.currencyFor(ctx.settings)).toUpperCase(), ctx.settings.regional.locale)} for ${money.CATEGORY_LABELS[i.category].toLowerCase()}${i.note ? ` (${i.note})` : ''}`,
+    run: async (i, ctx) => {
+      const tz = ctx.timeZone;
+      const today = localDate(ctx.now, tz);
+      let spentOn = today;
+      if (i.date) {
+        const at = resolveWhen(i.date.trim(), ctx)!;
+        spentOn = localDate(new Date(at), tz);
+        if (spentOn > today) throw new ToolError('That date is in the future. Ask the user when they spent it.');
+      }
+      const main = money.currencyFor(ctx.settings);
+      const { expense, alerts } = money.addExpense(ctx.services.db, ctx.userId, {
+        amount: i.amount, currency: i.currency, category: i.category, note: i.note, merchant: i.merchant, spent_on: spentOn, source: i.source,
+      }, { today, currency: main, locale: ctx.settings.regional.locale });
+      await money.pushAlerts(ctx.services, ctx.userId, alerts);
+      const m = money.monthSummary(ctx.services.db, ctx.userId, today.slice(0, 7), today, main);
+      const fmt = (n: number, cur = main) => money.formatMoney(n, cur, ctx.settings.regional.locale);
+      const budget = m.budgets.find((b) => b.category === expense.category) ?? m.budgets.find((b) => b.category === 'total');
+      return {
+        logged: { id: expense.id, amount: fmt(Number(expense.amount), String(expense.currency)), category: money.CATEGORY_LABELS[expense.category as money.Category], day: expense.spent_on },
+        this_month: fmt(m.total),
+        budget: budget ? `${budget.label}: ${fmt(budget.spent, budget.currency)} of ${fmt(budget.amount, budget.currency)} (${budget.percent}%)` : 'No budget set',
+        warnings: alerts.map((a) => a.title),
+        note: 'The user can change or delete it on the Money page.',
+      };
+    },
+  }),
+  def({
+    name: 'set_budget',
+    description: 'Set a monthly spending budget, for one category or for everything ("total"). An amount of 0 removes the budget. The user is warned at 80% and when it goes over.',
+    risk: 'reversible',
+    input: z.object({
+      category: z.enum([...money.CATEGORIES, 'total']).describe('"total" for all spending'),
+      amount: z.number().min(0).max(1e12).describe('Per month, in the user\'s main currency unless currency is given'),
+      currency: z.string().length(3).optional(),
+    }),
+    summarize: (i, ctx) => i.amount === 0
+      ? `Remove the ${money.CATEGORY_LABELS[i.category].toLowerCase()} budget`
+      : `Budget ${money.formatMoney(i.amount, (i.currency ?? money.currencyFor(ctx.settings)).toUpperCase(), ctx.settings.regional.locale)} a month for ${money.CATEGORY_LABELS[i.category].toLowerCase()}`,
+    run: async (i, ctx) => {
+      const main = money.currencyFor(ctx.settings);
+      const today = localDate(ctx.now, ctx.timeZone);
+      money.setBudget(ctx.services.db, ctx.userId, { ...i, currency: i.currency?.toUpperCase() }, main);
+      const alerts = money.checkBudgets(ctx.services.db, ctx.userId, today.slice(0, 7), today, ctx.settings.regional.locale);
+      await money.pushAlerts(ctx.services, ctx.userId, alerts);
+      const b = money.monthSummary(ctx.services.db, ctx.userId, today.slice(0, 7), today, main).budgets.find((x) => x.category === i.category);
+      const fmt = (n: number, cur: string) => money.formatMoney(n, cur, ctx.settings.regional.locale);
+      return b
+        ? { budget: `${b.label}: ${fmt(b.amount, b.currency)} a month`, spent_this_month: fmt(b.spent, b.currency), left: fmt(b.left, b.currency), days_left: money.monthSummary(ctx.services.db, ctx.userId, today.slice(0, 7), today, main).daysLeft }
+        : { removed: true };
+    },
+  }),
+  def({
+    name: 'spending_summary',
+    description: 'How much the user has spent: this or last month by category with budgets, or the last 7 days. Use it for "how much have I spent", "am I within budget", "what did I spend on food".',
+    risk: 'read',
+    input: z.object({
+      period: z.enum(['this_month', 'last_month', 'last_7_days']).default('this_month'),
+      category: z.enum(money.CATEGORIES).optional().describe('List the purchases in this category'),
+    }),
+    summarize: () => 'Look at your spending',
+    run: (i, ctx) => {
+      const db = ctx.services.db;
+      const main = money.currencyFor(ctx.settings);
+      const today = localDate(ctx.now, ctx.timeZone);
+      const fmt = (n: number, cur = main) => money.formatMoney(n, cur, ctx.settings.regional.locale);
+      const item = (e: any) => ({ day: e.spent_on, amount: fmt(Number(e.amount), String(e.currency)), category: money.CATEGORY_LABELS[e.category as money.Category] ?? e.category, note: e.note || undefined, merchant: e.merchant || undefined });
+      if (i.period === 'last_7_days') {
+        const w = money.weekSummary(db, ctx.userId, today, main);
+        const list = money.listExpenses(db, ctx.userId, { from: addDays(today, -6), to: today, limit: 50 }).filter((e) => !i.category || e.category === i.category);
+        return { period: 'Last 7 days', total: fmt(w.total), previous_7_days: fmt(w.previous), most_on: w.top ? `${w.top.label} (${fmt(w.top.total)})` : null, purchases: list.map(item) };
+      }
+      const month = i.period === 'last_month' ? addDays(`${today.slice(0, 7)}-01`, -1).slice(0, 7) : today.slice(0, 7);
+      const m = money.monthSummary(db, ctx.userId, month, today, main);
+      const list = i.category ? money.listExpenses(db, ctx.userId, { from: `${month}-01`, to: money.monthEnd(month), limit: 50 }).filter((e) => e.category === i.category) : [];
+      return {
+        month, total: fmt(m.total), purchases_count: m.count,
+        by_category: m.byCategory.map((c) => `${c.label}: ${fmt(c.total)}`),
+        other_currencies: m.other.map((o) => fmt(o.total, o.currency)),
+        budgets: m.budgets.map((b) => `${b.label}: ${fmt(b.spent, b.currency)} of ${fmt(b.amount, b.currency)} (${b.percent}%)${b.perDayLeft ? `, about ${fmt(b.perDayLeft, b.currency)} a day left` : ''}`),
+        ...(i.category ? { purchases: list.map(item) } : {}),
+        days_left_in_month: m.daysLeft || undefined,
       };
     },
   }),
