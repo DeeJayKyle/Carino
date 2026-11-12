@@ -994,6 +994,11 @@ export function toolSpecs(toolset: 'core' | 'full' | 'phone' = 'full'): ToolSpec
   });
 }
 
+/** A tool spec with a one-sentence description and a lean schema, for models with tight limits. */
+export function compactSpec(t: ToolSpec): ToolSpec {
+  return { name: t.name, description: shortText(t.description), input_schema: trimSchema(t.input_schema) };
+}
+
 /** First sentence only: small on-phone models read every word of the prompt slowly. */
 const shortText = (d: string) => (d.match(/^.*?[.!?](\s|$)/)?.[0] ?? d).trim().slice(0, 160);
 

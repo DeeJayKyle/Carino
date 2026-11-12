@@ -82,3 +82,24 @@ export function recordSuccess(services: Services, ref: string | null) {
 export const resting = (m: { retry_after?: string | null }, now: Date) => !!m.retry_after && m.retry_after > now.toISOString();
 
 export { nowIso };
+
+/** Remembers the most a model accepts per request, as its service reported. */
+export function learnLimit(services: Services, ref: string | null, limit: number | undefined) {
+  const p = ref ? parseRef(ref) : null;
+  if (!p || !limit) return;
+  services.db.run('UPDATE ai_models SET token_limit = ? WHERE conn_id = ? AND model = ?', Math.round(limit), p.connId, p.model);
+}
+
+/**
+ * The most a model takes per request: what it told Carino before, or, for services whose free
+ * plans are known to be tight (Groq), a careful guess until it says.
+ */
+export function knownLimit(services: Services, ref: string | null): number | null {
+  const p = ref ? parseRef(ref) : null;
+  if (!p) return null;
+  const row = services.db.get('SELECT token_limit FROM ai_models WHERE conn_id = ? AND model = ?', p.connId, p.model);
+  if (row?.token_limit) return Number(row.token_limit);
+  const conn = services.providers.connection(p.connId);
+  if (conn && /api\.groq\.com/.test(conn.baseUrl)) return 6000;
+  return null;
+}

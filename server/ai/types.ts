@@ -62,8 +62,10 @@ export interface AIProvider {
 
 /** Errors the UI can explain: missing config, provider outage, rate limit, etc. */
 export class ProviderError extends Error {
-  kind: 'not_configured' | 'rate_limited' | 'unavailable' | 'bad_request' | 'auth' | 'aborted' | 'refused';
+  kind: 'not_configured' | 'rate_limited' | 'unavailable' | 'bad_request' | 'auth' | 'aborted' | 'refused' | 'too_large';
   retryable: boolean;
+  /** too_large: the most the model accepts per request, in tokens, when the service said. */
+  limit?: number;
   constructor(kind: ProviderError['kind'], message: string, retryable = false) {
     super(message);
     this.kind = kind;
@@ -73,3 +75,16 @@ export class ProviderError extends Error {
 
 export const textOf = (blocks: Block[]) =>
   blocks.filter((b): b is TextBlock => b.type === 'text').map((b) => b.text).join('');
+
+/**
+ * A service saying the request is bigger than the model (or the account's plan) accepts. Free
+ * plans often cap tokens per request or per minute (Groq's free plan: about 6,000–12,000).
+ */
+export function tooLargeError(label: string, status: number, text: string): ProviderError | null {
+  if (status !== 413 && !/request too large|reduce (the length|your message)|context.length|maximum context|too many tokens|prompt is too long/i.test(text)) return null;
+  const limit = Number(text.match(/limit\D{0,3}(\d{3,7})/i)?.[1] ?? text.match(/maximum context length is (\d+)/i)?.[1] ?? 0) || undefined;
+  const asked = Number(text.match(/requested\D{0,3}(\d{3,7})/i)?.[1] ?? 0) || undefined;
+  const e = new ProviderError('too_large', `${label} can take about ${limit ? limit.toLocaleString('en') : 'so many'} tokens at a time on your plan${asked ? `, and this needed ${asked.toLocaleString('en')}` : ''}.`);
+  e.limit = limit;
+  return e;
+}

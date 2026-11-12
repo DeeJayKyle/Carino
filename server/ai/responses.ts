@@ -1,5 +1,5 @@
 import type { AIProvider, Block, ChatMessage, ChatRequest, ChatResult, ProviderInfo } from './types.ts';
-import { ProviderError } from './types.ts';
+import { ProviderError, tooLargeError } from './types.ts';
 import { sseData } from './openai-compat.ts';
 
 /**
@@ -62,6 +62,8 @@ export class ResponsesProvider implements AIProvider {
     }
     if (!res.ok) {
       const t = (await res.text().catch(() => '')).slice(0, 300);
+      const big = tooLargeError(this.opts.label, res.status, t);
+      if (big) throw big;
       if (res.status === 401 || res.status === 403) throw new ProviderError('auth', `${this.opts.label} rejected the API key.`);
       if (res.status === 429) throw new ProviderError('rate_limited', `${this.opts.label} is rate-limiting requests, or the account is out of credit. Try again shortly.`, true);
       if (res.status === 404) throw new ProviderError('unavailable', `${this.opts.label} doesn’t offer ${this.opts.model} (or this API) any more.`);

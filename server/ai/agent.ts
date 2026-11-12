@@ -13,7 +13,8 @@ import { indexEntity } from '../services/indexer.ts';
 import { connectorToolSpecs } from '../services/connectors.ts';
 import { appToolSpecs } from '../services/apps/index.ts';
 import { selectProvider } from './router.ts';
-import { recordFailure, recordSuccess } from './health.ts';
+import { recordFailure, recordSuccess, learnLimit, knownLimit } from './health.ts';
+import { fit } from './fit.ts';
 import { markConversationLocalOnly } from '../services/localonly.ts';
 
 export const MAX_TOOL_ROUNDS = 8;
@@ -302,6 +303,10 @@ export async function runTurn(
   let system = systemFor(info);
   const messages = expandImages(services, user.id, replayable([...history, userMsg]), !!info.capabilities.vision);
   let tools = toolsFor(info);
+  // Where this turn starts in `messages` (older turns may be dropped to fit a small model).
+  const turnStart = messages.length - 1;
+  // How small the request must be for this model: 0 = everything, up to 3 = the leanest.
+  let shrink = 0;
   const toolEvents: unknown[] = [];
   let finalText = '';
   let assistantRow: Row | null = null;
@@ -316,18 +321,33 @@ export async function runTurn(
       // next allowed one (same rules), and say so.
       for (;;) {
         try {
+          // Free plans can be tight: send only what fits (relevant tools, recent turns).
+          const sized = fit({ system, messages, tools, text: userText, turnStart, limit: knownLimit(services, currentRef), from: shrink });
+          shrink = sized.level;
           result = await provider.chat({
-            system, messages, tools, signal: opts.signal,
+            system, messages: sized.messages, tools: sized.tools, maxTokens: sized.maxTokens, signal: opts.signal,
             onText: (delta) => { streamed += delta; opts.emit({ type: 'text', delta }); },
           });
           recordSuccess(services, currentRef);
           break;
         } catch (err) {
+          // Too big for this model: learn its limit, then try again leaner before moving on.
+          if (err instanceof ProviderError && err.kind === 'too_large' && !streamed) {
+            learnLimit(services, currentRef, err.limit);
+            if (shrink < 3) {
+              shrink++;
+              continue;
+            }
+          }
           const aborted = err instanceof ProviderError && err.kind === 'aborted';
           // Self-troubleshooting: work out why, rest that model, fix or report what it can.
-          const why = aborted ? null : recordFailure(services, user.id, currentRef, err);
+          const tooBig = err instanceof ProviderError && err.kind === 'too_large';
+          const why = aborted || tooBig ? null : recordFailure(services, user.id, currentRef, err);
           const switchable = err instanceof ProviderError && !aborted && err.kind !== 'refused' && (err.kind !== 'bad_request' || why?.cause === 'gone');
-          if (!switchable || streamed || !fallbacks.length) throw err;
+          if (!switchable || streamed || !fallbacks.length) {
+            if (tooBig) throw new ProviderError('too_large', `${(err as Error).message} Carino sent as little as it could and it still didn’t fit. Add another AI service in Settings → AI & connections (Google Gemini’s free plan allows much more), or start a new chat.`);
+            throw err;
+          }
           const next = fallbacks.shift()!;
           currentRef = next.ref;
           const was = info.label;
@@ -337,6 +357,7 @@ export async function runTurn(
           routeReason = `${was} wasn’t available (${(err as Error).message.slice(0, 80)}), so ${next.label} answered`;
           system = systemFor(info);
           tools = toolsFor(info);
+          shrink = 0;
           opts.emit({ type: 'switch', provider: { id: info.id, label: info.label, model: info.model, reason: routeReason } });
         }
       }

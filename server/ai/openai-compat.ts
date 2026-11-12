@@ -1,5 +1,5 @@
 import type { AIProvider, ChatRequest, ChatResult, ProviderInfo, Block, ChatMessage } from './types.ts';
-import { ProviderError } from './types.ts';
+import { ProviderError, tooLargeError } from './types.ts';
 
 /**
  * Adapter for any server exposing the OpenAI-style /chat/completions API:
@@ -81,6 +81,8 @@ export class OpenAICompatProvider implements AIProvider {
     }
     if (!res.ok) {
       const others = tried.length > 1 ? ` (tried ${tried.join(', ')})` : '';
+      const big = tooLargeError(this.opts.label, res.status, errText);
+      if (big) throw big;
       if (res.status === 401 || res.status === 403) throw new ProviderError('auth', `${this.opts.label} rejected the API key.`);
       if (res.status === 429) throw new ProviderError('rate_limited', `${this.opts.label} is rate-limiting requests${others}. Try again shortly.`, true);
       if (res.status >= 500) throw new ProviderError('unavailable', `${this.opts.label} is busy or down (${res.status})${others}. Try again in a minute.`, true);
