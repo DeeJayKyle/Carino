@@ -47,5 +47,5 @@ flutter build windows    # on Windows; the engine is copied next to Carino.exe (
 Releases: `.github/workflows/release.yml` builds the signed APK; `.github/workflows/desktop.yml`
 builds Carino for Windows and its installer (`windows/installer.iss`, Inno Setup).
 
-The version is in `pubspec.yaml` (`1.7.0+10700`: the code follows the earlier app's numbering so it
+The version is in `pubspec.yaml` (`1.7.1+10701`: the code follows the earlier app's numbering so it
 installs as an update).
