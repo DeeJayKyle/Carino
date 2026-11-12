@@ -362,7 +362,7 @@ export const TOOLS: ToolDef[] = [
     run: (_i, ctx) => ({
       routines: routines.listRoutines(ctx.services.db, ctx.userId).map((r) => ({
         id: r.id, title: r.title, custom: r.custom, enabled: r.enabled, time: r.time_local, days: r.days,
-        prompt: r.prompt ?? undefined, last_run: r.last_run_at ?? undefined, last_status: r.last_status ?? undefined,
+        prompt: r.prompt ?? undefined, goal: r.goal ?? undefined, last_run: r.last_run_at ?? undefined, last_status: r.last_status ?? undefined,
       })),
     }),
   }),
@@ -375,10 +375,11 @@ export const TOOLS: ToolDef[] = [
       prompt: z.string().min(5).max(2000).describe('What Carino should do each time, written as an instruction'),
       time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).describe('24-hour local time, HH:MM'),
       days: z.array(z.number().int().min(0).max(6)).min(1).max(7).optional().describe('Weekdays it runs: 0 = Sunday … 6 = Saturday. Omit for every day.'),
+      goal: z.enum(routines.GOALS).optional().describe('The life goal it serves, if any'),
     }),
     summarize: (i) => `Create routine "${i.title}" at ${i.time}${i.days ? ` on ${i.days.map((d) => WEEKDAY_NAMES[d]).join(', ')}` : ' every day'}`,
     run: (i, ctx) => {
-      const r = routines.createRoutine(ctx.services.db, ctx.userId, { title: i.title, prompt: i.prompt, time_local: i.time, days: i.days });
+      const r = routines.createRoutine(ctx.services.db, ctx.userId, { title: i.title, prompt: i.prompt, time_local: i.time, days: i.days, goal: i.goal });
       return { routine: { id: r.id, title: r.title, time: r.time_local, days: r.days }, manage_at: '/routines' };
     },
   }),

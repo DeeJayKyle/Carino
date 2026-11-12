@@ -32,3 +32,18 @@ describe('finding local AI', () => {
     expect(parseListing('lmstudio', { data: [{ id: 'qwen2.5-vl-7b' }, { id: 'text-embedding-nomic' }] })).toEqual([{ id: 'qwen2.5-vl-7b', vision: true }]);
   });
 });
+
+describe('idea catalogue', () => {
+  it('has unique ids, a known icon and a prompt that asks before acting', async () => {
+    const { DISCOVER } = await import('../server/services/discover.ts');
+    expect(DISCOVER.length).toBeGreaterThanOrEqual(200);
+    expect(new Set(DISCOVER.map((c) => c.id)).size).toBe(DISCOVER.length);
+    // Every icon name the Flutter app knows (app/lib/widgets/icons.dart).
+    const dart = (await import('node:fs')).readFileSync(new URL('../app/lib/widgets/icons.dart', import.meta.url), 'utf8');
+    const icons = new Set([...dart.matchAll(/'([a-z-]+)' =>/g)].map((m) => m[1]));
+    for (const c of DISCOVER) {
+      expect(icons.has(c.icon), `${c.id} icon ${c.icon}`).toBe(true);
+      if (c.id.startsWith('x-')) expect(c.prompt).toContain('without my OK');
+    }
+  });
+});

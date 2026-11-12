@@ -3,9 +3,11 @@
  * opens a routine idea, opens Ramble, or points to connecting an app. Prompts are written so
  * Carino asks for missing details first instead of guessing.
  */
+import { MORE_CARDS } from './discover-more.ts';
+
 export interface DiscoverCard {
   id: string;
-  category: 'Goals' | 'Plan & organise' | 'Money' | 'Food & health' | 'Family & friends' | 'Home' | 'Work & business' | 'Learn' | 'Out & about' | 'Connected apps';
+  category: 'Goals' | 'Plan & organise' | 'Life admin' | 'Money' | 'Share & split' | 'Food & health' | 'Family & friends' | 'Kids & school' | 'Caring for someone' | 'Home' | 'Work & business' | 'Messaging' | 'Learn' | 'Out & about' | 'Connected apps';
   icon: string;
   title: string;
   blurb: string;
@@ -159,3 +161,5 @@ export const DISCOVER: DiscoverCard[] = [
     blurb: 'Email, calendar, chat and more — Carino gets sharper with each one.', action: 'connect', interests: ['work', 'business'],
   },
 ];
+
+DISCOVER.push(...MORE_CARDS);

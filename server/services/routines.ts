@@ -130,6 +130,10 @@ export const ROUTINE_IDEAS: RoutineIdea[] = [
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use a 24-hour time like 07:30');
 const days = z.array(z.number().int().min(0).max(6)).min(1, 'Pick at least one day').max(7);
 
+/** Life goals a routine can belong to. */
+export const GOALS = ['career', 'family', 'money', 'friends', 'kids', 'health', 'travel', 'home', 'learning', 'other'] as const;
+const goal = z.enum(GOALS).nullable().optional();
+
 export const routineInput = z.object({
   title: z.string().trim().min(1).max(80),
   prompt: z.string().trim().min(5).max(2000),
@@ -140,6 +144,7 @@ export const routineInput = z.object({
   steps: z.array(z.string().trim().min(1).max(400)).max(12).optional(),
   /** Access groups this routine may use; omitted or null means everything (as before). */
   access: z.array(z.enum(ACCESS_IDS as [string, ...string[]])).max(20).nullable().optional(),
+  goal,
 });
 
 export const routineUpdate = z.object({
@@ -150,6 +155,7 @@ export const routineUpdate = z.object({
   enabled: z.boolean().optional(),
   steps: z.array(z.string().trim().min(1).max(400)).max(12).optional(),
   access: z.array(z.enum(ACCESS_IDS as [string, ...string[]])).max(20).nullable().optional(),
+  goal,
 });
 
 export function presentRoutine(r: Row): Row {
@@ -180,6 +186,7 @@ export function createRoutine(db: Db, userId: string, raw: unknown) {
     days: JSON.stringify(i.days), catalog_id: i.catalog_id ?? null, enabled: i.enabled ? 1 : 0,
     steps: i.steps?.length ? JSON.stringify(i.steps) : null,
     access: i.access ? JSON.stringify([...new Set(i.access)]) : null,
+    goal: i.goal ?? null,
   }));
 }
 
@@ -196,6 +203,7 @@ export function updateRoutine(db: Db, userId: string, id: string, raw: unknown) 
     enabled: i.enabled === undefined ? undefined : i.enabled ? 1 : 0,
     steps: i.steps === undefined ? undefined : i.steps.length ? JSON.stringify(i.steps) : null,
     access: i.access === undefined ? undefined : i.access === null ? null : JSON.stringify([...new Set(i.access)]),
+    goal: i.goal === undefined ? undefined : i.goal,
   }, false);
   return presentRoutine(row!);
 }

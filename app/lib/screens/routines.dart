@@ -10,6 +10,12 @@ import '../widgets/ui.dart';
 const _dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const _order = [1, 2, 3, 4, 5, 6, 0];
 
+/// Life goals a routine can belong to (same ids as the engine).
+const goalLabels = {
+  'career': 'Career', 'family': 'Family', 'money': 'Money', 'friends': 'Friends', 'kids': 'Kids',
+  'health': 'Health', 'travel': 'Travel', 'home': 'Home', 'learning': 'Learning', 'other': 'Other',
+};
+
 String scheduleText(List days, String time) {
   final s = {...days.map((d) => (d as num).toInt())};
   final when = s.length == 7 ? 'Every day' : (s.length == 5 && !s.contains(0) && !s.contains(6)) ? 'Weekdays' : (s.length == 2 && s.contains(0) && s.contains(6)) ? 'Weekends' : _order.where(s.contains).map((d) => _dayNames[d]).join(', ');
@@ -33,6 +39,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
   int _bump = 0;
   String? _running;
   String _cat = 'All';
+  String? _goal;
   bool _ideaOpened = false;
 
   void _reload() => setState(() => _bump++);
@@ -58,7 +65,23 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
         Loader<List>(
           reloadKey: _bump,
           load: () async => ((await app.api.get('/routines')) as Map)['routines'] as List,
-          builder: (context, list, _) => Column(children: [for (final r in list.cast<Map>()) _routineCard(context, Map<String, dynamic>.from(r))]),
+          builder: (context, list, _) {
+            final goals = {for (final r in list.cast<Map>()) if (r['goal'] != null) '${r['goal']}'};
+            final shown = list.cast<Map>().where((r) => _goal == null || r['goal'] == _goal).toList();
+            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // Group routines by the goal they serve.
+              if (goals.isNotEmpty)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(children: [
+                    Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: const Text('All goals'), selected: _goal == null, onSelected: (_) => setState(() => _goal = null))),
+                    for (final g in goals) Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: Text(goalLabels[g] ?? g), selected: _goal == g, onSelected: (_) => setState(() => _goal = g))),
+                  ]),
+                ),
+              for (final r in shown) _routineCard(context, Map<String, dynamic>.from(r)),
+            ]);
+          },
         ),
         const SizedBox(height: 18),
         Text('Ideas to get started', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
@@ -112,7 +135,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${r['title']}', style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-                Text('${scheduleText(r['days'] as List, '${r['time_local']}')}${custom ? '' : ' · built in'}', style: t.bodySmall),
+                Text('${scheduleText(r['days'] as List, '${r['time_local']}')}${custom ? '' : ' · built in'}${r['goal'] != null ? ' · ${goalLabels[r['goal']] ?? r['goal']}' : ''}', style: t.bodySmall),
               ]),
             ),
             Switch(
@@ -169,7 +192,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                 icon: const Icon(Icons.play_arrow, size: 18),
                 label: Text(_running == r['id'] ? 'Running…' : 'Run now'),
               ),
-            TextButton.icon(onPressed: () => _edit({'id': r['id'], 'title': r['title'], 'prompt': r['prompt'] ?? '', 'time_local': r['time_local'], 'days': r['days'], 'steps': r['steps'] ?? [], 'access': r['access'], 'builtIn': !custom}), icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('Edit')),
+            TextButton.icon(onPressed: () => _edit({'id': r['id'], 'title': r['title'], 'prompt': r['prompt'] ?? '', 'time_local': r['time_local'], 'days': r['days'], 'steps': r['steps'] ?? [], 'access': r['access'], 'goal': r['goal'], 'builtIn': !custom}), icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('Edit')),
             if (r['conversation_id'] != null) TextButton.icon(onPressed: () => openPath(context, '/chat/${r['conversation_id']}'), icon: const Icon(Icons.chat_bubble_outline, size: 18), label: const Text('Open chat')),
             if (custom)
               TextButton.icon(
@@ -203,6 +226,7 @@ class _RoutineEditorState extends State<RoutineEditor> {
   late List<String>? _access = (widget.draft['access'] as List?)?.cast<String>().toList();
   late TimeOfDay _time = _parse('${widget.draft['time_local'] ?? '08:00'}');
   late final Set<int> _days = {for (final d in (widget.draft['days'] as List? ?? const [1, 2, 3, 4, 5])) (d as num).toInt()};
+  late String? _goalSel = widget.draft['goal'] as String?;
   bool _saving = false;
   bool get _builtIn => widget.draft['builtIn'] == true;
 
@@ -220,7 +244,7 @@ class _RoutineEditorState extends State<RoutineEditor> {
     final days = _order.where(_days.contains).toList();
     final custom = {
       'title': _title.text.trim(), 'prompt': _prompt.text.trim(), 'time_local': _timeText, 'days': days,
-      'steps': [for (final c in _steps) if (c.text.trim().isNotEmpty) c.text.trim()], 'access': _access,
+      'steps': [for (final c in _steps) if (c.text.trim().isNotEmpty) c.text.trim()], 'access': _access, 'goal': _goalSel,
     };
     try {
       final id = widget.draft['id'];
@@ -252,6 +276,13 @@ class _RoutineEditorState extends State<RoutineEditor> {
         const SizedBox(height: 12),
         if (!_builtIn) ...[
           TextField(controller: _title, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Name')),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String?>(
+            initialValue: _goalSel,
+            decoration: const InputDecoration(labelText: 'Goal it serves (optional)'),
+            items: [const DropdownMenuItem(value: null, child: Text('None')), for (final e in goalLabels.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+            onChanged: (v) => setState(() => _goalSel = v),
+          ),
           const SizedBox(height: 10),
           TextField(controller: _prompt, onChanged: (_) => setState(() {}), minLines: 3, maxLines: 8, decoration: const InputDecoration(labelText: 'What should Carino do each time?', hintText: 'e.g. Look at what I finished this week and save a short wins note.')),
           if (_blanks.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Replace ${_blanks.join(', ')} with your own details.', style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12.5))),

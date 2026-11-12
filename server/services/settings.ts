@@ -7,7 +7,9 @@ export const DEFAULT_WIDGETS = ['briefing', 'today', 'upcoming', 'projects', 'qu
 export const settingsSchema = z.object({
   profile: z.object({
     displayName: z.string().max(80).default(''),
-    assistantStyle: z.enum(['balanced', 'concise', 'detailed', 'warm']).default('balanced'),
+    assistantStyle: z.enum(['balanced', 'concise', 'detailed', 'warm', 'playful', 'upbeat', 'mine']).default('balanced'),
+    /** How the user writes (learned from their own messages, or samples they gave), for "like me". */
+    voiceProfile: z.string().max(1500).default(''),
     customInstructions: z.string().max(2000).default(''),
     /** The assistant can be renamed; "Carino" stays the app's name. */
     assistantName: z.string().trim().max(40).default('Carino'),
@@ -17,7 +19,7 @@ export const settingsSchema = z.object({
     mascotAccessory: z.enum(['auto', 'none', 'party', 'crown', 'chef', 'cap', 'headband']).default('auto'),
     /** What the user said they want help with during onboarding (Discover ordering). */
     interests: z.array(z.string().max(40)).max(20).default([]),
-  }).default({ displayName: '', assistantStyle: 'balanced', customInstructions: '', assistantName: 'Carino', replyLanguage: '', mascotAccessory: 'auto', interests: [] }),
+  }).default({ displayName: '', assistantStyle: 'balanced', voiceProfile: '', customInstructions: '', assistantName: 'Carino', replyLanguage: '', mascotAccessory: 'auto', interests: [] }),
   ai: z.object({
     provider: z.string().max(40).optional(),
     model: z.string().max(80).optional(),

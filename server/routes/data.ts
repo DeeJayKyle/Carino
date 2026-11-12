@@ -35,6 +35,7 @@ import { getSettings, updateSettings } from '../services/settings.ts';
 import { buildOverview, briefingText, suggestions } from '../services/briefing.ts';
 import { searchIndex } from '../services/indexer.ts';
 import { localDate, startOfLocalDay, addDays, safeTimeZone, localClock, parseWhen, formatLocal } from '../services/time.ts';
+import { learnVoice, forgetVoice } from '../services/voice.ts';
 import { approveAction, rejectAction, editAction, TOOLS, executeTool, makeContext } from '../tools/registry.ts';
 import { rateLimit } from '../middleware.ts';
 
@@ -644,6 +645,12 @@ export function dataRoutes() {
   });
 
   // ---------- Ramble (brain-dump → tasks, reminders, notes) ----------
+  // "Like me": learn how the user writes (from their own messages or pasted samples), or forget it.
+  r.post('/settings/voice/learn', aiLimit, async (c) => {
+    const b = (await c.req.json().catch(() => ({}))) as { samples?: string };
+    return c.json(await learnVoice(c.var.services, uid(c), typeof b.samples === 'string' ? b.samples.slice(0, 6000) : undefined));
+  });
+  r.delete('/settings/voice', (c) => c.json(forgetVoice(c.var.services, uid(c))));
   r.post('/ramble/extract', aiLimit, async (c) => {
     const i = z.object({ text: z.string().max(MAX_RAMBLE_CHARS + 1000) }).parse(await body(c));
     return c.json(await extractRamble(c.var.services, uid(c), i.text));

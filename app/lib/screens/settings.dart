@@ -80,15 +80,51 @@ class ProfileSettings extends StatefulWidget {
 }
 
 class _ProfileSettingsState extends State<ProfileSettings> {
-  late final Map p = (AppState.read(context).settings['profile'] as Map?) ?? const {};
+  Map get p => (AppState.read(context).settings['profile'] as Map?) ?? const {};
   late final _name = TextEditingController(text: '${p['displayName'] ?? ''}');
   late final _assistant = TextEditingController(text: '${p['assistantName'] ?? 'Carino'}');
   late final _lang = TextEditingController(text: '${p['replyLanguage'] ?? ''}');
   late final _instr = TextEditingController(text: '${p['customInstructions'] ?? ''}');
   late String _style = '${p['assistantStyle'] ?? 'balanced'}';
+  bool _learning = false;
+
+  /// Learns how the user writes; asks for a few samples when there is too little to go on.
+  Future<void> _learn([String? samples]) async {
+    final app = AppState.read(context);
+    setState(() => _learning = true);
+    try {
+      await app.api.post('/settings/voice/learn', {'samples': ?samples});
+      await app.loadMe();
+      if (!mounted) return;
+      setState(() => _style = 'mine');
+      toast(context, 'Got it — drafts will sound like you.');
+    } catch (e) {
+      if (!mounted) return;
+      if (samples == null && e is ApiError && e.status == 400) {
+        final c = TextEditingController();
+        final pasted = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Show me how you write'),
+            content: TextField(controller: c, minLines: 5, maxLines: 10, decoration: const InputDecoration(hintText: 'Paste a few messages or emails you have sent (no private details needed).')),
+            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Learn'))],
+          ),
+        );
+        if (pasted != null && pasted.trim().isNotEmpty && mounted) {
+          setState(() => _learning = false);
+          return _learn(pasted.trim());
+        }
+      } else {
+        toast(context, errorText(e), error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _learning = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    AppState.of(context); // rebuild when the profile changes (e.g. after learning a voice)
     return SettingsPage(title: 'Profile & assistant', intro: 'How Carino addresses you and how it responds. Changes apply to new conversations.', children: [
       TextField(controller: _name, decoration: const InputDecoration(labelText: 'Your name'), onSubmitted: (v) => saveSettings(context, {'profile': {'displayName': v.trim()}})),
       const SizedBox(height: 12),
@@ -103,13 +139,49 @@ class _ProfileSettingsState extends State<ProfileSettings> {
       const SizedBox(height: 14),
       const Text('Response style'),
       const SizedBox(height: 6),
-      SegmentedButton<String>(
-        segments: const [ButtonSegment(value: 'balanced', label: Text('Balanced')), ButtonSegment(value: 'concise', label: Text('Concise')), ButtonSegment(value: 'detailed', label: Text('Detailed')), ButtonSegment(value: 'warm', label: Text('Warm'))],
-        selected: {_style},
-        onSelectionChanged: (s) {
-          setState(() => _style = s.first);
-          saveSettings(context, {'profile': {'assistantStyle': s.first}});
-        },
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final (v, label) in const [('balanced', 'Balanced'), ('concise', 'Short and direct'), ('detailed', 'Detailed'), ('warm', 'Warm'), ('upbeat', 'Upbeat'), ('playful', 'A little cheeky'), ('mine', 'Like me')])
+          ChoiceChip(
+            label: Text(label),
+            selected: _style == v,
+            onSelected: v == 'mine' && '${p['voiceProfile'] ?? ''}'.isEmpty
+                ? (_) => _learn()
+                : (_) {
+                    setState(() => _style = v);
+                    saveSettings(context, {'profile': {'assistantStyle': v}});
+                  },
+          ),
+      ]),
+      const SizedBox(height: 8),
+      // "Like me": drafts Carino writes for you follow how you write.
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Sound like me', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(
+              '${p['voiceProfile'] ?? ''}'.isEmpty
+                  ? 'Carino can learn how you write from your own messages to it (never private chats), so the emails and messages it drafts for you sound like you. Only a short description is kept.'
+                  : '${p['voiceProfile']}',
+              style: const TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, children: [
+              FilledButton.tonal(onPressed: _learning ? null : _learn, child: Text(_learning ? 'Learning…' : '${p['voiceProfile'] ?? ''}'.isEmpty ? 'Learn how I write' : 'Learn again')),
+              if ('${p['voiceProfile'] ?? ''}'.isNotEmpty)
+                TextButton(
+                  onPressed: () async {
+                    final app = AppState.read(context);
+                    await app.api.delete('/settings/voice');
+                    await app.loadMe();
+                    if (mounted) setState(() => _style = '${app.settings['profile']?['assistantStyle'] ?? 'balanced'}');
+                  },
+                  child: const Text('Forget it'),
+                ),
+            ]),
+          ]),
+        ),
       ),
       const SizedBox(height: 14),
       TextField(controller: _instr, maxLength: 2000, minLines: 3, maxLines: 8, decoration: const InputDecoration(labelText: 'Instructions for Carino', hintText: 'e.g. I run a community pharmacy in Kampala. Use UGX for money.')),

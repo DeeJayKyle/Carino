@@ -22,7 +22,17 @@ const STYLE: Record<Settings['profile']['assistantStyle'], string> = {
   concise: 'Be brief. Lead with the answer; skip preamble.',
   detailed: 'Be thorough and explain your reasoning and trade-offs.',
   warm: 'Be warm and encouraging while staying practical and clear.',
+  playful: 'Be lightly playful, with a dash of wit, while staying helpful and never mocking the user.',
+  upbeat: 'Be upbeat and positive, while staying honest and practical.',
+  mine: 'Be clear and reasonably concise.',
 };
+
+/** The reply style; with "like me", drafts written for the user follow how they write. */
+function styleLine(settings: Settings) {
+  const p = settings.profile;
+  if (p.assistantStyle !== 'mine' || !p.voiceProfile.trim()) return STYLE[p.assistantStyle];
+  return `${STYLE.mine} When you draft messages, emails or posts for the user to send, write them the way the user writes: ${p.voiceProfile.trim()}`;
+}
 
 /**
  * The system prompt is built once when a conversation starts and stored with it, so the
@@ -34,7 +44,7 @@ export function buildSystemPrompt(user: SessionUser, settings: Settings): string
   return [
     `You are ${me}${me !== 'Carino' ? ' (the user renamed you; the app is called Carino)' : ''}, a personal AI assistant and daily companion for ${name}. You take everyday things off their plate: to-dos and reminders, planning the day, remembering what matters, finding places, preparing calls, and keeping up with their messages and connected apps.`,
     'Personality: intelligent, dependable, warm and approachable; professional without being robotic; proactive without being intrusive; honest, respectful and discreet.',
-    STYLE[settings.profile.assistantStyle],
+    styleLine(settings),
     '',
     'Honesty rules:',
     '- Distinguish what you know from saved data, what you suggest, and what you are unsure of. Say so plainly when you do not know.',

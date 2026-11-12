@@ -32,6 +32,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _step = 0;
   final _picked = <String>{'morning_briefing'};
   final _chosen = <String>[];
+  String _tone = 'balanced';
   List<Map> _ideas = const [];
   List<Map> _builtIns = const [];
   List<String> _suggestions = _names.take(6).toList();
@@ -69,7 +70,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       await app.api.patch('/settings', {
         'onboarded': true,
-        if (!skip) 'profile': {'displayName': _you.text.trim(), 'assistantName': _assistant.text.trim().isEmpty ? 'Carino' : _assistant.text.trim(), 'interests': _chosen},
+        if (!skip) 'profile': {'displayName': _you.text.trim(), 'assistantName': _assistant.text.trim().isEmpty ? 'Carino' : _assistant.text.trim(), 'interests': _chosen, 'assistantStyle': _tone},
       });
       await app.loadMe();
       app.changed();
@@ -105,6 +106,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           for (final n in _suggestions) ChoiceChip(label: Text(n), selected: _assistant.text == n, onSelected: (_) => setState(() => _assistant.text = n)),
           TextButton.icon(onPressed: () => setState(() => _suggestions = ([..._names]..shuffle(Random())).take(6).toList()), icon: const Icon(Icons.refresh, size: 16), label: const Text('More names')),
         ]),
+      ]),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('How should I talk to you?', style: t.headlineSmall),
+        const SizedBox(height: 8),
+        Text('Pick a personality. You can change it, or teach me to sound like you, in Settings.', style: muted),
+        const SizedBox(height: 12),
+        for (final (v, title, example) in const [
+          ('balanced', 'Balanced', 'Clear answers, more detail when it helps.'),
+          ('concise', 'Short and direct', 'Straight to the point. No fluff.'),
+          ('warm', 'Warm', 'Kind and encouraging, still practical.'),
+          ('upbeat', 'Upbeat', 'Bright and positive, always honest.'),
+          ('playful', 'A little cheeky', 'Helpful, with a wink now and then.'),
+        ])
+          Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            color: _tone == v ? Theme.of(context).colorScheme.primaryContainer : null,
+            child: ListTile(
+              title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(example),
+              trailing: _tone == v ? const Icon(Icons.check_circle) : null,
+              onTap: () => setState(() => _tone = v),
+            ),
+          ),
       ]),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Give ${_assistant.text.trim().isEmpty ? 'me' : _assistant.text.trim()} a brain', style: t.headlineSmall),

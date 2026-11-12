@@ -16,6 +16,7 @@ IconData iconFor(String? name) => switch (name) {
       'speaker' => Icons.volume_up_outlined,
       'file' => Icons.description_outlined,
       'note' => Icons.sticky_note_2_outlined,
+      'edit' => Icons.edit_outlined,
       'calendar' => Icons.event_outlined,
       'clock' => Icons.schedule,
       'bell' => Icons.notifications_none,
