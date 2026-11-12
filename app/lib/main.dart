@@ -31,18 +31,38 @@ class CarinoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppScope(
       state: state,
-      child: MaterialApp(
-        title: 'Carino',
-        debugShowCheckedModeBanner: false,
-        navigatorKey: navigatorKey,
-        theme: carinoTheme(Brightness.light),
-        darkTheme: carinoTheme(Brightness.dark),
-        // The engine's WebView sits underneath everything (see WebScreen).
-        builder: (context, child) => Stack(children: [
-          if (state.engine.hasWebScreens) const Positioned.fill(child: EngineView()),
-          Positioned.fill(child: child ?? const SizedBox()),
-        ]),
-        home: const Startup(),
+      // Appearance settings (theme, palette, text size, motion) apply as soon as they change.
+      child: ListenableBuilder(
+        listenable: state,
+        builder: (context, _) {
+          final a = (state.settings['appearance'] as Map?) ?? const {};
+          final midnight = a['palette'] == 'midnight';
+          return MaterialApp(
+            title: 'Carino',
+            debugShowCheckedModeBanner: false,
+            navigatorKey: navigatorKey,
+            theme: carinoTheme(Brightness.light),
+            darkTheme: carinoTheme(Brightness.dark, midnight: midnight),
+            themeMode: switch (a['theme']) { 'light' => ThemeMode.light, 'dark' => ThemeMode.dark, _ => ThemeMode.system },
+            themeAnimationDuration: a['reduceMotion'] == true ? Duration.zero : kThemeAnimationDuration,
+            // The engine's WebView sits underneath everything (see WebScreen).
+            builder: (context, child) {
+              final mq = MediaQuery.of(context);
+              final large = a['textSize'] == 'large';
+              return MediaQuery(
+                data: mq.copyWith(
+                  textScaler: large ? TextScaler.linear((mq.textScaler.scale(1) * 1.18).clamp(1.0, 2.0)) : mq.textScaler,
+                  disableAnimations: mq.disableAnimations || a['reduceMotion'] == true,
+                ),
+                child: Stack(children: [
+                  if (state.engine.hasWebScreens) const Positioned.fill(child: EngineView()),
+                  Positioned.fill(child: child ?? const SizedBox()),
+                ]),
+              );
+            },
+            home: const Startup(),
+          );
+        },
       ),
     );
   }

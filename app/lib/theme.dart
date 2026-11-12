@@ -10,14 +10,16 @@ class CarinoColors {
   static const surfaceDark = Color(0xFF1C1928);
 }
 
-ThemeData carinoTheme(Brightness b) {
+/// [midnight]: the deep blue-black palette from Settings → Appearance (dark mode only).
+ThemeData carinoTheme(Brightness b, {bool midnight = false}) {
   final dark = b == Brightness.dark;
+  final night = dark && midnight;
   final scheme = ColorScheme.fromSeed(seedColor: CarinoColors.brand, brightness: b).copyWith(
     primary: dark ? const Color(0xFFB4A8FF) : CarinoColors.brand,
-    surface: dark ? CarinoColors.surfaceDark : CarinoColors.surfaceLight,
+    surface: night ? const Color(0xFF0E1424) : dark ? CarinoColors.surfaceDark : CarinoColors.surfaceLight,
     tertiary: CarinoColors.coral,
   );
-  final bg = dark ? CarinoColors.bgDark : CarinoColors.bgLight;
+  final bg = night ? const Color(0xFF070B16) : dark ? CarinoColors.bgDark : CarinoColors.bgLight;
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
