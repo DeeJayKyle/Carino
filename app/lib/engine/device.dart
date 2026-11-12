@@ -19,6 +19,14 @@ class Device {
   Future<void> openExternal(String url) => _call('openExternal', {'url': url});
   /// Opens a sign-in page in the browser; the result comes back by itself. Returns an error, if any.
   Future<String?> openSignIn(String url) async => (await _call('openSignIn', {'url': url}))['error'] as String?;
+  Future<void> speak(String text, String lang) => _call('speak', {'text': text, 'lang': lang});
+  Future<void> stopSpeaking() => _call('stopSpeaking');
+  Future<void> listen(String lang) => _call('listen', {'lang': lang});
+  Future<void> stopListening() => _call('stopListening');
+  /// Windows: programs the user approved for Carino to open.
+  Future<List<Map>> listApps() async => ((await _call('listApps'))['apps'] as List? ?? const []).cast<Map>();
+  Future<Map?> pickApp() async => (await _call('pickApp'))['app'] as Map?;
+  Future<void> forgetApp(String id) => _call('forgetApp', {'id': id});
   Future<String?> askPlacesPermission() async => (await _call('askPlacesPermission'))['permission'] as String?;
 }
 

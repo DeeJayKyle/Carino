@@ -86,6 +86,11 @@ public class MainActivity extends FlutterActivity {
                     if (web.canGoBack()) web.goBack();
                     result.success(null);
                     break;
+                case "restart":
+                    // After a restore or "erase everything": the engine starts afresh.
+                    web.loadUrl(ORIGIN + "/?flutter=1");
+                    result.success(null);
+                    break;
                 case "startPath":
                     result.success(startPath(getIntent()));
                     break;

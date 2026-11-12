@@ -188,11 +188,15 @@ class UnavailableEngine implements Engine {
   @override
   Stream<String> get opens => const Stream.empty();
   @override
+  Stream<EngineEvent> get events => const Stream.empty();
+  @override
   Future<void> openWebScreen(String path) async {}
   @override
   Future<EngineResponse> send(String method, String path, {Object? body, Upload? upload, Map<String, String>? headers}) => Future.error(const ApiError(0, 'Not available'));
   @override
   Future<String> startPath() async => '/';
+  @override
+  Future<void> restart() async {}
   @override
   Stream<SseEvent> stream(String method, String path, {Object? body}) => const Stream.empty();
 }

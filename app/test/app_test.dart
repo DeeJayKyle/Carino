@@ -8,12 +8,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'fake_engine.dart';
 
 FakeEngine world({bool onboarded = true}) {
+  var setUp = onboarded;
   final tasks = [
     {'id': 't1', 'title': 'Buy paracetamol stock', 'status': 'open', 'priority': 2, 'due_at': DateTime.now().add(const Duration(hours: 2)).toUtc().toIso8601String(), 'all_day': false},
     {'id': 't2', 'title': 'Call Sam', 'status': 'open', 'priority': 3, 'due_at': null},
   ];
   final e = FakeEngine(routes: {
-    'GET /auth/me': (_) => me(onboarded: onboarded),
+    'GET /auth/me': (_) => me(onboarded: setUp),
+    'PATCH /settings': (b) {
+      if ((b as Map)['onboarded'] == true) setUp = true;
+      return {'ok': true};
+    },
     'GET /dashboard': (_) => {
           'hour': 9,
           'briefing': 'Good morning, Herbert. 1 task due today.',
@@ -167,7 +172,40 @@ void main() {
   testWidgets('first run: the setup screen opens', (tester) async {
     final e = world(onboarded: false);
     await boot(tester, e);
-    expect(e.opened, ['/']);
+    // Setup is a Flutter screen now; skipping it marks Carino as set up and lands on Home.
+    expect(find.text('Hi! Let’s get you set up.'), findsOneWidget);
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+    expect(e.bodies['PATCH /settings'], {'onboarded': true});
+    expect(find.text('Hi! Let’s get you set up.'), findsNothing);
+  });
+
+  testWidgets('settings, apps, connectors, messaging, ramble and access are Flutter screens', (tester) async {
+    final e = world();
+    e.routes.addAll({
+      'GET /apps': (_) => {'apps': [{'id': 'google', 'label': 'Google', 'group': 'google', 'redirect_uri': 'http://127.0.0.1/cb', 'client': null, 'needs_secret': true, 'one_tap': true, 'accounts': [{'id': 'ac1', 'label': 'me@example.com', 'last_error': null}]}]},
+      'GET /channels': (_) => {'channels': [], 'transcription': false, 'shared_whatsapp': {'number': '+256 700 000000'}},
+      'GET /connectors': (_) => {'connectors': [{'id': 'k1', 'name': 'Notion', 'url': 'https://mcp.notion.com/mcp', 'tools': [], 'enabled': true, 'signed_in': true}]},
+      'GET /sync': (_) => {'device': {'name': 'My phone'}, 'peers': [], 'conflicts': []},
+      'GET /files': (_) => {'folders': []},
+    });
+    await boot(tester, e);
+    for (final (path, title, text) in [
+      ('/apps', 'My apps', 'Gmail'),
+      ('/connectors', 'Connected apps', 'Notion'),
+      ('/messaging', 'Messaging', 'Link my WhatsApp'),
+      ('/ramble', 'Ramble it out', 'Sort it out'),
+      ('/access', 'What Carino can reach', 'Notion'),
+      ('/settings#devices', 'Devices', 'This device: My phone'),
+    ]) {
+      e.emitOpen(path);
+      await tester.pumpAndSettle();
+      expect(find.text(title), findsWidgets, reason: path);
+      expect(find.textContaining(text), findsWidgets, reason: path);
+      expect(e.opened, isNot(contains(path)), reason: '$path should not be a web screen');
+      Navigator.of(tester.element(find.text(title).first)).pop();
+      await tester.pumpAndSettle();
+    }
   });
 
   test('stream parser handles events split across pieces', () {

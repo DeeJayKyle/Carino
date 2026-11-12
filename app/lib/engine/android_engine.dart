@@ -8,11 +8,12 @@ import 'engine.dart';
 /// The engine in the Android app's WebView, reached through the "carino/engine" channel.
 class AndroidEngine implements Engine {
   static const _channel = MethodChannel('carino/engine');
-  final _ready = Completer<void>();
+  var _ready = Completer<void>();
   final _pending = <String, Completer<EngineResponse>>{};
   final _streams = <String, StreamController<SseEvent>>{};
   final _parsers = <String, SseParser>{};
   final _opens = StreamController<String>.broadcast();
+  final _events = StreamController<EngineEvent>.broadcast();
   var _seq = 0;
 
   AndroidEngine() {
@@ -38,7 +39,11 @@ class AndroidEngine implements Engine {
       case 'show':
         _opens.add('show');
       case 'event':
-        _opens.add('event:${m['name']}');
+        if (m['data'] is Map) {
+          _events.add(EngineEvent('${m['name']}', Map<String, dynamic>.from(m['data'] as Map)));
+        } else {
+          _opens.add('event:${m['name']}');
+        }
       case 'done':
         final b64 = m['b64'] as String?;
         _pending.remove(id)?.complete(EngineResponse(
@@ -78,12 +83,25 @@ class AndroidEngine implements Engine {
 
   @override
   Stream<String> get opens => _opens.stream;
+  @override
+  Stream<EngineEvent> get events => _events.stream;
 
   @override
   Future<String> startPath() async => (await _channel.invokeMethod<String>('startPath')) ?? '/';
 
   @override
   Future<void> openWebScreen(String path) => _channel.invokeMethod('open', {'path': path});
+
+  @override
+  Future<void> restart() async {
+    _ready = Completer<void>();
+    for (final c in _pending.values) {
+      c.completeError(const ApiError(0, 'Carino restarted.'));
+    }
+    _pending.clear();
+    await _channel.invokeMethod('restart');
+    await _ready.future.timeout(const Duration(seconds: 60));
+  }
 
   String _id() => 'f${++_seq}';
 

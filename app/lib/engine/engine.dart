@@ -23,8 +23,20 @@ abstract class Engine {
   /// Pages to open, from notifications, widgets and the web screens' back button ("back").
   Stream<String> get opens;
 
+  /// Events with data from the engine, e.g. ("speech", {partial|final|error|end}).
+  Stream<EngineEvent> get events;
+
   /// The page Carino was opened to (from a notification or a widget), or "/".
   Future<String> startPath();
+
+  /// Starts the engine afresh (after a restore or "erase everything"), and waits until it's ready.
+  Future<void> restart();
+}
+
+class EngineEvent {
+  final String name;
+  final Map<String, dynamic> data;
+  const EngineEvent(this.name, this.data);
 }
 
 class Upload {

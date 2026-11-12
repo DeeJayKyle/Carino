@@ -90,6 +90,8 @@ export function startFlutterLink(handle: (req: Request) => Promise<Response>) {
   (globalThis as any).__carinoFlutter = makeLink(handle, post, location.origin);
   // Things that changed outside a Flutter request (a sign-in finished in the browser).
   for (const name of ['carino-apps-changed']) window.addEventListener(name, () => post({ type: 'event', name }));
+  // Events with data (speech recognised by the phone).
+  (globalThis as any).__carinoFlutterEmit = (name: string, data: unknown) => post({ type: 'event', name, data });
   post({ type: 'ready' });
   return true;
 }

@@ -8,7 +8,7 @@ import { configureSqlite, type DatabaseSync } from './shims/sqlite.ts';
 import { existsSync, flushFiles, loadFiles, preloadFiles, readFileSync, rmSync, seedFile } from './shims/fs.ts';
 import { Vault, openConfig, sealConfig, type VaultPlatform } from './vault.ts';
 import { idbDeleteAll, idbGet, idbWrite } from './idb.ts';
-import { makeNetFetch, notify, setAlarms, setPlaceAlerts, setWidgetData, takeReminderEvents, isNative, keepListening, pickFolder, forgetFolder, canPickFolders, saveFile, shareFile, shareText, openExternal, openSignIn, appInfo, askPlacesPermission } from './native.ts';
+import { makeNetFetch, notify, setAlarms, setPlaceAlerts, setWidgetData, takeReminderEvents, isNative, keepListening, pickFolder, forgetFolder, canPickFolders, saveFile, shareFile, shareText, openExternal, openSignIn, appInfo, askPlacesPermission, speakNative, stopSpeakingNative, listen, stopListening } from './native.ts';
 import { getSettings } from '../server/services/settings.ts';
 import { addDays, localDate, safeTimeZone, startOfLocalDay } from '../server/services/time.ts';
 import { firePlaceReminder } from '../server/services/tasks.ts';
@@ -426,6 +426,13 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
       case 'openExternal': openExternal(String(b.url ?? '')); return json({ ok: true });
       case 'openSignIn': return json({ error: openSignIn(String(b.url ?? '')) });
       case 'askPlacesPermission': return json({ permission: await askPlacesPermission() });
+      case 'speak': speakNative(String(b.text ?? ''), String(b.lang ?? 'en-US')); return json({ ok: true });
+      case 'stopSpeaking': stopSpeakingNative(); return json({ ok: true });
+      case 'listen':
+        // The phone's speech recognition; what it hears goes to the Flutter screens as "speech" events.
+        listen(String(b.lang ?? 'en-US'), (e) => (globalThis as any).__carinoFlutterEmit?.('speech', e));
+        return json({ ok: true });
+      case 'stopListening': stopListening(); return json({ ok: true });
       default: return json({ error: 'Unknown action' }, 400);
     }
   }

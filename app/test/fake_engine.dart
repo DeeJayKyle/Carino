@@ -26,12 +26,16 @@ class FakeEngine implements Engine {
 
   @override
   Stream<String> get opens => _opens.stream;
+  @override
+  Stream<EngineEvent> get events => const Stream.empty();
 
   @override
   Future<void> openWebScreen(String path) async => opened.add(path);
 
   @override
   Future<String> startPath() async => '/';
+  @override
+  Future<void> restart() async {}
 
   Object? Function(Object?)? _find(String key) {
     if (routes.containsKey(key)) return routes[key];

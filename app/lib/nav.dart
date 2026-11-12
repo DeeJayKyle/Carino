@@ -2,14 +2,21 @@ import 'package:flutter/material.dart';
 
 import 'app_state.dart';
 import 'screens/applications.dart';
+import 'screens/apps.dart';
 import 'screens/approvals.dart';
+import 'screens/connectors.dart';
 import 'screens/chat.dart';
 import 'screens/discover.dart';
 import 'screens/files.dart';
 import 'screens/memory.dart';
+import 'screens/messaging.dart';
 import 'screens/money.dart';
 import 'screens/notifications.dart';
+import 'screens/access.dart';
+import 'screens/onboarding.dart';
+import 'screens/ramble.dart';
 import 'screens/routines.dart';
+import 'screens/settings.dart';
 import 'screens/web_screen.dart';
 
 /// Where each page lives: a Flutter screen, or (until it's rebuilt) the engine's own web page.
@@ -25,6 +32,12 @@ final Map<String, ScreenFor> flutterScreens = {
   '/applications': (_) => const ApplicationsScreen(),
   '/files': (_) => const FilesScreen(),
   '/routines': (u) => RoutinesScreen(idea: u.queryParameters['idea']),
+  '/settings': (u) => SettingsScreen(section: u.fragment.isEmpty ? null : u.fragment),
+  '/access': (_) => const AccessScreen(),
+  '/ramble': (_) => const RambleScreen(),
+  '/apps': (_) => const AppsScreen(),
+  '/connectors': (_) => const ConnectorsScreen(),
+  '/messaging': (_) => const MessagingScreen(),
 };
 
 /// Tabs of the main screen, by path.
@@ -38,7 +51,11 @@ Future<void> openPath(BuildContext context, String path) async {
   final p = uri.path;
   final nav = Navigator.of(context);
   if (tabPaths.containsKey(p) && uri.queryParameters.isEmpty) {
-    if (p == '/' && !AppState.read(context).onboarded) return WebScreen.open(context, '/');
+    if (p == '/' && !AppState.read(context).onboarded) {
+      final next = await nav.push<String>(MaterialPageRoute(builder: (_) => const OnboardingScreen(), settings: const RouteSettings(name: '/onboarding')));
+      if (next != null && context.mounted) await openPath(context, next);
+      return;
+    }
     nav.popUntil((r) => r.isFirst);
     selectTab?.call(tabPaths[p]!);
     return;
@@ -47,6 +64,11 @@ Future<void> openPath(BuildContext context, String path) async {
     final q = uri.queryParameters['q'];
     if (uri.queryParameters['voice'] == '1') return WebScreen.open(context, path);
     return ChatScreen.startNew(context, firstMessage: q);
+  }
+  final appId = RegExp(r'^/apps/(\w+)$').firstMatch(p);
+  if (appId != null) {
+    await nav.push(MaterialPageRoute<void>(builder: (_) => AppsScreen(id: appId.group(1))));
+    return;
   }
   final chat = RegExp(r'^/chat/([\w-]+)$').firstMatch(p);
   if (chat != null) {
