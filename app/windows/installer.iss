@@ -1,5 +1,5 @@
 ; Carino for Windows installer (Inno Setup). Built by .github/workflows/desktop.yml:
-;   ISCC /DAppVersion=1.6.0 /DSourceDir=<flutter Release folder> installer.iss
+;   ISCC /DAppVersion=1.7.0 /DSourceDir=<flutter Release folder> installer.iss
 ; Installs for the current user only (no admin prompt). Carino's data stays in
 ; %LOCALAPPDATA%\app.carino.desktop, the same place as the earlier Windows app, so it carries over.
 

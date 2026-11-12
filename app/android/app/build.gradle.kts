@@ -28,7 +28,7 @@ android {
         applicationId = "app.carino"
         minSdk = 26
         targetSdk = 36
-        // From pubspec.yaml (version: 1.6.0+10600); the code follows the earlier app's scheme
+        // From pubspec.yaml (version: 1.7.0+10700); the code follows the earlier app's scheme
         // (major*10000 + minor*100 + patch) so updates install over it.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
