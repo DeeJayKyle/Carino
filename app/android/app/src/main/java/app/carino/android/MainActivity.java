@@ -97,6 +97,40 @@ public class MainActivity extends FlutterActivity {
                 case "startPath":
                     result.success(startPath(getIntent()));
                     break;
+                case "updateDir": {
+                    // Where an update is downloaded: shared with the installer through the FileProvider.
+                    java.io.File dir = new java.io.File(getCacheDir(), "shared");
+                    //noinspection ResultOfMethodCallIgnored
+                    dir.mkdirs();
+                    result.success(dir.getAbsolutePath());
+                    break;
+                }
+                case "installApk": {
+                    // Hands a downloaded, checked update to Android's installer (the user confirms;
+                    // Android only accepts it if it is signed with Carino's own key).
+                    String apk = call.argument("path");
+                    java.io.File f = apk == null ? null : new java.io.File(apk);
+                    java.io.File shared = new java.io.File(getCacheDir(), "shared");
+                    try {
+                        if (f == null || !f.getCanonicalPath().startsWith(shared.getCanonicalPath() + java.io.File.separator) || !f.getName().endsWith(".apk")) {
+                            result.error("bad_path", "Not a downloaded update", null);
+                            break;
+                        }
+                        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+                            startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
+                            result.success("needs_permission");
+                            break;
+                        }
+                        Uri uri = androidx.core.content.FileProvider.getUriForFile(this, getPackageName() + ".files", f);
+                        Intent install = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
+                                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(install);
+                        result.success("started");
+                    } catch (Exception e) {
+                        result.error("install_failed", e.getMessage(), null);
+                    }
+                    break;
+                }
                 default:
                     result.notImplemented();
             }

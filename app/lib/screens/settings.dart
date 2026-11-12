@@ -7,6 +7,7 @@ import '../nav.dart';
 import '../widgets/common.dart';
 import '../widgets/files.dart';
 import '../widgets/ui.dart';
+import '../update/update_ui.dart';
 import 'settings_ai.dart';
 import 'settings_devices.dart';
 import 'access.dart';
@@ -35,6 +36,7 @@ const settingsSections = <(String, String, IconData, Widget Function())>[
   ('voice', 'Voice', Icons.mic_none, VoiceSettings.new),
   ('devices', 'Devices', Icons.phone_iphone, DevicesSettings.new),
   ('privacy', 'Privacy, data & backup', Icons.lock_outline, PrivacySettings.new),
+  ('updates', 'Updates', Icons.system_update_outlined, UpdateSettings.new),
 ];
 
 /// Settings: one page per section (the web app's #sections open straight to theirs).

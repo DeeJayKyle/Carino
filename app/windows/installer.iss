@@ -40,3 +40,5 @@ Name: "{userdesktop}\Carino"; Filename: "{app}\Carino.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\Carino.exe"; Description: "Open Carino"; Flags: nowait postinstall skipifsilent
+; After a quiet self-update, Carino opens again by itself.
+Filename: "{app}\Carino.exe"; Flags: nowait; Check: WizardSilent

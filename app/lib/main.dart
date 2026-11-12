@@ -8,6 +8,7 @@ import 'nav.dart';
 import 'screens/web_screen.dart';
 import 'engine/android_engine.dart';
 import 'engine/windows_engine.dart';
+import 'update/update_ui.dart';
 import 'engine/engine.dart';
 import 'screens/chats.dart';
 import 'screens/home.dart';
@@ -102,6 +103,8 @@ class _StartupState extends State<Startup> {
       app.engine.opens.listen(_open);
       final start = await app.engine.startPath();
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = navigatorKey.currentContext;
+        if (ctx != null && app.onboarded) autoUpdate(ctx);
         if (!app.onboarded) {
           _open('/');
         } else if (start != '/') {

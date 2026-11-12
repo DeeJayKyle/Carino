@@ -20,6 +20,10 @@ export const settingsSchema = z.object({
     /** What the user said they want help with during onboarding (Discover ordering). */
     interests: z.array(z.string().max(40)).max(20).default([]),
   }).default({ displayName: '', assistantStyle: 'balanced', voiceProfile: '', customInstructions: '', assistantName: 'Carino', replyLanguage: '', mascotAccessory: 'auto', interests: [] }),
+  /** Carino keeps itself up to date from its releases (the app does the work; see app/lib/update). */
+  updates: z.object({
+    auto: z.boolean().default(true),
+  }).default({ auto: true }),
   ai: z.object({
     provider: z.string().max(40).optional(),
     model: z.string().max(80).optional(),
