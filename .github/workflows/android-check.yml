@@ -72,8 +72,9 @@ jobs:
         run: npm run build
       - uses: actions/setup-java@v6
         with: { distribution: temurin, java-version: 17 }
+      # The same Flutter as the project was made with (app/pubspec.lock), so builds don't drift.
       - uses: subosito/flutter-action@v2
-        with: { channel: stable, cache: true }
+        with: { flutter-version: '3.47.9', channel: stable, cache: true }
       - name: Flutter tests
         working-directory: app
         run: flutter test
