@@ -162,7 +162,7 @@ describe('My apps: sign-in', () => {
   it('lists every app with its redirect address, and needs a developer app before sign-in', async () => {
     const c = await signup(ctx);
     const r = await c.get('/api/apps');
-    expect(r.data.apps.map((a: any) => a.id)).toEqual(['google', 'microsoft', 'facebook', 'instagram', 'x', 'linkedin', 'tiktok']);
+    expect(r.data.apps.map((a: any) => a.id)).toEqual(['google', 'microsoft', 'facebook', 'instagram', 'x', 'linkedin', 'tiktok', 'slack', 'todoist', 'notion', 'linear', 'github', 'ticktick', 'withings', 'sonos']);
     expect(r.data.apps[0].redirect_uri).toBe('http://localhost/api/apps/callback');
     expect((await c.post('/api/apps/google/start')).data.error).toMatch(/client ID first/);
     expect((await c.req('PUT', '/api/apps/clients/google', { client_id: 'abc.apps.googleusercontent.com' })).data.error).toMatch(/client secret/);

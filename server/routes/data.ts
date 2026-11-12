@@ -512,12 +512,13 @@ export function dataRoutes() {
   // ---------- My apps (Google, Microsoft, Meta, X, LinkedIn, TikTok) ----------
   const groupParam = (c: any) => {
     const g = c.req.param('group');
-    if (!['google', 'microsoft', 'meta', 'x', 'linkedin', 'tiktok'].includes(g)) throw notFound('App');
+    if (!['google', 'microsoft', 'meta', 'x', 'linkedin', 'tiktok', 'ticktick', 'withings', 'sonos'].includes(g)) throw notFound('App');
     return g as Parameters<typeof apps.saveClient>[2];
   };
   r.get('/apps', async (c) => c.json({ apps: await apps.presentApps(c.var.services, uid(c)) }));
   r.put('/apps/clients/:group', connectLimit, async (c) => c.json(apps.saveClient(c.var.services, uid(c), groupParam(c), await body(c))));
   r.delete('/apps/clients/:group', (c) => c.json(apps.deleteClient(c.var.services, uid(c), groupParam(c))));
+  r.post('/apps/:provider/key', connectLimit, async (c) => c.json(await apps.connectWithKey(c.var.services, uid(c), c.req.param('provider'), await body(c))));
   r.post('/apps/:provider/start', connectLimit, async (c) => c.json(await apps.startSignIn(c.var.services, uid(c), c.req.param('provider'))));
   r.delete('/apps/accounts/:id', async (c) => c.json(await apps.disconnect(c.var.services, uid(c), c.req.param('id'))));
   /** The provider sends the browser back here after sign-in (PC; the phone uses /oauth/finish). */

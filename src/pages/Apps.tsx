@@ -19,7 +19,20 @@ interface AppRow {
   /** Carino's own app at this provider is ready: just sign in. */
   one_tap: boolean;
   accounts: { id: string; label: string; last_error: string | null }[];
+  /** Connected by pasting a personal token. */
+  key: { url: string; steps: string; placeholder: string } | null;
 }
+
+const KEY_APPS: Record<string, { name: string; color: string; mark: string; does: string[] }> = {
+  slack: { name: 'Slack', color: '#4A154B', mark: '#', does: ['Read channels and search messages', 'Send a message or thread reply as you (after your OK)'] },
+  todoist: { name: 'Todoist', color: '#E44332', mark: 'td', does: ['See your tasks, by any Todoist filter', 'Add tasks and tick them off'] },
+  notion: { name: 'Notion', color: '#000', mark: 'N', does: ['Search and read the pages you share with Carino', 'Create pages and add notes to them'] },
+  linear: { name: 'Linear', color: '#5E6AD2', mark: 'L', does: ['See issues assigned to you', 'Create issues and comment (after your OK)'] },
+  github: { name: 'GitHub', color: '#24292F', mark: 'gh', does: ['See notifications, assigned issues and review requests', 'Read issues; open issues and comment (after your OK)'] },
+};
+const Mark = ({ id }: { id: string }) => (
+  <span aria-hidden="true" style={{ width: 44, height: 44, flex: 'none', borderRadius: 10, display: 'grid', placeItems: 'center', background: KEY_APPS[id].color, color: '#fff', fontWeight: 800 }}>{KEY_APPS[id].mark}</span>
+);
 
 /** What each app lets Carino do, and the parts shown as chips (like Gmail · Calendar · Drive). */
 const ABOUT: Record<string, { name: string; parts?: string[]; does: string[]; beta?: boolean }> = {
@@ -133,6 +146,7 @@ export default function Apps({ id }: { id?: string }) {
   if (apps.error) return <Shell title="My apps"><ErrorBox error={apps.error} retry={apps.reload} /></Shell>;
   const list = apps.data!.apps;
   const app = id ? list.find((a) => a.id === id) : undefined;
+  if (app?.key) return <KeyAppDetail app={app} reload={apps.reload} />;
   if (app) return <AppDetail app={app} reload={apps.reload} />;
 
   const wa = chans.data?.channels?.find((c: any) => c.kind === 'whatsapp');
@@ -158,8 +172,25 @@ export default function Apps({ id }: { id?: string }) {
                 parts={n ? about.parts : undefined} warn={a.accounts.some((x) => x.last_error)} />
             );
           })}
+          {Object.keys(KEY_APPS).map((pid) => {
+            const a = list.find((x) => x.id === pid);
+            if (!a) return null;
+            const warn = a.accounts.some((x) => x.last_error);
+            return (
+              <li key={pid}>
+                <Link to={`/apps/${pid}`} className="app-item">
+                  <Mark id={pid} />
+                  <span className="grow" style={{ minWidth: 0 }}>
+                    <span className="app-name">{KEY_APPS[pid].name}</span>
+                    <span className={`app-status ${warn ? 'warn' : ''}`}><Dot ok={a.accounts.length > 0 && !warn} /><span className="ellipsis">{a.accounts.length ? (warn ? 'Needs attention' : a.accounts[0].label) : 'Tap to connect'}</span></span>
+                  </span>
+                  <Icon name="chevron" size={16} />
+                </Link>
+              </li>
+            );
+          })}
           <AppItem to="/messaging" logo="telegram" name="Telegram" ok={!!tg?.enabled} status={tg ? (tg.enabled ? `Connected · @${tg.config.bot_username}` : 'Turned off') : 'Tap to set up'} />
-          <AppItem to="/connectors" logo="more" name="More apps" status="Notion, Linear, GitHub, Zapier and other MCP apps" />
+          <AppItem to="/connectors" logo="more" name="More apps" status="Zapier and other MCP apps" />
         </ul>
       </div>
     </Shell>
@@ -305,6 +336,58 @@ function AppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
           </div>
         </details>
         <p className="tiny faint" style={{ marginTop: 12 }}>Your sign-ins are stored encrypted on this phone. Carino asks before sending email or posting anything. You can change what it may do on its own in <Link to="/settings#permissions">Settings</Link>.</p>
+      </div>
+    </Shell>
+  );
+}
+
+/** Apps connected with a pasted personal token (Slack, Todoist, Notion, Linear, GitHub). */
+function KeyAppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const about = KEY_APPS[app.id];
+  const [token, setToken] = useState('');
+  const [busy, setBusy] = useState(false);
+  const connect = async () => {
+    setBusy(true);
+    try {
+      const r = await post<{ account: { label: string } }>(`/apps/${app.id}/key`, { token: token.trim() });
+      setToken('');
+      toast(`Connected ${r.account.label}`);
+      reload();
+    } catch (e: any) {
+      toast(e.message, 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Shell title={about.name}>
+      <div className="page narrow stack">
+        <div className="row" style={{ gap: 14, alignItems: 'flex-start' }}>
+          <Mark id={app.id} />
+          <div><h1>{about.name}</h1>{about.does.map((d) => <p key={d} className="muted small">• {d}</p>)}</div>
+        </div>
+        <h2>Accounts</h2>
+        {!app.accounts.length && <p className="muted">Not connected yet.</p>}
+        {app.accounts.map((a) => (
+          <div key={a.id} className="row">
+            <Dot ok={!a.last_error} />
+            <span className="grow">{a.label}{a.last_error && <span className="small" style={{ color: 'var(--danger)' }}> — {a.last_error}</span>}</span>
+            <button className="btn ghost sm" onClick={async () => {
+              if (!(await confirm({ title: `Disconnect ${a.label}?`, body: `Carino forgets this ${about.name} token. Nothing in your account changes.`, confirm: 'Disconnect', danger: true }))) return;
+              await del(`/apps/accounts/${a.id}`).catch((e) => toast(e.message, 'error'));
+              reload();
+            }}>Disconnect</button>
+          </div>
+        ))}
+        <div className="card stack">
+          <h2>{app.accounts.length ? 'Add another account' : 'Connect with a personal token'}</h2>
+          <p className="small">{app.key!.steps} <A href={app.key!.url}>Open {about.name}</A></p>
+          <input type="password" autoComplete="off" placeholder={app.key!.placeholder} value={token} onChange={(e) => setToken(e.target.value)} aria-label="Token" />
+          <button className="btn primary" disabled={busy || token.trim().length < 8} onClick={connect}>Connect</button>
+        </div>
+        <p className="muted small">The token is stored encrypted and only sent to {about.name}. Changes and messages wait for your OK unless you allow them in Settings → Permissions.</p>
       </div>
     </Shell>
   );

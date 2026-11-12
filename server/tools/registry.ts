@@ -31,6 +31,7 @@ import { APP_TOOLS, findAppTool, AppError } from '../services/apps/index.ts';
 import { AGENT_TOOLS } from './agent-tools.ts';
 import { CREATE_TOOLS } from './create-tools.ts';
 import { SHARE_TOOLS } from './share-tools.ts';
+import { LIFE_TOOLS } from './life-tools.ts';
 
 export type Risk = 'read' | 'reversible' | 'consequential';
 
@@ -964,6 +965,7 @@ export const TOOLS: ToolDef[] = [
   ...AGENT_TOOLS,
   ...CREATE_TOOLS,
   ...SHARE_TOOLS,
+  ...LIFE_TOOLS,
 ];
 
 for (const t of [...TOOLS, ...APP_TOOLS]) if (t.risk === 'consequential') CONSEQUENTIAL_GUARD.add(t.name);

@@ -7,8 +7,9 @@ import type { AppToolDef } from './common.ts';
 import { GOOGLE_TOOLS } from './google.ts';
 import { MICROSOFT_TOOLS } from './microsoft.ts';
 import { SOCIAL_TOOLS } from './social.ts';
+import { WORK_TOOLS } from './work.ts';
 
-export const APP_TOOLS: AppToolDef[] = [...GOOGLE_TOOLS, ...MICROSOFT_TOOLS, ...SOCIAL_TOOLS];
+export const APP_TOOLS: AppToolDef[] = [...GOOGLE_TOOLS, ...MICROSOFT_TOOLS, ...SOCIAL_TOOLS, ...WORK_TOOLS];
 export const APP_TOOL_MAP = new Map(APP_TOOLS.map((t) => [t.name, t]));
 
 /** A My apps tool, only while its app is connected. */

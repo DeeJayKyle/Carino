@@ -25,7 +25,17 @@ const _about = {
   'x': _About('X (Twitter)', ['Post and reply as you', 'See your profile and recent posts (X’s free plan allows very few reads)'], beta: true),
   'linkedin': _About('LinkedIn', ['Post as you, with a link if you like'], beta: true),
   'tiktok': _About('TikTok', ['Send a video you attach to TikTok as a draft, ready for you to finish and post'], beta: true),
+  'slack': _About('Slack', ['Read channels and search messages', 'Send a message or thread reply as you (after your OK)']),
+  'todoist': _About('Todoist', ['See your tasks, by any Todoist filter', 'Add tasks and tick them off']),
+  'ticktick': _About('TickTick', ['See your lists and tasks', 'Add tasks and tick them off']),
+  'notion': _About('Notion', ['Search and read the pages you share with Carino', 'Create pages and add notes to them']),
+  'linear': _About('Linear', ['See issues assigned to you', 'Create issues and comment (after your OK)']),
+  'github': _About('GitHub', ['See notifications, assigned issues and review requests', 'Read issues; open issues and comment (after your OK)']),
+  'withings': _About('Withings', ['Read weight, blood pressure, heart rate, activity and sleep from your Withings devices'], beta: true),
+  'sonos': _About('Sonos', ['See what’s playing in each room', 'Play, pause, skip and change the volume'], beta: true),
 };
+
+const _workApps = ['slack', 'todoist', 'ticktick', 'notion', 'linear', 'github', 'withings', 'sonos'];
 
 /// Simple marks drawn here (no images are loaded from the web).
 class AppMark extends StatelessWidget {
@@ -35,6 +45,8 @@ class AppMark extends StatelessWidget {
   static const _marks = {
     'google': (Color(0xFF4285F4), 'G'), 'microsoft': (Color(0xFF00A4EF), 'M'), 'facebook': (Color(0xFF1877F2), 'f'), 'instagram': (Color(0xFFD62976), 'IG'),
     'x': (Color(0xFF111111), 'X'), 'linkedin': (Color(0xFF0A66C2), 'in'), 'tiktok': (Color(0xFF222222), 'TT'), 'whatsapp': (Color(0xFF25D366), 'W'), 'telegram': (Color(0xFF2AABEE), 'T'),
+    'slack': (Color(0xFF4A154B), '#'), 'todoist': (Color(0xFFE44332), 'td'), 'ticktick': (Color(0xFF4772FA), '✓'), 'notion': (Color(0xFF000000), 'N'),
+    'linear': (Color(0xFF5E6AD2), 'L'), 'github': (Color(0xFF24292F), 'gh'), 'withings': (Color(0xFF00B3B0), 'W'), 'sonos': (Color(0xFF000000), 'S'),
   };
   @override
   Widget build(BuildContext context) {
@@ -87,6 +99,24 @@ class AppMark extends StatelessWidget {
         ('Under Auth, add this Authorized redirect URL: $redirect', null),
         ('Copy the Client ID and Client secret here.', null),
       ], note: 'LinkedIn sign-ins last 60 days; Carino tells you when to sign in again.');
+    case 'ticktick':
+      return (idLabel: 'Client ID', secretLabel: 'Client secret', steps: [
+        ('Open the TickTick Developer Center and tap Manage Apps → + App Name (free).', 'https://developer.ticktick.com/manage'),
+        ('Set the OAuth redirect URL to $redirect', null),
+        ('Copy the Client ID and Client secret here.', null),
+      ], note: null);
+    case 'withings':
+      return (idLabel: 'Client ID', secretLabel: 'Consumer secret', steps: [
+        ('Open the Withings developer dashboard and create a Public API integration (free, for your own use).', 'https://developer.withings.com/dashboard/'),
+        ('Add this callback URL: $redirect', null),
+        ('Copy the Client ID and Consumer secret here.', null),
+      ], note: 'Health data is only read, never changed, and stays on this device.');
+    case 'sonos':
+      return (idLabel: 'Key', secretLabel: 'Secret', steps: [
+        ('Open the Sonos developer portal and create a Control integration (free).', 'https://developer.sonos.com/'),
+        ('Add a Key and set its redirect URI to $redirect', null),
+        ('Copy the Key and Secret here.', null),
+      ], note: 'Sonos only accepts web (https) redirect addresses. If it won’t take the one above, use Carino from a computer at an https address, or skip Sonos for now.');
     default:
       return (idLabel: 'Client key', secretLabel: 'Client secret', steps: [
         ('Open TikTok for Developers → Manage apps and connect a new app (free).', 'https://developers.tiktok.com/apps/'),
@@ -208,9 +238,21 @@ class _AppsScreenState extends State<AppsScreen> with _AppsChanged {
                         status: n > 0 ? (warn ? 'Needs you to sign in again' : n == 1 ? '${accts.first['label']}' : 'Connected') : 'Tap to connect',
                       );
                     }(),
+                Padding(padding: const EdgeInsets.fromLTRB(4, 14, 4, 6), child: Text('Work & life', style: Theme.of(context).textTheme.titleSmall)),
+                for (final pid in _workApps)
+                  if (list.where((x) => x['id'] == pid).firstOrNull case final a?)
+                    () {
+                      final accts = (a['accounts'] as List).cast<Map>();
+                      final warn = accts.any((x) => x['last_error'] != null);
+                      return item(
+                        logo: pid, name: _about[pid]!.name, beta: _about[pid]!.beta, to: '/apps/$pid', ok: accts.isNotEmpty, warn: warn,
+                        status: accts.isNotEmpty ? (warn ? 'Needs attention' : '${accts.first['label']}') : 'Tap to connect',
+                      );
+                    }(),
+                const SizedBox(height: 8),
                 item(logo: 'telegram', name: 'Telegram', to: '/messaging', ok: tg?['enabled'] == true,
                     status: tg != null ? (tg['enabled'] == true ? 'Connected · @${(tg['config'] as Map?)?['bot_username']}' : 'Turned off') : 'Tap to set up'),
-                item(logo: 'more', name: 'More apps', to: '/connectors', status: 'Notion, Linear, GitHub, Zapier and other MCP apps'),
+                item(logo: 'more', name: 'More apps', to: '/connectors', status: 'Zapier and other MCP apps'),
               ]),
             ),
     );
@@ -228,7 +270,31 @@ class AppDetail extends StatefulWidget {
 class _AppDetailState extends State<AppDetail> {
   late final _clientId = TextEditingController(text: '${(widget.app['client'] as Map?)?['client_id'] ?? ''}');
   late final _secret = TextEditingController(text: (widget.app['client'] as Map?)?['has_secret'] == true ? '••••••••' : '');
+  final _token = TextEditingController();
   bool _busy = false;
+
+  @override
+  void dispose() {
+    _clientId.dispose();
+    _secret.dispose();
+    _token.dispose();
+    super.dispose();
+  }
+
+  Future<void> _connectKey() async {
+    final api = AppState.read(context).api;
+    setState(() => _busy = true);
+    try {
+      final r = await api.post('/apps/${app['id']}/key', {'token': _token.text.trim()}) as Map;
+      _token.clear();
+      if (mounted) toast(context, 'Connected ${(r['account'] as Map?)?['label'] ?? about.name}');
+      await widget.reload();
+    } catch (e) {
+      if (mounted) toast(context, errorText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   Map get app => widget.app;
   _About get about => _about[app['id']]!;
@@ -270,6 +336,7 @@ class _AppDetailState extends State<AppDetail> {
     final client = app['client'] as Map?;
     final oneTap = app['one_tap'] == true;
     final accounts = (app['accounts'] as List).cast<Map>();
+    final key = app['key'] as Map?;
     final shared = app['group'] == 'meta' ? (app['id'] == 'facebook' ? 'Instagram' : 'Facebook') : null;
     return Scaffold(
       appBar: AppBar(title: Text(about.name)),
@@ -297,7 +364,7 @@ class _AppDetailState extends State<AppDetail> {
             title: Text('${a['label']}'),
             subtitle: a['last_error'] != null ? Text('${a['last_error']}', style: TextStyle(color: cs.error)) : null,
             trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (a['last_error'] != null) TextButton(onPressed: _busy ? null : _signIn, child: const Text('Sign in again')),
+              if (a['last_error'] != null && key == null) TextButton(onPressed: _busy ? null : _signIn, child: const Text('Sign in again')),
               IconButton(
                 tooltip: 'Disconnect ${a['label']}',
                 icon: const Icon(Icons.close),
@@ -313,6 +380,25 @@ class _AppDetailState extends State<AppDetail> {
               ),
             ]),
           ),
+        if (key != null) ...[
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(accounts.isEmpty ? 'Connect with a personal token' : 'Add another account', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 6),
+                Text('${key['steps']}', style: const TextStyle(fontSize: 13)),
+                TextButton.icon(style: TextButton.styleFrom(padding: EdgeInsets.zero), onPressed: () => Device(api).openExternal('${key['url']}'), icon: const Icon(Icons.open_in_new, size: 14), label: Text('Open ${about.name}')),
+                TextField(controller: _token, obscureText: true, autocorrect: false, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: 'Token', hintText: '${key['placeholder']}')),
+                const SizedBox(height: 10),
+                FilledButton(onPressed: _busy || _token.text.trim().length < 8 ? null : _connectKey, child: const Text('Connect')),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text('The token is stored encrypted on this device and only sent to ${about.name}. Changes and messages wait for your OK unless you allow them in Settings → Permissions.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+        ] else ...[
         const SizedBox(height: 8),
         FilledButton.icon(
           onPressed: _busy || (client == null && !oneTap) ? null : _signIn,
@@ -375,6 +461,7 @@ class _AppDetailState extends State<AppDetail> {
         ),
         const SizedBox(height: 10),
         Text('Your sign-ins are stored encrypted on this phone. Carino asks before sending email or posting anything. You can change what it may do on its own in Settings → Permissions.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+        ],
       ]),
     );
   }

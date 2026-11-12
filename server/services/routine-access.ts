@@ -71,6 +71,12 @@ export const ACCESS_GROUPS: AccessGroup[] = [
     prefixes: ['x_', 'linkedin_', 'facebook_', 'instagram_', 'tiktok_'],
   },
   {
+    id: 'work', label: 'Work and life apps',
+    reads: 'Slack, Todoist, TickTick, Notion, Linear, GitHub, Withings and Sonos if connected', does: '', asks: 'adding, changing or sending anything there',
+    tools: [],
+    prefixes: ['slack_', 'todoist_', 'ticktick_', 'notion_', 'linear_', 'github_', 'withings_', 'sonos_'],
+  },
+  {
     id: 'connectors', label: 'Connected tools (MCP)',
     reads: 'what your connected tools offer', does: 'use them as their settings allow', asks: 'anything they mark as risky',
     tools: [],

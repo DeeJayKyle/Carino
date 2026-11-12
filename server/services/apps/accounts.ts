@@ -72,6 +72,7 @@ export async function presentApps(services: Services, userId: string) {
       id, label: p.label, group: p.group, redirect_uri: redirectFor(services, id),
       client: c ? { client_id: c.client_id, has_secret: !!c.client_secret } : null,
       needs_secret: p.secret === 'required',
+      key: p.key ? { url: p.key.url, steps: p.key.steps, placeholder: p.key.placeholder } : null,
       // One tap: Carino's own app at this provider, through the sign-in helper.
       one_tap: !!helper?.providers[id],
       accounts: accounts.filter((a) => a.provider === id).map((a) => ({ id: a.id, label: a.label, last_error: a.last_error, created_at: a.created_at })),
@@ -150,7 +151,7 @@ async function helperTokens(services: Services, provider: ProviderId, body: Reco
 async function tokenCall(services: Services, provider: ProviderId, c: { id: string; secret?: string }, params: Record<string, string | undefined>): Promise<TokenSet> {
   const p = PROVIDERS[provider];
   const f = fetcher(services);
-  const body: Record<string, string> = {};
+  const body: Record<string, string> = { ...p.tokenParams };
   for (const [k, v] of Object.entries(params)) if (v) body[k] = v;
   const headers: Record<string, string> = { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' };
   if (p.basicAuth && c.secret) headers.authorization = `Basic ${Buffer.from(`${encodeURIComponent(c.id)}:${encodeURIComponent(c.secret)}`).toString('base64')}`;
@@ -165,7 +166,8 @@ async function tokenCall(services: Services, provider: ProviderId, c: { id: stri
   } catch {
     throw new AppError(`Could not reach ${p.label}. Check your internet connection.`);
   }
-  const d: any = await res.json().catch(() => ({}));
+  const raw: any = await res.json().catch(() => ({}));
+  const d: any = (p.unwrapToken ? p.unwrapToken(raw) : raw) ?? {};
   if (!res.ok || !d.access_token) {
     const why = d.error_description ?? d.error?.message ?? d.error ?? d.message ?? `error ${res.status}`;
     throw new AppError(`${p.label} sign-in failed: ${String(typeof why === 'string' ? why : JSON.stringify(why)).slice(0, 240)}`);
@@ -174,6 +176,7 @@ async function tokenCall(services: Services, provider: ProviderId, c: { id: stri
     access_token: String(d.access_token),
     refresh_token: d.refresh_token ? String(d.refresh_token) : undefined,
     expires_at: d.expires_in ? services.now().getTime() + Number(d.expires_in) * 1000 : undefined,
+    reply: d.userid ? { userid: d.userid } : undefined,
   };
 }
 
@@ -204,10 +207,15 @@ export async function finishSignIn(services: Services, userId: string, state: st
   }
   let who: { id: string; label: string };
   try {
-    who = await p.identify(fetcher(services), tokens.access_token);
+    who = await p.identify(fetcher(services), tokens.access_token, tokens.reply);
   } catch (e: any) {
     throw new AppError(`Signed in, but ${p.label} didn’t say which account: ${String(e?.message ?? e).slice(0, 300)}`);
   }
+  delete tokens.reply;
+  return saveAccount(services, userId, provider, who, tokens);
+}
+
+function saveAccount(services: Services, userId: string, provider: ProviderId, who: { id: string; label: string }, tokens: TokenSet) {
   const secret = encryptSecret(services.config.DATA_DIR, JSON.stringify(tokens));
   const existing = services.db.get('SELECT id FROM app_accounts WHERE user_id = ? AND provider = ? AND external_id = ?', userId, provider, who.id);
   if (existing) {
@@ -216,6 +224,23 @@ export async function finishSignIn(services: Services, userId: string, state: st
   }
   const a = services.db.insert('app_accounts', { user_id: userId, provider, external_id: who.id, label: who.label, secret });
   return { provider, account: { id: a.id as string, label: who.label } };
+}
+
+/** Connects an app that uses a pasted personal token (Slack, Todoist, Notion, Linear, GitHub). */
+export async function connectWithKey(services: Services, userId: string, provider: string, raw: unknown) {
+  if (!isProvider(provider) || !PROVIDERS[provider].key) throw new HttpError(404, 'Unknown app', 'not_found');
+  const p = PROVIDERS[provider];
+  const token = z.object({ token: z.string().trim().min(8).max(400) }).parse(raw).token;
+  if (p.key!.pattern && !p.key!.pattern.test(token)) throw badRequest(`That doesn’t look like a ${p.label} token (${p.key!.placeholder}).`);
+  const n = Number(services.db.get('SELECT COUNT(*) AS n FROM app_accounts WHERE user_id = ? AND provider = ?', userId, provider)!.n);
+  if (n >= MAX_ACCOUNTS_PER_PROVIDER) throw badRequest(`You can connect up to ${MAX_ACCOUNTS_PER_PROVIDER} ${p.label} accounts.`);
+  let who: { id: string; label: string };
+  try {
+    who = await p.identify(fetcher(services), token);
+  } catch (e: any) {
+    throw badRequest(`${p.label} didn’t accept that token: ${String(e?.message ?? e).slice(0, 200)}`);
+  }
+  return saveAccount(services, userId, provider, who, { access_token: token });
 }
 
 /** Where the user can see and remove Carino's access at each provider. */
@@ -227,6 +252,14 @@ export const MANAGE_ACCESS_URL: Record<ProviderId, string> = {
   x: 'https://x.com/settings/connected_apps',
   linkedin: 'https://www.linkedin.com/mypreferences/d/data-sharing-for-permitted-services',
   tiktok: 'https://www.tiktok.com/setting',
+  slack: 'https://api.slack.com/apps',
+  todoist: 'https://app.todoist.com/app/settings/integrations/developer',
+  notion: 'https://www.notion.so/profile/integrations',
+  linear: 'https://linear.app/settings/account/security',
+  github: 'https://github.com/settings/personal-access-tokens',
+  ticktick: 'https://ticktick.com/webapp/#settings/account',
+  withings: 'https://account.withings.com/partner/apps',
+  sonos: 'https://play.sonos.com/en-us/settings',
 };
 
 /**
@@ -320,7 +353,8 @@ export interface ApiOptions {
 export async function api<T = any>(services: Services, account: Row, url: string, o: ApiOptions = {}): Promise<T> {
   const label = PROVIDERS[account.provider as ProviderId].label;
   const token = await accessToken(services, account);
-  const headers: Record<string, string> = { authorization: `Bearer ${token}`, accept: o.binary ? '*/*' : 'application/json', ...o.headers };
+  const p = PROVIDERS[account.provider as ProviderId];
+  const headers: Record<string, string> = { ...(p.authHeaders ? p.authHeaders(token) : { authorization: `Bearer ${token}` }), accept: o.binary ? '*/*' : 'application/json', ...o.headers };
   let body: BodyInit | undefined = o.raw;
   if (o.body !== undefined) {
     headers['content-type'] ??= 'application/json';
