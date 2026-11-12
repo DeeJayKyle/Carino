@@ -124,6 +124,18 @@ class _Chats extends StatelessWidget {
           subtitle: Text('${c['is_group'] == true ? 'group' : 'private'} · linked ${fmtDateTime('${c['created_at']}', time: false)}'),
           onTap: c['conversation_id'] != null ? () => openPath(context, '/chat/${c['conversation_id']}') : null,
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (c['is_group'] == true)
+              IconButton(
+                tooltip: c['catchup'] == true ? 'Catch-up is on' : 'Turn on catch-up',
+                isSelected: c['catchup'] == true,
+                icon: const Icon(Icons.history_toggle_off),
+                selectedIcon: Icon(Icons.history, color: Theme.of(context).colorScheme.primary),
+                onPressed: () async {
+                  final on = c['catchup'] != true;
+                  if (on && !await confirmDialog(context, title: 'Keep a catch-up of ${c['title'] ?? 'this group'}?', body: 'Carino keeps this group’s messages for up to 7 days so you can ask “what did I miss?”. Only you can ask for it, and turning it off deletes what was kept. Let the group know. (On Telegram, turn off the bot’s Group Privacy in @BotFather so it sees every message.)', confirm: 'Turn on')) return;
+                  if (context.mounted) await _run(context, () async { await api.patch('/channel-chats/${c['id']}', {'catchup': on}); await reload(); });
+                },
+              ),
             Switch(value: c['muted'] != true, onChanged: (v) => _run(context, () async { await api.patch('/channel-chats/${c['id']}', {'muted': !v}); await reload(); })),
             IconButton(
               tooltip: 'Unlink',

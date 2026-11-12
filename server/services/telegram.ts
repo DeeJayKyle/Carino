@@ -68,7 +68,7 @@ function toIncoming(update: any, botUsername: string): { msg: any; incoming: Omi
   return {
     msg: m,
     incoming: {
-      chatId: String(m.chat.id), senderId: String(m.from?.id ?? ''), isGroup, addressed,
+      chatId: String(m.chat.id), senderId: String(m.from?.id ?? ''), senderName: [m.from?.first_name, m.from?.last_name].filter(Boolean).join(' '), isGroup, addressed,
       chatTitle: m.chat.title ?? [m.chat.first_name, m.chat.last_name].filter(Boolean).join(' ') ?? '',
       text: mention ? raw.replace(mention, '').trim() : raw,
     },

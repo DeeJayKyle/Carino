@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../engine/device.dart';
 import '../nav.dart';
 import '../widgets/common.dart';
 import '../widgets/ui.dart';
@@ -103,6 +104,18 @@ class MoreScreen extends StatelessWidget {
                       onTap: () => openPath(context, '/settings'),
                     ),
                   for (final (icon, label, path) in you) ListTile(leading: Icon(icon), title: Text(label), trailing: const Icon(Icons.chevron_right), onTap: () => openPath(context, path)),
+                  ListTile(
+                    leading: const Icon(Icons.card_giftcard_outlined),
+                    title: const Text('Invite a friend'),
+                    subtitle: const Text('Share a link to download Carino'),
+                    onTap: () => Device(app.api).shareText('I use Carino, a personal assistant that keeps things on my phone. Get it here: https://github.com/DeeJayKyle/Carino/releases/latest'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.feedback_outlined),
+                    title: const Text('Send feedback'),
+                    subtitle: const Text('Report a problem or suggest something'),
+                    onTap: () => _feedback(context),
+                  ),
                 ]),
               ),
             ]),
@@ -111,6 +124,26 @@ class MoreScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Feedback goes wherever the user sends it: written here, opened as a GitHub issue in their
+/// browser for them to post (nothing is sent without them).
+Future<void> _feedback(BuildContext context) async {
+  final api = AppState.read(context).api;
+  final c = TextEditingController();
+  final text = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Send feedback'),
+      content: TextField(controller: c, minLines: 4, maxLines: 10, decoration: const InputDecoration(hintText: 'What happened, or what would make Carino better? Please leave out private details.')),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Continue'))],
+    ),
+  );
+  if (text == null || text.isEmpty) return;
+  final info = await Device(api).info().catchError((_) => <String, dynamic>{});
+  final body = '$text\n\n---\nCarino ${info['version'] ?? ''} (${info['flavor'] ?? ''})';
+  final url = Uri.https('github.com', '/DeeJayKyle/Carino/issues/new', {'title': text.split('\n').first.characters.take(70).toString(), 'body': body});
+  await Device(api).openExternal(url.toString());
 }
 
 extension on String {

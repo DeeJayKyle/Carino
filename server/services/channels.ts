@@ -17,6 +17,8 @@ export interface Incoming {
   chatTitle: string;
   isGroup: boolean;
   text: string;
+  /** The sender's display name, when the platform gives one (group catch-up). */
+  senderName?: string;
   /** Group messages: whether the bot was @mentioned or replied to. */
   addressed: boolean;
   attachments?: string[];
@@ -58,8 +60,8 @@ export function presentChannel(db: Db, ch: Row, now: Date) {
     id: ch.id, kind: ch.kind, enabled: !!ch.enabled, config, last_error: ch.last_error, last_seen_at: ch.last_seen_at,
     pairing_code: ch.pairing_code && ch.pairing_expires_at > now.toISOString() ? ch.pairing_code : null,
     pairing_expires_at: ch.pairing_expires_at,
-    chats: db.all('SELECT id, title, is_group, muted, conversation_id, created_at FROM channel_chats WHERE channel_id = ? ORDER BY created_at', ch.id)
-      .map((c) => ({ ...c, is_group: !!c.is_group, muted: !!c.muted })),
+    chats: db.all('SELECT id, title, is_group, muted, catchup, conversation_id, created_at FROM channel_chats WHERE channel_id = ? ORDER BY created_at', ch.id)
+      .map((c) => ({ ...c, is_group: !!c.is_group, muted: !!c.muted, catchup: !!c.catchup })),
   };
 }
 
@@ -132,6 +134,11 @@ export async function handleIncoming(services: Services, ch: Row, msg: Incoming)
   }
   if (command?.[1] === 'help') return { text: HELP };
   if (chat.muted) return null;
+  // Group catch-up (opt-in): keep the group's recent messages so the owner can ask "what did I miss?".
+  if (msg.isGroup && chat.catchup && text) {
+    db.insert('group_log', { user_id: ch.user_id, chat_id: chat.id, sender: msg.senderName ?? '', text: text.slice(0, 2000), at: now.toISOString() });
+    db.run('DELETE FROM group_log WHERE chat_id = ? AND at < ?', chat.id, new Date(now.getTime() - 7 * 86400_000).toISOString());
+  }
   if (msg.isGroup && !msg.addressed) return null;
   // A private chat answers only the account that linked it.
   if (!msg.isGroup && chat.owner_external_id && chat.owner_external_id !== msg.senderId) return null;

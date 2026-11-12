@@ -410,6 +410,7 @@ class _Bubble extends StatelessWidget {
                 _ToolLine(t),
                 if (t['status'] == 'executed' && t['result'] is Map && ((t['result'] as Map)['document_id'] != null || (t['result'] as Map)['page_id'] != null)) _MadeCard(t['result'] as Map),
                 if (t['status'] == 'executed' && t['result'] is Map && (t['result'] as Map)['sticker_pack'] is Map) _StickerCard((t['result'] as Map)['sticker_pack'] as Map),
+                if (t['status'] == 'executed' && t['result'] is Map && (t['result'] as Map)['share'] is Map) _ShareCard((t['result'] as Map)['share'] as Map),
               ],
             body,
             if (!user && !streaming && m.model != null)
@@ -740,6 +741,41 @@ class _StickerCardState extends State<_StickerCard> {
         if (Platform.isAndroid)
           FilledButton.tonalIcon(onPressed: _busy ? null : _add, icon: const Icon(Icons.add_reaction_outlined, size: 18), label: Text(_busy ? 'Adding…' : 'Add to WhatsApp')),
       ]),
+    );
+  }
+}
+
+/// Something Carino prepared for the user to send themselves: shown, with Copy and Share.
+class _ShareCard extends StatelessWidget {
+  final Map share;
+  const _ShareCard(this.share);
+
+  @override
+  Widget build(BuildContext context) {
+    final api = AppState.read(context).api;
+    final text = '${share['text'] ?? ''}';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${share['title']}${share['to'] != null ? ' · for ${share['to']}' : ''}', style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          SelectableText(text),
+          const SizedBox(height: 6),
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: text));
+                if (context.mounted) toast(context, 'Copied');
+              },
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('Copy'),
+            ),
+            FilledButton.tonalIcon(onPressed: () => Device(api).shareText(text), icon: const Icon(Icons.share, size: 16), label: const Text('Share')),
+          ]),
+        ]),
+      ),
     );
   }
 }

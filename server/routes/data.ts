@@ -635,8 +635,15 @@ export function dataRoutes() {
     return c.json(channels.deleteChannel(db(c), uid(c), c.req.param('id')));
   });
   r.patch('/channel-chats/:id', async (c) => {
-    const i = z.object({ muted: z.boolean() }).parse(await body(c));
-    channels.setChatMuted(db(c), uid(c), c.req.param('id'), i.muted);
+    const i = z.object({ muted: z.boolean().optional(), catchup: z.boolean().optional() }).parse(await body(c));
+    if (i.muted !== undefined) channels.setChatMuted(db(c), uid(c), c.req.param('id'), i.muted);
+    if (i.catchup !== undefined) {
+      const chat = db(c).getOwned('channel_chats', uid(c), c.req.param('id'));
+      if (!chat) throw notFound('Chat');
+      db(c).run('UPDATE channel_chats SET catchup = ? WHERE id = ?', i.catchup ? 1 : 0, chat.id);
+      // Switching it off forgets what was kept.
+      if (!i.catchup) db(c).run('DELETE FROM group_log WHERE chat_id = ?', chat.id);
+    }
     return c.json({ ok: true });
   });
   r.delete('/channel-chats/:id', (c) => {
