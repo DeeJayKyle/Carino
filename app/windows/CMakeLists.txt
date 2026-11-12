@@ -2,6 +2,10 @@
 cmake_minimum_required(VERSION 3.14)
 project(carino LANGUAGES CXX)
 
+# webview_windows still uses <experimental/coroutine>, which newer Visual Studio refuses unless this
+# is defined. Set for every target here, plugins included.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "Carino")
