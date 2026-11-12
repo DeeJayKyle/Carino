@@ -283,6 +283,7 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: Text('${_conv?['title'] ?? 'Chat'}', maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
+          if (lo == 0 && _voiceOn) IconButton(tooltip: 'Live voice conversation', icon: const Icon(Icons.graphic_eq), onPressed: () => openPath(context, '/live')),
           IconButton(
             tooltip: lo == 2 ? 'This chat used content you keep on your devices, so it stays private' : lo == 1 ? 'Private: only AI on your devices' : 'Make this chat private',
             isSelected: lo > 0,

@@ -36,6 +36,8 @@ import { buildOverview, briefingText, suggestions } from '../services/briefing.t
 import { searchIndex } from '../services/indexer.ts';
 import { localDate, startOfLocalDay, addDays, safeTimeZone, localClock, parseWhen, formatLocal } from '../services/time.ts';
 import { learnVoice, forgetVoice } from '../services/voice.ts';
+import * as phone from '../services/phone.ts';
+import * as live from '../services/live.ts';
 import { approveAction, rejectAction, editAction, TOOLS, executeTool, makeContext } from '../tools/registry.ts';
 import { rateLimit } from '../middleware.ts';
 
@@ -652,6 +654,28 @@ export function dataRoutes() {
   });
 
   // ---------- Ramble (brain-dump → tasks, reminders, notes) ----------
+  // Live voice: options, a short-lived session, and tools the voice model asks for.
+  r.get('/live', (c) => c.json(live.liveOptions(c.var.services, uid(c))));
+  r.post('/live/session', aiLimit, async (c) => {
+    const { provider } = z.object({ provider: z.enum(['openai', 'gemini']) }).parse(await body(c));
+    try {
+      return c.json(await live.startLive(c.var.services, uid(c), provider));
+    } catch (e) {
+      if (e instanceof live.LiveError) throw new HttpError(400, e.message, 'bad_request');
+      throw e;
+    }
+  });
+  r.post('/live/tool', async (c) => {
+    const i = z.object({ name: z.string().max(64), args: z.unknown() }).parse(await body(c));
+    return c.json({ output: await live.liveTool(c.var.services, uid(c), i.name, i.args) });
+  });
+
+  // Phone calls through the user's own Twilio account.
+  r.get('/phone', (c) => c.json(phone.phoneSettings(c.var.services, uid(c))));
+  r.put('/phone', async (c) => c.json(phone.savePhoneSettings(c.var.services, uid(c), z.object({ account_sid: z.string().trim().max(64), auth_token: z.string().trim().max(128), from_number: z.string().trim().max(20) }).parse(await body(c)))));
+  r.delete('/phone', (c) => c.json(phone.forgetPhoneSettings(c.var.services, uid(c))));
+  r.get('/phone/calls', (c) => c.json({ calls: db(c).all('SELECT id, to_number, purpose, status, answers, created_at FROM phone_calls WHERE user_id = ? ORDER BY created_at DESC LIMIT 50', uid(c)).map((r) => ({ ...r, answers: parseJson(r.answers, []) })) }));
+
   // Pages and small apps Carino built in chat.
   r.get('/pages', (c) => c.json({ pages: db(c).all('SELECT id, title, kind, version, conversation_id, updated_at FROM pages WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200', uid(c)) }));
   r.get('/pages/:id', (c) => {

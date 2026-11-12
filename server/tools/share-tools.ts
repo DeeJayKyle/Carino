@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { ToolDef } from './registry.ts';
+import * as phone from '../services/phone.ts';
 
 /**
  * Sharing with other people: splitting costs fairly, preparing a message, list or plan for the
@@ -39,6 +40,27 @@ export function settle(payments: Payment[], people: string[]) {
 }
 
 export const SHARE_TOOLS: ToolDef[] = [
+  def({
+    name: 'place_call',
+    description: 'Phone someone for the user through their Twilio account and ask a few short questions (opening hours, availability, a price, confirming a booking). The call says it is an AI assistant calling on the user\'s behalf, states the purpose, asks each question and records the answer; the answers come back in this chat afterwards. It cannot negotiate, agree to anything or pay. Always confirm the number and wording with the user first; the call itself waits for their approval. Use the international number format.',
+    risk: 'consequential',
+    input: z.object({
+      to: z.string().regex(/^\+[1-9]\d{6,14}$/).describe('International format, e.g. +256700000000'),
+      purpose: z.string().min(10).max(400).describe('One or two sentences, said at the start'),
+      questions: z.array(z.string().min(5).max(200)).min(1).max(5),
+      language: z.string().max(10).optional().describe('Spoken language, e.g. en-GB, fr-FR'),
+    }),
+    summarize: (i) => `Call ${i.to} (AI assistant, recorded): “${i.purpose}” — asking: ${i.questions.map((q) => `“${q}”`).join(', ')}`,
+    run: async (i, ctx) => {
+      const s = ctx.settings.profile;
+      try {
+        return await phone.placeCall(ctx.services, ctx.userId, ctx.conversationId, { ...i, assistant: s.assistantName || 'Carino', user: s.displayName || 'my user' });
+      } catch (e) {
+        if (e instanceof phone.PhoneError) return { error: e.message };
+        throw e;
+      }
+    },
+  }),
   def({
     name: 'split_costs',
     description: 'Work out a fair split of shared costs: who paid what, each person\'s share (even, or set per person), and the fewest payments that settle everyone. Use exact numbers from the user. Then offer to prepare a message for each person with prepare_share.',

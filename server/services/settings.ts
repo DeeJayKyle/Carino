@@ -88,9 +88,11 @@ export const settingsSchema = z.object({
     language: z.string().max(20).default('en-US'),
     speakReplies: z.boolean().default(false),
     voiceName: z.string().max(120).default(''),
+    /** The voice for live (real-time) conversations; empty = the service's default. */
+    liveVoice: z.string().max(40).default(''),
     /** Read the day's brief aloud the first time Carino is opened each day (off unless chosen). */
     speakBrief: z.boolean().default(false),
-  }).default({ enabled: true, language: 'en-US', speakReplies: false, voiceName: '', speakBrief: false }),
+  }).default({ enabled: true, language: 'en-US', speakReplies: false, voiceName: '', liveVoice: '', speakBrief: false }),
   money: z.object({
     /** ISO 4217 code; empty = from the region setting (services/money.ts → currencyFor). */
     currency: z.string().regex(/^([A-Z]{3})?$/).default(''),

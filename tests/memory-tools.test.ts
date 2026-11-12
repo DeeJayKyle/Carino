@@ -106,8 +106,8 @@ describe('tool registry and approvals', () => {
       expect(s.description.length).toBeGreaterThan(20);
     }
     // Built-in tools that need the user's approval: deletions, changing or adding files in their own
-    // folders, deleting a skill, pressing a pay/order/send button on a website, and making a (paid) video.
-    expect(TOOLS.filter((t) => t.risk === 'consequential').map((t) => t.name).filter((n) => !n.startsWith('delete_')).sort()).toEqual(['browse_confirm', 'change_local_files', 'generate_video', 'save_spreadsheet_to_folder', 'skill_delete']);
+    // folders, deleting a skill, pressing a pay/order/send button on a website, making a (paid) video, and placing a phone call.
+    expect(TOOLS.filter((t) => t.risk === 'consequential').map((t) => t.name).filter((n) => !n.startsWith('delete_')).sort()).toEqual(['browse_confirm', 'change_local_files', 'generate_video', 'place_call', 'save_spreadsheet_to_folder', 'skill_delete']);
   });
 
   it('offers a smaller core tool set for local models', () => {

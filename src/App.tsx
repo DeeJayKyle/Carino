@@ -15,6 +15,7 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Routines = lazy(() => import('./pages/Routines'));
 const Ramble = lazy(() => import('./pages/Ramble'));
+const Live = lazy(() => import('./pages/Live'));
 const Share = lazy(() => import('./pages/Share'));
 const Connectors = lazy(() => import('./pages/Connectors'));
 const Apps = lazy(() => import('./pages/Apps'));
@@ -50,6 +51,7 @@ function Router() {
     ['/settings', () => <Settings />],
     ['/routines', () => <Routines />],
     ['/ramble', () => <Ramble />],
+    ['/live', () => <Live />],
     ['/share', () => <Share />],
     ['/connectors', () => <Connectors />],
     ['/apps', () => <Apps />],

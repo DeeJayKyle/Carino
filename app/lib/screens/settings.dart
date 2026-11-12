@@ -10,6 +10,7 @@ import '../widgets/ui.dart';
 import '../update/update_ui.dart';
 import 'settings_ai.dart';
 import 'settings_devices.dart';
+import 'settings_phone.dart';
 import 'access.dart';
 
 /// Saves a settings change and says so.
@@ -34,6 +35,7 @@ const settingsSections = <(String, String, IconData, Widget Function())>[
   ('appearance', 'Appearance & accessibility', Icons.wb_sunny_outlined, AppearanceSettings.new),
   ('regional', 'Language & region', Icons.public, RegionalSettings.new),
   ('voice', 'Voice', Icons.mic_none, VoiceSettings.new),
+  ('phone', 'Phone calls', Icons.call_outlined, PhoneSettings.new),
   ('devices', 'Devices', Icons.phone_iphone, DevicesSettings.new),
   ('privacy', 'Privacy, data & backup', Icons.lock_outline, PrivacySettings.new),
   ('updates', 'Updates', Icons.system_update_outlined, UpdateSettings.new),
@@ -426,6 +428,26 @@ class VoiceSettings extends StatelessWidget {
       const Text('In voice mode you can say “pause”, “repeat that”, “skip”, “read my brief” or “stop”. These are handled on your phone, not sent to the AI.'),
       const SizedBox(height: 12),
       OutlinedButton.icon(onPressed: () => Device(app.api).speak('Hello, I’m ${app.assistantName}. This is how I sound.', '${v['language'] ?? 'en-US'}'), icon: const Icon(Icons.volume_up_outlined), label: const Text('Test the voice')),
+      const Divider(height: 32),
+      Text('Live voice', style: Theme.of(context).textTheme.titleSmall),
+      const Text('A real-time spoken conversation through OpenAI or Google Gemini, if you connected one. Your audio goes to that service while the call is on.'),
+      Loader<Map>(
+        load: () async => await app.api.get('/live') as Map,
+        builder: (context, d, _) {
+          final voices = <String>{for (final o in ((d['available'] as List?) ?? const []).cast<Map>()) ...((o['voices'] as List?) ?? const []).cast<String>()}.toList();
+          if (voices.isEmpty) return Padding(padding: const EdgeInsets.only(top: 8), child: Text('${d['reason'] ?? ''}'));
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            DropdownButtonFormField<String>(
+              initialValue: voices.contains(v['liveVoice']) ? '${v['liveVoice']}' : '',
+              decoration: const InputDecoration(labelText: 'Live voice'),
+              items: [const DropdownMenuItem(value: '', child: Text('Default')), for (final x in voices) DropdownMenuItem(value: x, child: Text(x))],
+              onChanged: (x) => saveSettings(context, {'voice': {'liveVoice': x ?? ''}}),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(onPressed: () => openPath(context, '/live'), icon: const Icon(Icons.graphic_eq), label: const Text('Start a live conversation')),
+          ]);
+        },
+      ),
     ]);
   }
 }
