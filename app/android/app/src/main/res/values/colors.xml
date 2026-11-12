@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand">#5B45DD</color>
+    <color name="surface">#F7F5FC</color>
+    <bool name="light_bars">true</bool>
+</resources>

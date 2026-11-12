@@ -1,0 +1,340 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../app_state.dart';
+import '../engine/engine.dart';
+import '../widgets/common.dart';
+import 'web_screen.dart';
+
+/// One conversation: messages, a streamed reply, what tools did, and which model answered.
+class ChatScreen extends StatefulWidget {
+  final String conversationId;
+  final String? firstMessage;
+  final String? draft;
+  const ChatScreen({super.key, required this.conversationId, this.firstMessage, this.draft});
+
+  /// Creates a chat and opens it, optionally sending a first message.
+  static Future<void> startNew(BuildContext context, {String? firstMessage, String? draft}) async {
+    final app = AppState.read(context);
+    try {
+      final c = await app.api.post('/conversations', {}) as Map;
+      if (!context.mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ChatScreen(conversationId: c['id'] as String, firstMessage: firstMessage, draft: draft)));
+      app.changed();
+    } catch (e) {
+      if (context.mounted) toast(context, errorText(e), error: true);
+    }
+  }
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class Msg {
+  final String id;
+  final String role;
+  String content;
+  List<Map<String, dynamic>> tools;
+  String? model;
+  Msg({required this.id, required this.role, required this.content, this.tools = const [], this.model});
+
+  factory Msg.fromJson(Map m) {
+    final meta = (m['meta'] as Map?) ?? const {};
+    return Msg(
+      id: '${m['id']}', role: '${m['role']}', content: '${m['content'] ?? ''}',
+      tools: ((meta['tools'] as List?) ?? const []).cast<Map>().map((t) => Map<String, dynamic>.from(t)).toList(),
+      model: meta['model'] as String?,
+    );
+  }
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final _input = TextEditingController();
+  final _scroll = ScrollController();
+  final _messages = <Msg>[];
+  Map<String, dynamic>? _conv;
+  bool _loading = true;
+  Object? _error;
+  StreamSubscription<SseEvent>? _sub;
+  Msg? _streaming;
+  String? _modelLabel;
+  String? _modelReason;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.draft != null) _input.text = widget.draft!;
+    _load().then((_) {
+      if (widget.firstMessage != null) _send(widget.firstMessage!);
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    _input.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final d = await AppState.read(context).api.get('/conversations/${widget.conversationId}') as Map;
+      final msgs = ((d['messages'] as List?) ?? const [])
+          .cast<Map>()
+          .where((m) => (m['role'] == 'user' || m['role'] == 'assistant') && ((m['meta'] as Map?)?['hidden'] != 1))
+          .map(Msg.fromJson);
+      if (!mounted) return;
+      setState(() {
+        _conv = Map<String, dynamic>.from(d['conversation'] as Map);
+        _messages
+          ..clear()
+          ..addAll(msgs);
+        _loading = false;
+      });
+      _toEnd();
+    } catch (e) {
+      if (mounted) setState(() { _error = e; _loading = false; });
+    }
+  }
+
+  void _toEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+    });
+  }
+
+  void _send([String? text]) {
+    final t = (text ?? _input.text).trim();
+    if (t.isEmpty || _streaming != null) return;
+    _input.clear();
+    final app = AppState.read(context);
+    final reply = Msg(id: 'streaming', role: 'assistant', content: '', tools: []);
+    setState(() {
+      _messages.add(Msg(id: 'pending-${DateTime.now().microsecondsSinceEpoch}', role: 'user', content: t));
+      _streaming = reply;
+    });
+    _toEnd();
+    _sub = app.engine.stream('POST', '/conversations/${widget.conversationId}/messages', body: {'text': t}).listen((e) {
+      if (!mounted) return;
+      setState(() {
+        switch (e.event) {
+          case 'start':
+            final p = (e.data['provider'] as Map?) ?? const {};
+            _modelLabel = '${p['label'] ?? ''}${p['model'] != null ? ' · ${p['model']}' : ''}';
+            _modelReason = p['reason'] as String?;
+          case 'switch':
+            final p = (e.data['provider'] as Map?) ?? const {};
+            _modelLabel = '${p['label'] ?? ''} · ${p['model'] ?? ''}';
+            toast(context, '${p['reason'] ?? 'Switched to another model'}');
+          case 'text':
+            reply.content += '${e.data['delta'] ?? ''}';
+          case 'tool':
+            final i = reply.tools.indexWhere((x) => x['id'] == e.data['id']);
+            if (i >= 0) {
+              reply.tools[i] = e.data;
+            } else {
+              reply.tools.add(e.data);
+            }
+            if (e.data['status'] == 'pending_approval') app.changed();
+          case 'message':
+            final m = e.data['message'];
+            if (m is Map) _messages.add(Msg.fromJson(m));
+            _streaming = null;
+          case 'error':
+            _streaming = null;
+            toast(context, '${e.data['message'] ?? 'The reply failed.'}', error: true);
+        }
+      });
+      _toEnd();
+    }, onError: (Object err) {
+      if (mounted) setState(() => _streaming = null);
+      if (mounted) toast(context, errorText(err), error: true);
+    }, onDone: () {
+      if (mounted && _streaming != null) setState(() => _streaming = null);
+    });
+  }
+
+  Future<void> _stop() async {
+    await _sub?.cancel();
+    _sub = null;
+    if (!mounted) return;
+    await AppState.read(context).api.post('/conversations/${widget.conversationId}/cancel').catchError((_) => null);
+    await _load();
+    if (mounted) setState(() => _streaming = null);
+  }
+
+  Future<void> _togglePrivate() async {
+    final lo = (_conv?['local_only'] as num?)?.toInt() ?? 0;
+    try {
+      final r = await AppState.read(context).api.patch('/conversations/${widget.conversationId}/local-only', {'local_only': lo == 0}) as Map;
+      if (!mounted) return;
+      setState(() => _conv?['local_only'] = r['local_only'] == true ? (r['locked'] == true ? 2 : 1) : 0);
+      toast(context, r['local_only'] == true ? 'Private: only AI on your devices will answer this chat' : 'Online AI may answer this chat again');
+    } catch (e) {
+      if (mounted) toast(context, errorText(e), error: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final lo = (_conv?['local_only'] as num?)?.toInt() ?? 0;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${_conv?['title'] ?? 'Chat'}', maxLines: 1, overflow: TextOverflow.ellipsis),
+        actions: [
+          IconButton(
+            tooltip: lo == 2 ? 'This chat used content you keep on your devices, so it stays private' : lo == 1 ? 'Private: only AI on your devices' : 'Make this chat private',
+            isSelected: lo > 0,
+            icon: const Icon(Icons.lock_open_outlined),
+            selectedIcon: Icon(Icons.lock, color: cs.primary),
+            onPressed: lo == 2 ? null : _togglePrivate,
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? ErrorPanel(error: _error!, retry: () { setState(() { _loading = true; _error = null; }); _load(); })
+              : Column(children: [
+                  if (_modelLabel != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Tooltip(message: _modelReason ?? '', child: Chip(visualDensity: VisualDensity.compact, avatar: const Icon(Icons.auto_awesome, size: 16), label: Text(_modelLabel!, style: const TextStyle(fontSize: 12)))),
+                      ),
+                    ),
+                  Expanded(
+                    child: _messages.isEmpty && _streaming == null
+                        ? Center(child: Text('Ask ${AppState.of(context).assistantName} anything.', style: TextStyle(color: cs.onSurfaceVariant)))
+                        : ListView(
+                            controller: _scroll,
+                            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                            children: [for (final m in _messages) _Bubble(m), if (_streaming != null) _Bubble(_streaming!, streaming: true)],
+                          ),
+                  ),
+                  _Composer(controller: _input, busy: _streaming != null, onSend: _send, onStop: _stop),
+                  if (lo > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text('🔒 Private chat: answered only by AI on your devices', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary)),
+                    ),
+                ]),
+    );
+  }
+}
+
+const _toolNames = {
+  'create_task': 'Adding a to-do', 'update_task': 'Updating a to-do', 'complete_task': 'Completing a to-do', 'create_reminder': 'Setting a reminder',
+  'save_memory': 'Remembering', 'web_search': 'Searching the web', 'search_knowledge': 'Looking through your notes', 'log_expense': 'Logging spending',
+  'get_daily_overview': 'Reading your day', 'list_tasks': 'Checking your to-dos', 'recall_memories': 'Recalling', 'read_local_file': 'Reading a file',
+};
+
+class _Bubble extends StatelessWidget {
+  final Msg m;
+  final bool streaming;
+  const _Bubble(this.m, {this.streaming = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final user = m.role == 'user';
+    final body = user
+        ? Text(m.content, style: TextStyle(color: cs.onPrimaryContainer))
+        : MarkdownBody(
+            data: m.content.isEmpty && streaming ? '…' : m.content,
+            selectable: !streaming,
+            onTapLink: (text, href, title) {
+              final u = href == null ? null : Uri.tryParse(href);
+              if (u != null && (u.scheme == 'https' || u.scheme == 'http' || u.scheme == 'mailto' || u.scheme == 'tel')) {
+                launchUrl(u, mode: LaunchMode.externalApplication);
+              }
+            },
+          );
+    return Align(
+      alignment: user ? Alignment.centerRight : Alignment.centerLeft,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * (user ? 0.8 : 0.92)),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: user ? const EdgeInsets.symmetric(horizontal: 14, vertical: 10) : const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          decoration: user ? BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(18)) : null,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (final t in m.tools) _ToolLine(t),
+            body,
+            if (!user && !streaming && m.model != null)
+              Padding(padding: const EdgeInsets.only(top: 4), child: Text(m.model!, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant))),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _ToolLine extends StatelessWidget {
+  final Map<String, dynamic> t;
+  const _ToolLine(this.t);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final status = '${t['status']}';
+    final name = _toolNames['${t['name']}'] ?? '${t['name']}'.replaceAll('_', ' ');
+    final (icon, color, text) = switch (status) {
+      'running' => (Icons.hourglass_top, cs.onSurfaceVariant, '$name…'),
+      'executed' => (Icons.check_circle, Colors.green, '${t['summary'] ?? name}'),
+      'pending_approval' => (Icons.pan_tool_outlined, Colors.orange, 'Waiting for your OK: ${t['summary'] ?? name}'),
+      _ => (Icons.error_outline, cs.error, '${t['summary'] ?? name}: ${t['error'] ?? 'didn’t work'}'),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        onTap: status == 'pending_approval' ? () => WebScreen.open(context, '/actions') : null,
+        child: Row(children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Flexible(child: Text(text, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color == Colors.green ? cs.onSurfaceVariant : color))),
+          if (status == 'pending_approval') const Icon(Icons.chevron_right, size: 16),
+        ]),
+      ),
+    );
+  }
+}
+
+class _Composer extends StatelessWidget {
+  final TextEditingController controller;
+  final bool busy;
+  final void Function([String?]) onSend;
+  final VoidCallback onStop;
+  const _Composer({required this.controller, required this.busy, required this.onSend, required this.onStop});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              minLines: 1,
+              maxLines: 6,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(hintText: 'Message ${AppState.of(context).assistantName}…'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          busy
+              ? IconButton.filledTonal(onPressed: onStop, icon: const Icon(Icons.stop_rounded), tooltip: 'Stop')
+              : IconButton.filled(onPressed: () => onSend(), icon: const Icon(Icons.arrow_upward_rounded), tooltip: 'Send'),
+        ]),
+      ),
+    );
+  }
+}

@@ -73,6 +73,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [setMe]);
 
+  // Inside the Flutter app: Flutter screens may have changed settings; reload before a web screen shows.
+  useEffect(() => {
+    const on = () => void refresh();
+    window.addEventListener('carino-refresh', on);
+    return () => window.removeEventListener('carino-refresh', on);
+  }, [refresh]);
+
   const refreshCounts = useCallback(() => {
     if (!me || offlineSession) return;
     Promise.all([api('/actions?status=pending&limit=1'), api('/notifications')])

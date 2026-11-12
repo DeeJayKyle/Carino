@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older. Carino's data (its database and the key that protects saved sign-ins live
+     together in the WebView's storage) is never copied by Android's own backup; use Carino's
+     encrypted backup instead (Settings → Backup). -->
+<full-backup-content>
+    <exclude domain="root" path="app_webview/" />
+    <exclude domain="root" path="app_textures/" />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="file" path="." />
+</full-backup-content>

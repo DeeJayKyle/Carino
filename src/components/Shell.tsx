@@ -129,7 +129,9 @@ export function Shell({ title, actions, children, bare }: { title?: ReactNode; a
         )}
         {!bare && (
           <header className="topbar">
-            <button className="btn ghost icon mobile-only" onClick={() => setMenu(true)} aria-label="Open menu"><Icon name="menu" /></button>
+            {IN_FLUTTER
+              ? <button className="btn ghost icon" onClick={backToFlutter} aria-label="Back"><Icon name="chevron" style={{ transform: 'rotate(180deg)' }} /></button>
+              : <button className="btn ghost icon mobile-only" onClick={() => setMenu(true)} aria-label="Open menu"><Icon name="menu" /></button>}
             <h1 className="grow ellipsis">{title}</h1>
             {actions}
             <button className="btn ghost icon mobile-only" onClick={() => setPalette(true)} aria-label="Search"><Icon name="search" /></button>
@@ -297,4 +299,11 @@ function SyncStatus() {
       )}
     </>
   );
+}
+
+/** Inside the Flutter app these web screens are shown one at a time; Flutter has the main navigation. */
+const IN_FLUTTER = typeof window !== 'undefined' && !!(window as any).CarinoFlutter;
+if (IN_FLUTTER) document.documentElement.classList.add('in-flutter');
+function backToFlutter() {
+  (window as any).CarinoFlutter?.post(JSON.stringify({ type: 'back' }));
 }

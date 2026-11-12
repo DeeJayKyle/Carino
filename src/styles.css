@@ -994,3 +994,7 @@ fieldset.field { border: 0; padding: 0; margin: 0; min-width: 0; }
 @media (max-width: 560px) {
   .connections .conn-row > .grow, .connections .model-list .list-item > .grow { flex-basis: 100%; }
 }
+
+/* Inside the Flutter app: Flutter provides the navigation, so the web screens show only their content. */
+html.in-flutter .bottom-nav, html.in-flutter .sidebar, html.in-flutter .scrim { display: none !important; }
+html.in-flutter .main, html.in-flutter .content { margin-left: 0 !important; padding-bottom: env(safe-area-inset-bottom) !important; }

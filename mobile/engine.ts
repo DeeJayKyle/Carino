@@ -15,6 +15,7 @@ import { firePlaceReminder } from '../server/services/tasks.ts';
 import { notify as notifyInApp } from '../server/services/activity.ts';
 import { configToEnv, connectionSpecs, maskConfig, PRESETS, ON_DEVICE_BASE_URL, type DeviceConfig, type ExtraConnection } from './presets.ts';
 import { discover, type Probe } from './discover.ts';
+import { startFlutterLink } from './flutter-link.ts';
 import { refreshModels } from '../server/ai/catalog.ts';
 import { refreshAll } from '../server/services/connections.ts';
 import { speedTest } from './speedtest.ts';
@@ -613,4 +614,6 @@ async function boot() {
 }
 
 const ready = boot().then(() => console.info(`Carino engine ready (${Object.entries(timings).map(([k, v]) => `${k} ${v} ms`).join(', ')})`));
+// Inside the Flutter app: its screens reach the engine through this link.
+ready.then(() => startFlutterLink(handle));
 export const engineReady = ready;

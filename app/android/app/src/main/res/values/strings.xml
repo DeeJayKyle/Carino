@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Carino</string>
+    <string name="channel_reminders">Reminders and briefings</string>
+    <string name="channel_reminders_description">Reminders you set, routines and approvals from Carino.</string>
+    <string name="channel_listening">Listening for messages</string>
+    <string name="channel_listening_description">Shown while Carino answers WhatsApp and Telegram in the background.</string>
+    <string name="listening_title">Carino is listening</string>
+    <string name="listening_body">Answering your WhatsApp and Telegram messages</string>
+    <string name="listening_paused_title">Carino stopped listening</string>
+    <string name="listening_paused_body">New messages will wait. Open Carino to answer them.</string>
+    <string name="widget_ramble">🎙 Ramble</string>
+    <string name="widget_talk">💬 Talk</string>
+    <string name="widget_chat">＋ Chat</string>
+    <string name="widget_description">Quick ways into Carino: ramble, talk or start a chat.</string>
+    <string name="action_snooze">Snooze 10 min</string>
+    <string name="action_done">Done</string>
+    <string name="place_arrived">You\'re here</string>
+    <string name="today_widget_name">Carino · Today</string>
+    <string name="today_heading">Today</string>
+    <string name="today_talk">🎙</string>
+    <string name="today_talk_label">Talk to Carino</string>
+    <string name="today_add">＋</string>
+    <string name="today_add_label">Add a to-do</string>
+    <string name="today_description">Today\'s to-dos and your next reminder, with buttons to talk or add a to-do.</string>
+    <string name="today_open">Open Carino once to fill this in.</string>
+    <string name="today_none">Nothing due today 🎉</string>
+</resources>
