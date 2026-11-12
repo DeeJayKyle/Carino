@@ -29,6 +29,7 @@ import { findConnectorTool, callConnectorTool, TOOL_PREFIX } from '../services/c
 import { McpError } from '../services/mcp.ts';
 import { APP_TOOLS, findAppTool, AppError } from '../services/apps/index.ts';
 import { AGENT_TOOLS } from './agent-tools.ts';
+import { CREATE_TOOLS } from './create-tools.ts';
 
 export type Risk = 'read' | 'reversible' | 'consequential';
 
@@ -960,6 +961,7 @@ export const TOOLS: ToolDef[] = [
     run: (i, ctx) => memory.deleteMemory(ctx.services.db, ctx.userId, i.memory_id),
   }),
   ...AGENT_TOOLS,
+  ...CREATE_TOOLS,
 ];
 
 for (const t of [...TOOLS, ...APP_TOOLS]) if (t.risk === 'consequential') CONSEQUENTIAL_GUARD.add(t.name);

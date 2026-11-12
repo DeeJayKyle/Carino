@@ -161,6 +161,8 @@ void main() {
     expect(e.calls, contains('POST /actions/a1/approve'));
     Navigator.of(tester.element(find.text('Approvals').first)).pop();
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.textContaining('remembers'));
+    await tester.pumpAndSettle();
     await tester.tap(find.textContaining('remembers'));
     await tester.pumpAndSettle();
     expect(find.text('Prefers short answers'), findsOneWidget);

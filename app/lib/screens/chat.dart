@@ -401,7 +401,12 @@ class _Bubble extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (streaming && m.content.isEmpty) _Working(m.tools),
             for (final t in m.tools)
-              if (t['name'] == 'ask_user' && t['result'] is Map) _AskCard(t['result'] as Map, onAnswer: onAnswer) else _ToolLine(t),
+              if (t['name'] == 'ask_user' && t['result'] is Map)
+                _AskCard(t['result'] as Map, onAnswer: onAnswer)
+              else ...[
+                _ToolLine(t),
+                if (t['status'] == 'executed' && t['result'] is Map && ((t['result'] as Map)['document_id'] != null || (t['result'] as Map)['page_id'] != null)) _MadeCard(t['result'] as Map),
+              ],
             body,
             if (!user && !streaming && m.model != null)
               Padding(padding: const EdgeInsets.only(top: 4), child: Text(m.model!, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant))),
@@ -627,6 +632,53 @@ class _WorkingState extends State<_Working> {
         const SizedBox(width: 8),
         Text('${list[_i % list.length]}…', style: TextStyle(color: cs.onSurfaceVariant, fontStyle: FontStyle.italic)),
       ]),
+    );
+  }
+}
+
+/// Something Carino made in chat: a picture (shown), a file (save it), or a page (open it).
+class _MadeCard extends StatelessWidget {
+  final Map r;
+  const _MadeCard(this.r);
+
+  @override
+  Widget build(BuildContext context) {
+    final app = AppState.read(context);
+    if (r['page_id'] != null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: FilledButton.tonalIcon(onPressed: () => openPath(context, '/pages/${r['page_id']}'), icon: const Icon(Icons.web_outlined, size: 18), label: const Text('Open the page')),
+      );
+    }
+    final id = '${r['document_id']}';
+    Future<void> save() async {
+      try {
+        final msg = await saveApiFile(app.engine, '/documents/$id/download', fallbackName: '${r['filename'] ?? 'carino-file'}');
+        if (context.mounted) toast(context, msg);
+      } catch (e) {
+        if (context.mounted) toast(context, errorText(e), error: true);
+      }
+    }
+
+    if (r['kind'] == 'image') {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          ClipRRect(borderRadius: BorderRadius.circular(14), child: ApiImage('/documents/$id/preview', width: 260, height: 260)),
+          TextButton.icon(onPressed: save, icon: const Icon(Icons.download, size: 16), label: const Text('Save picture')),
+        ]),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Card(
+        child: ListTile(
+          dense: true,
+          leading: Icon(r['kind'] == 'video' ? Icons.movie_outlined : Icons.description_outlined),
+          title: Text('${r['filename'] ?? 'File'}'),
+          trailing: TextButton(onPressed: save, child: const Text('Save')),
+        ),
+      ),
     );
   }
 }

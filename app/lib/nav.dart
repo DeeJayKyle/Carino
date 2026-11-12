@@ -15,6 +15,7 @@ import 'screens/money.dart';
 import 'screens/notifications.dart';
 import 'screens/access.dart';
 import 'screens/onboarding.dart';
+import 'screens/pages.dart';
 import 'screens/ramble.dart';
 import 'screens/routines.dart';
 import 'screens/settings.dart';
@@ -39,6 +40,7 @@ final Map<String, ScreenFor> flutterScreens = {
   '/apps': (_) => const AppsScreen(),
   '/connectors': (_) => const ConnectorsScreen(),
   '/connections': (_) => const ConnectionsScreen(),
+  '/pages': (_) => const PagesScreen(),
   '/messaging': (_) => const MessagingScreen(),
 };
 
@@ -65,6 +67,11 @@ Future<void> openPath(BuildContext context, String path) async {
   if (p == '/chat/new') {
     final q = uri.queryParameters['q'];
     return ChatScreen.startNew(context, firstMessage: q, voice: uri.queryParameters['voice'] == '1');
+  }
+  final pageId = RegExp(r'^/pages/([\w-]+)$').firstMatch(p);
+  if (pageId != null) {
+    await nav.push(MaterialPageRoute<void>(builder: (_) => BuiltPageView(pageId.group(1)!)));
+    return;
   }
   final appId = RegExp(r'^/apps/(\w+)$').firstMatch(p);
   if (appId != null) {

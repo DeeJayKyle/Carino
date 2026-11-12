@@ -645,6 +645,37 @@ export function dataRoutes() {
   });
 
   // ---------- Ramble (brain-dump → tasks, reminders, notes) ----------
+  // Pages and small apps Carino built in chat.
+  r.get('/pages', (c) => c.json({ pages: db(c).all('SELECT id, title, kind, version, conversation_id, updated_at FROM pages WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200', uid(c)) }));
+  r.get('/pages/:id', (c) => {
+    const p = db(c).getOwned('pages', uid(c), c.req.param('id'));
+    if (!p) throw new HttpError(404, 'Page not found', 'not_found');
+    return c.json({ ...p, history: parseJson<any[]>(p.history, []).map((h) => ({ version: h.version, at: h.at })) });
+  });
+  r.get('/pages/:id/html', (c) => {
+    const p = db(c).getOwned('pages', uid(c), c.req.param('id'));
+    if (!p) throw new HttpError(404, 'Page not found', 'not_found');
+    const v = Number(c.req.query('version') ?? p.version);
+    const html = v === Number(p.version) ? String(p.html) : String(parseJson<any[]>(p.history, []).find((h) => h.version === v)?.html ?? p.html);
+    // Shown in its own sandbox: no access to Carino, no outside requests.
+    return c.body(html, 200, { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': "sandbox allow-scripts allow-forms allow-modals; default-src 'none'; img-src data: https:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; media-src data: https:" });
+  });
+  r.post('/pages/:id/restore', async (c) => {
+    const p = db(c).getOwned('pages', uid(c), c.req.param('id'));
+    if (!p) throw new HttpError(404, 'Page not found', 'not_found');
+    const { version } = (await c.req.json().catch(() => ({}))) as { version?: number };
+    const history = parseJson<any[]>(p.history, []);
+    const old = history.find((h) => h.version === version);
+    if (!old) throw new HttpError(400, 'No such version', 'bad_request');
+    const next = [...history, { version: p.version, html: p.html, at: p.updated_at }].slice(-10);
+    db(c).run('UPDATE pages SET html = ?, version = version + 1, history = ?, updated_at = ? WHERE id = ?', old.html, JSON.stringify(next), new Date().toISOString(), p.id);
+    return c.json({ ok: true, version: Number(p.version) + 1 });
+  });
+  r.delete('/pages/:id', (c) => {
+    if (!db(c).deleteOwned('pages', uid(c), c.req.param('id'))) throw new HttpError(404, 'Page not found', 'not_found');
+    return c.json({ deleted: true });
+  });
+
   // "Like me": learn how the user writes (from their own messages or pasted samples), or forget it.
   r.post('/settings/voice/learn', aiLimit, async (c) => {
     const b = (await c.req.json().catch(() => ({}))) as { samples?: string };

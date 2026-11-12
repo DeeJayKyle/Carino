@@ -47,6 +47,7 @@ class MoreScreen extends StatelessWidget {
               (apps?['dueSoon'] ?? 0) > 0 ? '${_plural(apps!['dueSoon'], 'deadline')} this week' : 'Jobs and scholarships', (apps?['dueSoon'] ?? 0) > 0, '/applications'),
             (Icons.folder_outlined, 'Files', (d['folders'] ?? 0) > 0 ? _plural(d['files'] ?? 0, 'file') : 'No folders yet', (d['folders'] ?? 0) > 0 ? 'In ${_plural(d['folders'], 'folder')} you chose' : 'Search documents on this device', false, '/files'),
             (Icons.repeat, 'Routines', '${_plural(routines['active'] ?? 0, 'routine')} on', (routines['custom'] ?? 0) > 0 ? '${routines['custom']} of your own' : 'Add your first one', false, '/routines'),
+            (Icons.web_outlined, 'Pages & apps', 'Made in chat', 'Invites, menus, checklists and small apps', false, '/pages'),
             (Icons.psychology_outlined, 'What ${app.assistantName} remembers', _plural(memories['active'] ?? 0, 'memory', 'memories'),
               (memories['waiting'] ?? 0) > 0 ? '${memories['waiting']} waiting for your OK' : 'You’re in control of all of it', (memories['waiting'] ?? 0) > 0, '/memory'),
             (Icons.mic_none, 'Ramble it out', 'Talk, Carino sorts it', 'To-dos, reminders and notes from a brain-dump', false, '/ramble'),

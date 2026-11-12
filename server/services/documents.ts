@@ -6,7 +6,7 @@ import { addToIndex } from './indexer.ts';
 import { parseCsv, parseXlsx, sheetToText, type Sheet } from './spreadsheet.ts';
 import { badRequest, notFound } from '../context.ts';
 
-export type DocKind = 'pdf' | 'text' | 'markdown' | 'docx' | 'csv' | 'xlsx' | 'image' | 'video';
+export type DocKind = 'pdf' | 'text' | 'markdown' | 'docx' | 'pptx' | 'csv' | 'xlsx' | 'image' | 'video';
 
 /** Vision models accept images up to 5 MB; the app shrinks larger photos before uploading. */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -18,6 +18,7 @@ export const SUPPORTED: Record<string, { kind: DocKind; mime: string }> = {
   '.md': { kind: 'markdown', mime: 'text/markdown' },
   '.markdown': { kind: 'markdown', mime: 'text/markdown' },
   '.docx': { kind: 'docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+  '.pptx': { kind: 'pptx', mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' },
   '.csv': { kind: 'csv', mime: 'text/csv' },
   '.xlsx': { kind: 'xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
   '.jpg': { kind: 'image', mime: 'image/jpeg' },
@@ -49,7 +50,7 @@ export function detectKind(filename: string, buf: Buffer): { kind: DocKind; mime
   const isPdf = head.subarray(0, 5).toString('latin1') === '%PDF-';
   const isZip = head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04;
   if (spec.kind === 'pdf' && !isPdf) throw badRequest('This file is not a valid PDF.');
-  if ((spec.kind === 'docx' || spec.kind === 'xlsx') && !isZip) throw badRequest(`This file is not a valid ${ext.slice(1).toUpperCase()} document.`);
+  if ((spec.kind === 'docx' || spec.kind === 'xlsx' || spec.kind === 'pptx') && !isZip) throw badRequest(`This file is not a valid ${ext.slice(1).toUpperCase()} document.`);
   if (spec.kind === 'image') {
     const mime = imageMime(buf);
     if (!mime) throw badRequest('This file is not a valid JPG, PNG, WebP or GIF image.');
@@ -118,6 +119,18 @@ export async function extract(kind: DocKind, buf: Buffer): Promise<Extracted> {
       const m: any = await import('mammoth');
       const { value } = await (m.default ?? m).extractRawText({ buffer: buf });
       chunks = chunkText(value, '');
+      break;
+    }
+    case 'pptx': {
+      // Slide text, slide by slide (ppt/slides/slideN.xml, <a:t> runs).
+      const JSZip: any = (await import('jszip')).default;
+      const zip = await JSZip.loadAsync(buf);
+      const names = Object.keys(zip.files).filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n)).sort((a, b) => Number(a.match(/\d+/)![0]) - Number(b.match(/\d+/)![0]));
+      for (const [i, n] of names.entries()) {
+        const xml: string = await zip.file(n).async('string');
+        const text = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map((m) => m[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")).join('\n');
+        chunks.push(...chunkText(text, `slide ${i + 1}`));
+      }
       break;
     }
     case 'csv':
