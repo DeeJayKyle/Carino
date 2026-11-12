@@ -125,6 +125,20 @@ const taskFields = {
 };
 
 export const TOOLS: ToolDef[] = [
+  // ----- Asking the user -----
+  def({
+    name: 'ask_user',
+    description: 'Ask the user to choose: shows the question with tappable answers (and an "other" box if allowed) and ends your turn; their pick arrives as their next message. Use it when a request needs a decision between a few clear options (which day, which restaurant, how formal). Do not also list the options in your reply.',
+    risk: 'read',
+    input: z.object({
+      question: z.string().min(1).max(300),
+      options: z.array(z.string().min(1).max(80)).min(2).max(6),
+      allow_other: z.boolean().optional().describe('Let the user type their own answer'),
+      multiple: z.boolean().optional().describe('Let the user pick more than one'),
+    }),
+    summarize: (i) => `Asked: ${i.question}`,
+    run: (i) => ({ asked: true, question: i.question, options: i.options, allow_other: !!i.allow_other, multiple: !!i.multiple, note: 'Shown to the user. Stop here and wait for their answer.' }),
+  }),
   // ----- Read-only -----
   def({
     name: 'search_knowledge',
@@ -951,7 +965,7 @@ export const TOOL_MAP = new Map(TOOLS.map((t) => [t.name, t]));
 
 /** The everyday tools sent to small local models, to keep their prompt short and fast. */
 export const CORE_TOOLS = new Set([
-  'search_knowledge', 'list_tasks', 'get_daily_overview', 'recall_memories', 'web_search', 'parse_datetime',
+  'ask_user', 'search_knowledge', 'list_tasks', 'get_daily_overview', 'recall_memories', 'web_search', 'parse_datetime',
   'create_task', 'update_task', 'complete_task', 'create_reminder', 'save_memory', 'delete_task', 'log_expense',
 ]);
 
@@ -1159,6 +1173,35 @@ export async function approveAction(services: Services, userId: string, actionId
   const outcome = await runAction(ctx, tool, actionId, parsed.data, a.summary);
   if (outcome.status === 'error') notify(db, userId, { kind: 'action_failed', title: 'An approved action failed', body: `${a.summary}: ${outcome.error}`, link: '/actions' });
   return outcome;
+}
+
+/** The parts of a draft the user may rewrite: who it goes to and what it says (never ids or targets). */
+const EDITABLE_FIELDS = new Set(['to', 'cc', 'bcc', 'subject', 'body', 'text', 'message', 'caption', 'title', 'content', 'description', 'note', 'comment', 'reply']);
+
+/**
+ * The user edits a queued action before approving it (the text of an email or message, a title).
+ * Only text the action already has can change; the new input is checked like the original and the
+ * approval is bound to it again.
+ */
+export function editAction(services: Services, userId: string, actionId: string, changes: Record<string, unknown>) {
+  const db = services.db;
+  const a = db.getOwned('actions', userId, actionId);
+  if (!a || a.status !== 'pending') throw new HttpError(404, 'No pending action with that id', 'not_found');
+  const tool = findTool(services, userId, a.tool);
+  if (!tool) throw new HttpError(409, 'That action can no longer run.', 'conflict');
+  const before = parseJson<Record<string, unknown>>(a.input, {});
+  const next = { ...before };
+  for (const [k, v] of Object.entries(changes)) {
+    if (!EDITABLE_FIELDS.has(k) || !(k in before) || typeof before[k] !== 'string' || typeof v !== 'string') throw new HttpError(400, `“${k}” can’t be changed here.`, 'bad_request');
+    next[k] = v;
+  }
+  const parsed = tool.input.safeParse(next);
+  if (!parsed.success) throw new HttpError(400, parsed.error.issues[0]?.message ?? 'That change isn’t valid.', 'bad_request');
+  const input = JSON.stringify(parsed.data);
+  const ctx = makeContext(services, userId, a.conversation_id);
+  const summary = tool.summarize(parsed.data, ctx);
+  db.run('UPDATE actions SET input = ?, summary = ?, payload_hash = ? WHERE id = ? AND status = ?', input, summary, actionPayloadHash(userId, a.tool, input), actionId, 'pending');
+  return { ...db.getOwned('actions', userId, actionId)!, input: parsed.data };
 }
 
 export function rejectAction(services: Services, userId: string, actionId: string) {

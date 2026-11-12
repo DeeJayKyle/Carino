@@ -310,7 +310,7 @@ function Conversation({ id, onChanged }: { id: string; onChanged: () => void }) 
             <details className="card pad small"><summary style={{ cursor: 'pointer', fontWeight: 600 }}>Conversation summary</summary><div style={{ marginTop: 8 }}><Markdown text={conv.summary} /></div></details>
           )}
           {data?.messages.length === 0 && !streaming && <Empty icon="chat" title="Start the conversation">Type a message below.</Empty>}
-          {data?.messages.map((m: Msg) => <MessageView key={m.id} m={m} />)}
+          {data?.messages.map((m: Msg, i: number) => <MessageView key={m.id} m={m} onAnswer={!streaming && i === data.messages.length - 1 ? (t: string) => void send(t) : undefined} />)}
           {streaming && (
             <div className="msg assistant">
               <div className="avatar"><Mark size={30} /></div>
@@ -369,7 +369,35 @@ function ToolChips({ tools }: { tools: ToolEv[] }) {
   );
 }
 
-function MessageView({ m }: { m: Msg }) {
+/** A question from Carino with answers to tap; the pick is sent as the next message. */
+function AskCard({ q, onAnswer }: { q: { question: string; options: string[]; allow_other?: boolean; multiple?: boolean }; onAnswer?: (t: string) => void }) {
+  const [picked, setPicked] = useState<string[]>([]);
+  const [other, setOther] = useState('');
+  const toggle = (o: string) => setPicked((p) => (p.includes(o) ? p.filter((x) => x !== o) : [...p, o]));
+  return (
+    <div className="card pad ask-card" style={{ margin: '6px 0' }}>
+      <div style={{ fontWeight: 600, marginBottom: 8 }}>{q.question}</div>
+      <div className="row wrap" style={{ gap: 8 }}>
+        {q.options.map((o) => (
+          <button key={o} className={`btn sm ${q.multiple && picked.includes(o) ? 'primary' : ''}`} disabled={!onAnswer} aria-pressed={q.multiple ? picked.includes(o) : undefined}
+            onClick={() => (q.multiple ? toggle(o) : onAnswer?.(o))}>{o}</button>
+        ))}
+      </div>
+      {q.allow_other && onAnswer && (
+        <form className="row" style={{ gap: 8, marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); if (!q.multiple && other.trim()) onAnswer(other.trim()); }}>
+          <input className="input grow" placeholder="Something else…" value={other} onChange={(e) => setOther(e.target.value)} aria-label="Your own answer" />
+        </form>
+      )}
+      {q.multiple && onAnswer && (
+        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 8 }}>
+          <button className="btn primary sm" disabled={!picked.length && !other.trim()} onClick={() => onAnswer([...picked, ...(other.trim() ? [other.trim()] : [])].join(', '))}>Send</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MessageView({ m, onAnswer }: { m: Msg; onAnswer?: (t: string) => void }) {
   const toast = useToast();
   const { me } = useSession();
   const [speaking, setSpeaking] = useState(false);
@@ -392,7 +420,8 @@ function MessageView({ m }: { m: Msg }) {
     <div className="msg assistant">
       <div className="avatar"><Mark size={30} /></div>
       <div className="body">
-        <ToolChips tools={meta.tools ?? []} />
+        <ToolChips tools={(meta.tools ?? []).filter((t: ToolEv) => t.name !== 'ask_user')} />
+        {(meta.tools ?? []).filter((t: ToolEv) => t.name === 'ask_user' && t.result?.options).map((t: ToolEv) => <AskCard key={t.id} q={t.result} onAnswer={onAnswer} />)}
         {m.content ? <Markdown text={m.content} /> : <p className="faint small">(No text reply)</p>}
         {meta.sources?.length > 0 && (
           <div className="sources" aria-label="Sources">

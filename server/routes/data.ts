@@ -35,7 +35,7 @@ import { getSettings, updateSettings } from '../services/settings.ts';
 import { buildOverview, briefingText, suggestions } from '../services/briefing.ts';
 import { searchIndex } from '../services/indexer.ts';
 import { localDate, startOfLocalDay, addDays, safeTimeZone, localClock, parseWhen, formatLocal } from '../services/time.ts';
-import { approveAction, rejectAction, TOOLS, executeTool, makeContext } from '../tools/registry.ts';
+import { approveAction, rejectAction, editAction, TOOLS, executeTool, makeContext } from '../tools/registry.ts';
 import { rateLimit } from '../middleware.ts';
 
 const page = z.object({ limit: z.coerce.number().int().min(1).max(500).default(100), offset: z.coerce.number().int().min(0).default(0) });
@@ -440,6 +440,11 @@ export function dataRoutes() {
   });
   r.post('/actions/:id/approve', async (c) => c.json(await approveAction(c.var.services, uid(c), c.req.param('id'))));
   r.post('/actions/:id/reject', (c) => c.json(rejectAction(c.var.services, uid(c), c.req.param('id'))));
+  // Edit the text of a queued action (an email, a message) before approving it.
+  r.patch('/actions/:id', async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { input?: Record<string, unknown> };
+    return c.json(editAction(c.var.services, uid(c), c.req.param('id'), body.input ?? {}));
+  });
   r.get('/tools', (c) => {
     const s = getSettings(db(c), uid(c));
     const connected = apps.connectedProviders(c.var.services, uid(c));

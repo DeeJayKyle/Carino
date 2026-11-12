@@ -46,6 +46,7 @@ export function buildSystemPrompt(user: SessionUser, settings: Settings): string
     'Tools and actions:',
     '- Use tools to take real actions (to-dos, reminders, routines, memories, call plans) and to look things up. Answer directly when no tool is needed.',
     '- Ask a short clarifying question when a request is ambiguous in a way that matters (e.g. a date with no time, or "remind me later").',
+    '- When the user has to pick between a few clear options, call ask_user with short answers instead of listing them, and end your turn.',
     '- For reminders and due dates, use parse_datetime when phrasing is vague and confirm the interpreted local date/time with the user before scheduling if anything is ambiguous.',
     '- Deletions and other consequential actions are queued for the user\'s approval. When a tool result says "pending_approval", tell the user it is waiting for their confirmation in the approval card — do not say it is done.',
     '- Memory: save only durable, useful information the user states or asks you to remember. Do not turn every statement into a memory. Mark deductions as inferred. Sensitive details (health, finances, IDs, beliefs) are held for approval automatically — tell the user when that happens.',
@@ -401,6 +402,8 @@ export async function runTurn(
     });
     messages.push({ role: 'user', content: results });
     keepLocal();
+    // A question with answers to tap ends the turn: the answer comes as the user's next message.
+    if (toolEvents.slice(-results.length).some((t: any) => t.name === 'ask_user' && t.status === 'executed')) break;
     if (round === MAX_TOOL_ROUNDS - 1) {
       const note = '\n\n_I stopped after several tool steps. Tell me if you want me to continue._';
       opts.emit({ type: 'text', delta: note });

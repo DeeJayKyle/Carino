@@ -308,7 +308,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         : ListView(
                             controller: _scroll,
                             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                            children: [for (final m in _messages) _Bubble(m), if (_streaming != null) _Bubble(_streaming!, streaming: true)],
+                            children: [
+                              for (final (i, m) in _messages.indexed) _Bubble(m, onAnswer: i == _messages.length - 1 && _streaming == null ? _send : null),
+                              if (_streaming != null) _Bubble(_streaming!, streaming: true),
+                            ],
                           ),
                   ),
                   if (_voiceMode)
@@ -355,7 +358,9 @@ const _toolNames = {
 class _Bubble extends StatelessWidget {
   final Msg m;
   final bool streaming;
-  const _Bubble(this.m, {this.streaming = false});
+  /// Set on the latest reply: answering a question card sends the answer as the next message.
+  final void Function([String?])? onAnswer;
+  const _Bubble(this.m, {this.streaming = false, this.onAnswer});
 
   @override
   Widget build(BuildContext context) {
@@ -376,7 +381,7 @@ class _Bubble extends StatelessWidget {
             Text(m.content, style: TextStyle(color: cs.onPrimaryContainer)),
           ])
         : MarkdownBody(
-            data: m.content.isEmpty && streaming ? '…' : m.content,
+            data: m.content,
             selectable: !streaming,
             onTapLink: (text, href, title) {
               final u = href == null ? null : Uri.tryParse(href);
@@ -394,7 +399,9 @@ class _Bubble extends StatelessWidget {
           padding: user ? const EdgeInsets.symmetric(horizontal: 14, vertical: 10) : const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           decoration: user ? BoxDecoration(color: cs.primaryContainer, borderRadius: BorderRadius.circular(18)) : null,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            for (final t in m.tools) _ToolLine(t),
+            if (streaming && m.content.isEmpty) _Working(m.tools),
+            for (final t in m.tools)
+              if (t['name'] == 'ask_user' && t['result'] is Map) _AskCard(t['result'] as Map, onAnswer: onAnswer) else _ToolLine(t),
             body,
             if (!user && !streaming && m.model != null)
               Padding(padding: const EdgeInsets.only(top: 4), child: Text(m.model!, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: cs.onSurfaceVariant))),
@@ -509,6 +516,117 @@ class _Composer extends StatelessWidget {
           ]),
         ]),
       ),
+    );
+  }
+}
+
+/// A question from Carino with answers to tap (and an "other" box when allowed).
+class _AskCard extends StatefulWidget {
+  final Map q;
+  final void Function([String?])? onAnswer;
+  const _AskCard(this.q, {this.onAnswer});
+  @override
+  State<_AskCard> createState() => _AskCardState();
+}
+
+class _AskCardState extends State<_AskCard> {
+  final _picked = <String>{};
+  final _other = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    final q = widget.q;
+    final cs = Theme.of(context).colorScheme;
+    final options = ((q['options'] as List?) ?? const []).map((e) => '$e').toList();
+    final multiple = q['multiple'] == true;
+    final active = widget.onAnswer != null;
+    void send(String answer) => widget.onAnswer?.call(answer);
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      color: cs.secondaryContainer.withValues(alpha: 0.5),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${q['question']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final o in options)
+              multiple
+                  ? FilterChip(label: Text(o), selected: _picked.contains(o), onSelected: active ? (v) => setState(() => v ? _picked.add(o) : _picked.remove(o)) : null)
+                  : ActionChip(label: Text(o), onPressed: active ? () => send(o) : null),
+          ]),
+          if (q['allow_other'] == true && active)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: TextField(
+                controller: _other,
+                decoration: const InputDecoration(hintText: 'Something else…', isDense: true),
+                onSubmitted: (v) { if (v.trim().isNotEmpty) send(v.trim()); },
+              ),
+            ),
+          if (multiple && active)
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.tonal(
+                onPressed: _picked.isEmpty && _other.text.trim().isEmpty ? null : () => send([..._picked, if (_other.text.trim().isNotEmpty) _other.text.trim()].join(', ')),
+                child: const Text('Send'),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// While a reply is on its way: what Carino is busy with, in plain words.
+class _Working extends StatefulWidget {
+  final List<Map<String, dynamic>> tools;
+  const _Working(this.tools);
+  @override
+  State<_Working> createState() => _WorkingState();
+}
+
+class _WorkingState extends State<_Working> {
+  static const _phrases = {
+    'web': ['Looking it up', 'Reading a few sources', 'Checking the details'],
+    'plan': ['Checking your day', 'Lining things up', 'Working out the timing'],
+    'write': ['Drafting', 'Choosing the words', 'Tidying it up'],
+    'think': ['Thinking', 'Working it out', 'Nearly there'],
+  };
+  int _i = 0;
+  Timer? _t;
+
+  @override
+  void initState() {
+    super.initState();
+    _t = Timer.periodic(const Duration(milliseconds: 1800), (_) => setState(() => _i++));
+  }
+
+  @override
+  void dispose() {
+    _t?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final running = widget.tools.where((t) => t['status'] == 'running').map((t) => '${t['name']}').firstOrNull ?? '';
+    final kind = running.contains('search') || running.contains('page') || running.contains('places')
+        ? 'web'
+        : running.contains('task') || running.contains('remind') || running.contains('calendar') || running.contains('overview')
+            ? 'plan'
+            : running.contains('send') || running.contains('draft') || running.contains('email')
+                ? 'write'
+                : 'think';
+    final list = _phrases[kind]!;
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: cs.primary)),
+        const SizedBox(width: 8),
+        Text('${list[_i % list.length]}…', style: TextStyle(color: cs.onSurfaceVariant, fontStyle: FontStyle.italic)),
+      ]),
     );
   }
 }

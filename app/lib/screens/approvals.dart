@@ -90,9 +90,35 @@ class ApprovalCard extends StatefulWidget {
   State<ApprovalCard> createState() => _ApprovalCardState();
 }
 
+/// The parts of a queued message the user may rewrite before approving (matches the engine's list).
+const editableFields = ['to', 'cc', 'bcc', 'subject', 'title', 'caption', 'body', 'text', 'message', 'content', 'description', 'note', 'comment', 'reply'];
+
 class _ApprovalCardState extends State<ApprovalCard> {
   String? _busy;
   bool _details = false;
+  Map<String, TextEditingController>? _edit;
+
+  Map get _input => (widget.action['input'] as Map?) ?? const {};
+  List<String> get _editable => [for (final k in editableFields) if (_input[k] is String) k];
+
+  Future<void> _saveEdit() async {
+    final a = widget.action;
+    setState(() => _busy = 'edit');
+    try {
+      final out = await AppState.read(context).api.patch('/actions/${a['id']}', {'input': {for (final e in _edit!.entries) e.key: e.value.text}}) as Map;
+      if (!mounted) return;
+      setState(() {
+        a['input'] = out['input'];
+        a['summary'] = out['summary'];
+        _edit = null;
+      });
+      toast(context, 'Saved. Approve it to send.');
+    } catch (e) {
+      if (mounted) toast(context, errorText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = null);
+    }
+  }
 
   Future<void> _decide(String kind) async {
     setState(() => _busy = kind);
@@ -136,6 +162,42 @@ class _ApprovalCardState extends State<ApprovalCard> {
               ]),
             ),
           ]),
+          // A draft (email, message, post): show what it says, and let the user change it.
+          if (_editable.isNotEmpty && _edit == null)
+            Container(
+              margin: const EdgeInsets.only(top: 10),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: cs.surface, borderRadius: BorderRadius.circular(10)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                for (final k in _editable)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: k == 'body' || k == 'text' || k == 'message' || k == 'content'
+                        ? Text('${_input[k]}', maxLines: 12, overflow: TextOverflow.ellipsis)
+                        : Text('${k[0].toUpperCase()}${k.substring(1)}: ${_input[k]}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+              ]),
+            ),
+          if (_edit != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(children: [
+                for (final e in _edit!.entries)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: TextField(
+                      controller: e.value,
+                      minLines: const {'body', 'text', 'message', 'content', 'description'}.contains(e.key) ? 4 : 1,
+                      maxLines: const {'body', 'text', 'message', 'content', 'description'}.contains(e.key) ? 14 : 1,
+                      decoration: InputDecoration(labelText: '${e.key[0].toUpperCase()}${e.key.substring(1)}'),
+                    ),
+                  ),
+                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  TextButton(onPressed: () => setState(() => _edit = null), child: const Text('Cancel')),
+                  FilledButton.tonal(onPressed: _busy != null ? null : _saveEdit, child: Text(_busy == 'edit' ? 'Saving…' : 'Save changes')),
+                ]),
+              ]),
+            ),
           if (_details)
             Container(
               margin: const EdgeInsets.only(top: 8),
@@ -145,6 +207,12 @@ class _ApprovalCardState extends State<ApprovalCard> {
             ),
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            if (_editable.isNotEmpty && _edit == null)
+              TextButton.icon(
+                onPressed: _busy != null ? null : () => setState(() => _edit = {for (final k in _editable) k: TextEditingController(text: '${_input[k]}')}),
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Edit'),
+              ),
             TextButton(onPressed: () => setState(() => _details = !_details), child: Text(_details ? 'Hide details' : 'Details')),
             const SizedBox(width: 4),
             OutlinedButton(onPressed: _busy != null ? null : () => _decide('reject'), child: const Text('Decline')),
