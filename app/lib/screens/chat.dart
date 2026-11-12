@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
+import 'dart:io' show Platform;
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -406,6 +409,7 @@ class _Bubble extends StatelessWidget {
               else ...[
                 _ToolLine(t),
                 if (t['status'] == 'executed' && t['result'] is Map && ((t['result'] as Map)['document_id'] != null || (t['result'] as Map)['page_id'] != null)) _MadeCard(t['result'] as Map),
+                if (t['status'] == 'executed' && t['result'] is Map && (t['result'] as Map)['sticker_pack'] is Map) _StickerCard((t['result'] as Map)['sticker_pack'] as Map),
               ],
             body,
             if (!user && !streaming && m.model != null)
@@ -679,6 +683,63 @@ class _MadeCard extends StatelessWidget {
           trailing: TextButton(onPressed: save, child: const Text('Save')),
         ),
       ),
+    );
+  }
+}
+
+/// A sticker pack Carino made: previews, and one tap to add it to WhatsApp.
+class _StickerCard extends StatefulWidget {
+  final Map pack;
+  const _StickerCard(this.pack);
+  @override
+  State<_StickerCard> createState() => _StickerCardState();
+}
+
+class _StickerCardState extends State<_StickerCard> {
+  bool _busy = false;
+  static const _channel = MethodChannel('carino/engine');
+
+  Future<void> _add() async {
+    final engine = AppState.read(context).engine;
+    setState(() => _busy = true);
+    try {
+      Future<String> b64(String id) async {
+        final r = await engine.send('GET', '/documents/$id/download');
+        if (!r.ok || r.bytes == null) throw const ApiError(0, 'A sticker couldn’t be read.');
+        return base64Encode(r.bytes!);
+      }
+      final stickers = <Map<String, String>>[];
+      for (final s in (widget.pack['stickers'] as List).cast<Map>()) {
+        stickers.add({'data': await b64('${s['document_id']}'), 'emoji': '${s['emoji'] ?? '😀'}'});
+      }
+      final pack = {
+        'id': 'p${(widget.pack['tray_document_id'] as String).replaceAll(RegExp(r'[^A-Za-z0-9]'), '').substring(0, 12)}',
+        'name': widget.pack['name'],
+        'tray': await b64('${widget.pack['tray_document_id']}'),
+        'stickers': stickers,
+      };
+      final r = await _channel.invokeMethod<String>('addStickerPack', {'pack': jsonEncode(pack)});
+      if (mounted && r == 'no_whatsapp') toast(context, 'WhatsApp isn’t installed on this phone.', error: true);
+    } catch (e) {
+      if (mounted) toast(context, errorText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final list = (widget.pack['stickers'] as List).cast<Map>();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final s in list.take(8)) SizedBox(width: 64, height: 64, child: ApiImage('/documents/${s['document_id']}/preview', width: 64, height: 64, fit: BoxFit.contain)),
+        ]),
+        const SizedBox(height: 6),
+        if (Platform.isAndroid)
+          FilledButton.tonalIcon(onPressed: _busy ? null : _add, icon: const Icon(Icons.add_reaction_outlined, size: 18), label: Text(_busy ? 'Adding…' : 'Add to WhatsApp')),
+      ]),
     );
   }
 }

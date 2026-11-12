@@ -617,6 +617,8 @@ async function boot() {
       scheduleSave();
     });
   }
+  // Stickers: pictures scaled onto a transparent square and encoded as WebP by the WebView itself.
+  services.stickers = makeStickerMaker();
   // A hidden browser the agent can use (phone: the Flutter edition's WebView; PC: WebView2).
   services.browser = phoneBrowser() ?? (tauri?.core?.invoke && (globalThis as any).__carinoHost ? {
     open: async (url: string) => { await tauri.core.invoke('browser_open', { url }); },
@@ -652,3 +654,33 @@ const ready = boot().then(() => console.info(`Carino engine ready (${Object.entr
 // Inside the Flutter app: its screens reach the engine through this link.
 ready.then(() => startFlutterLink(handle));
 export const engineReady = ready;
+
+/** WhatsApp stickers need 512×512 WebP under 100 KB, and a 96×96 PNG tray icon. */
+function makeStickerMaker(): Services['stickers'] {
+  if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') return undefined;
+  const draw = async (img: Uint8Array, size: number, margin: number) => {
+    const bmp = await createImageBitmap(new Blob([img as BlobPart]));
+    const canvas = new OffscreenCanvas(size, size);
+    const g = canvas.getContext('2d')!;
+    const scale = Math.min((size - margin * 2) / bmp.width, (size - margin * 2) / bmp.height);
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    g.drawImage(bmp, Math.round((size - w) / 2), Math.round((size - h) / 2), w, h);
+    bmp.close();
+    return canvas;
+  };
+  return {
+    async sticker(img) {
+      const canvas = await draw(img, 512, 16);
+      for (const quality of [0.9, 0.75, 0.6, 0.45, 0.3, 0.2]) {
+        const blob = await canvas.convertToBlob({ type: 'image/webp', quality });
+        if (blob.type !== 'image/webp') throw new Error('This device can’t make WebP pictures.');
+        if (blob.size < 100 * 1024) return new Uint8Array(await blob.arrayBuffer());
+      }
+      throw new Error('That picture is too detailed to fit WhatsApp’s sticker size.');
+    },
+    async tray(img) {
+      const blob = await (await draw(img, 96, 4)).convertToBlob({ type: 'image/png' });
+      return new Uint8Array(await blob.arrayBuffer());
+    },
+  };
+}

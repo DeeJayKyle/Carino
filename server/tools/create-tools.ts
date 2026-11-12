@@ -88,6 +88,32 @@ export const CREATE_TOOLS: ToolDef[] = [
     },
   }),
   def({
+    name: 'make_stickers',
+    description: 'Turn 3 to 30 pictures the user attached (or ones you made) into a WhatsApp sticker pack they can add with one tap. Pass the document ids of the pictures, a pack name, and an emoji for each sticker if you like.',
+    risk: 'read',
+    input: z.object({
+      name: z.string().trim().min(1).max(60),
+      document_ids: z.array(z.string().min(1).max(64)).min(3).max(30),
+      emojis: z.array(z.string().max(8)).max(30).optional(),
+    }),
+    summarize: (i) => `Make the sticker pack “${i.name}” (${i.document_ids.length} stickers)`,
+    run: async (i, ctx) => {
+      const maker = ctx.services.stickers;
+      if (!maker) return { error: 'Stickers are made in the Carino app on an Android phone. Open Carino on your phone and ask again.' };
+      const { readDocumentFile } = await import('../services/documents.ts');
+      const docs = i.document_ids.map((id) => ctx.services.db.getOwned('documents', ctx.userId, id));
+      if (docs.some((d) => !d || d.kind !== 'image')) return { error: 'Each sticker needs a picture (one of the attached images).' };
+      const stickers = [];
+      for (const [n, d] of docs.entries()) {
+        const webp = Buffer.from(await maker.sticker(new Uint8Array(readDocumentFile(d!))));
+        const saved = await saveFile(ctx, `${slug(i.name)} ${n + 1}.webp`, webp, ['made-by-carino', 'sticker']);
+        stickers.push({ document_id: saved.document_id, emoji: i.emojis?.[n] || '😀' });
+      }
+      const tray = await saveFile(ctx, `${slug(i.name)} icon.png`, Buffer.from(await maker.tray(new Uint8Array(readDocumentFile(docs[0]!)))), ['made-by-carino', 'sticker-tray']);
+      return { sticker_pack: { name: i.name, stickers, tray_document_id: tray.document_id }, note: 'The user can tap “Add to WhatsApp” under this message.' };
+    },
+  }),
+  def({
     name: 'make_page',
     description: 'Build a web page or a small interactive app (an invite, a menu, a checklist, a calculator, a quiz) as one self-contained HTML file with inline CSS and JavaScript — no outside scripts or network calls; images only as https or data links. Give page_id to change an existing one (earlier versions are kept). The user can open it in the app and share it.',
     risk: 'read',

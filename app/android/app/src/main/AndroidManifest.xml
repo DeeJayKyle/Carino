@@ -18,6 +18,8 @@
 
     <!-- Speech recognition and text-to-speech come from the phone's own services. -->
     <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
         <intent><action android:name="android.speech.RecognitionService" /></intent>
         <intent><action android:name="android.intent.action.TTS_SERVICE" /></intent>
         <intent>
@@ -121,6 +123,13 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_actions_info" />
         </receiver>
+        <!-- Sticker packs Carino made, for WhatsApp to read (read-only; see StickerProvider). -->
+        <provider
+            android:name="app.carino.android.StickerProvider"
+            android:authorities="${applicationId}.stickers"
+            android:enabled="true"
+            android:exported="true"
+            android:readPermission="com.whatsapp.sticker.READ" />
         <!-- Lets other apps read a file Carino shares (e.g. a sticker sent to WhatsApp). -->
         <provider
             android:name="androidx.core.content.FileProvider"

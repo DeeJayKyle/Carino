@@ -97,6 +97,16 @@ public class MainActivity extends FlutterActivity {
                 case "startPath":
                     result.success(startPath(getIntent()));
                     break;
+                case "addStickerPack": {
+                    // A sticker pack Carino made: save it and ask WhatsApp to add it.
+                    try {
+                        String json = call.argument("pack");
+                        result.success(StickerPacks.add(this, new org.json.JSONObject(json == null ? "{}" : json)));
+                    } catch (Exception e) {
+                        result.error("sticker_failed", e.getMessage(), null);
+                    }
+                    break;
+                }
                 case "updateDir": {
                     // Where an update is downloaded: shared with the installer through the FileProvider.
                     java.io.File dir = new java.io.File(getCacheDir(), "shared");

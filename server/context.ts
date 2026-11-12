@@ -26,6 +26,8 @@ export interface Services {
     openApp(id: string, root?: string, rel?: string): Promise<void>;
     openFile(root: string, rel: string): Promise<void>;
   };
+  /** Turns a picture into a WhatsApp sticker (512×512 WebP under 100 KB) and a 96×96 tray icon (PNG); the phone app provides it. */
+  stickers?: { sticker(img: Uint8Array): Promise<Uint8Array>; tray(img: Uint8Array): Promise<Uint8Array> };
   /** A browser Carino can drive (a hidden WebView on the phone or the PC); absent on the PC server. */
   browser?: import('./services/browser.ts').BrowserHost;
   /** The device's internet connection (the app sets this; absent = assume online). */
