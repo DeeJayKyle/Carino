@@ -188,6 +188,10 @@ void main() {
       'GET /connectors': (_) => {'connectors': [{'id': 'k1', 'name': 'Notion', 'url': 'https://mcp.notion.com/mcp', 'tools': [], 'enabled': true, 'signed_in': true}]},
       'GET /sync': (_) => {'device': {'name': 'My phone'}, 'peers': [], 'conflicts': []},
       'GET /files': (_) => {'folders': []},
+      'GET /models': (_) => {'connections': [{'id': 'groq', 'label': 'Groq', 'status': 'ok', 'billing': 'free', 'models': 2, 'local': false, 'main': true}], 'models': [], 'recommendations': {}},
+      'GET /connections': (_) => {'accounts': [], 'connectors': []},
+      'GET /usage/summary': (_) => {'today': 0, 'month': 0, 'limits': {'dailyUsd': null, 'monthlyUsd': null}, 'warning': {}, 'byModel': []},
+      'GET /device/discover': (_) => {'found': []},
     });
     await boot(tester, e);
     for (final (path, title, text) in [
@@ -197,6 +201,7 @@ void main() {
       ('/ramble', 'Ramble it out', 'Sort it out'),
       ('/access', 'What Carino can reach', 'Notion'),
       ('/settings#devices', 'Devices', 'This device: My phone'),
+      ('/connections', 'AI & connections', 'Groq'),
     ]) {
       e.emitOpen(path);
       await tester.pumpAndSettle();

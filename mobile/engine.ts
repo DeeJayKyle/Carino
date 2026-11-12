@@ -426,7 +426,7 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
       case 'openExternal': openExternal(String(b.url ?? '')); return json({ ok: true });
       case 'openSignIn': return json({ error: openSignIn(String(b.url ?? '')) });
       case 'askPlacesPermission': return json({ permission: await askPlacesPermission() });
-      case 'speak': speakNative(String(b.text ?? ''), String(b.lang ?? 'en-US')); return json({ ok: true });
+      case 'speak': speakNative(String(b.text ?? ''), String(b.lang ?? 'en-US'), () => (globalThis as any).__carinoFlutterEmit?.('spoken', {})); return json({ ok: true });
       case 'stopSpeaking': stopSpeakingNative(); return json({ ok: true });
       case 'listen':
         // The phone's speech recognition; what it hears goes to the Flutter screens as "speech" events.

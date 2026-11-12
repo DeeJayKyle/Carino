@@ -6,23 +6,29 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
 import '../nav.dart';
+import '../engine/device.dart';
 import '../engine/engine.dart';
+import '../widgets/api_image.dart';
 import '../widgets/common.dart';
+import '../widgets/dictation.dart';
+import '../widgets/files.dart';
 
 /// One conversation: messages, a streamed reply, what tools did, and which model answered.
 class ChatScreen extends StatefulWidget {
   final String conversationId;
   final String? firstMessage;
   final String? draft;
-  const ChatScreen({super.key, required this.conversationId, this.firstMessage, this.draft});
+  /// Hands-free: listen, answer out loud, listen again.
+  final bool voice;
+  const ChatScreen({super.key, required this.conversationId, this.firstMessage, this.draft, this.voice = false});
 
   /// Creates a chat and opens it, optionally sending a first message.
-  static Future<void> startNew(BuildContext context, {String? firstMessage, String? draft}) async {
+  static Future<void> startNew(BuildContext context, {String? firstMessage, String? draft, bool voice = false}) async {
     final app = AppState.read(context);
     try {
       final c = await app.api.post('/conversations', {}) as Map;
       if (!context.mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ChatScreen(conversationId: c['id'] as String, firstMessage: firstMessage, draft: draft)));
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ChatScreen(conversationId: c['id'] as String, firstMessage: firstMessage, draft: draft, voice: voice)));
       app.changed();
     } catch (e) {
       if (context.mounted) toast(context, errorText(e), error: true);
@@ -39,7 +45,8 @@ class Msg {
   String content;
   List<Map<String, dynamic>> tools;
   String? model;
-  Msg({required this.id, required this.role, required this.content, this.tools = const [], this.model});
+  List<Map> attachments;
+  Msg({required this.id, required this.role, required this.content, this.tools = const [], this.model, this.attachments = const []});
 
   factory Msg.fromJson(Map m) {
     final meta = (m['meta'] as Map?) ?? const {};
@@ -47,6 +54,7 @@ class Msg {
       id: '${m['id']}', role: '${m['role']}', content: '${m['content'] ?? ''}',
       tools: ((meta['tools'] as List?) ?? const []).cast<Map>().map((t) => Map<String, dynamic>.from(t)).toList(),
       model: meta['model'] as String?,
+      attachments: ((meta['attachments'] as List?) ?? const []).cast<Map>(),
     );
   }
 }
@@ -62,6 +70,12 @@ class _ChatScreenState extends State<ChatScreen> {
   Msg? _streaming;
   String? _modelLabel;
   String? _modelReason;
+  final _files = <Map>[];
+  bool _uploading = false;
+  Dictation? _dict;
+  bool _voiceMode = false;
+  bool _speaking = false;
+  StreamSubscription<EngineEvent>? _spoken;
 
   @override
   void initState() {
@@ -69,11 +83,87 @@ class _ChatScreenState extends State<ChatScreen> {
     if (widget.draft != null) _input.text = widget.draft!;
     _load().then((_) {
       if (widget.firstMessage != null) _send(widget.firstMessage!);
+      if (widget.voice && mounted) _toggleVoiceMode();
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_dict != null) return;
+    final app = AppState.read(context);
+    _dict = Dictation(
+      engine: app.engine,
+      device: Device(app.api),
+      lang: '${(app.settings['voice'] as Map?)?['language'] ?? 'en-US'}',
+      onFinal: (t) {
+        if (_voiceMode) {
+          _send(t);
+        } else {
+          _input.text = _input.text.isEmpty ? t : '${_input.text} $t';
+        }
+      },
+    )..addListener(() { if (mounted) setState(() {}); });
+    // The phone finished reading a reply out loud: listen for the next thing to say.
+    _spoken = app.engine.events.where((e) => e.name == 'spoken').listen((_) {
+      if (!mounted) return;
+      setState(() => _speaking = false);
+      if (_voiceMode && _streaming == null) _dict!.start();
+    });
+  }
+
+  bool get _voiceOn => (AppState.read(context).settings['voice'] as Map?)?['enabled'] != false;
+
+  Future<void> _toggleVoiceMode() async {
+    final device = Device(AppState.read(context).api);
+    if (_voiceMode) {
+      setState(() { _voiceMode = false; _speaking = false; });
+      await _dict!.stop();
+      await device.stopSpeaking().catchError((_) {});
+      return;
+    }
+    setState(() => _voiceMode = true);
+    await _dict!.start();
+  }
+
+  /// Reads a reply out loud (without the markdown marks).
+  void _speak(String text) {
+    final app = AppState.read(context);
+    final plain = text
+        .replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]+\)'), (m) => m.group(1)!)
+        .replaceAll(RegExp(r'[*_`#>|]'), '')
+        .replaceAll(RegExp(r'\n{2,}'), '. ')
+        .trim();
+    if (plain.isEmpty) return;
+    setState(() => _speaking = true);
+    Device(app.api).speak(plain, '${(app.settings['voice'] as Map?)?['language'] ?? 'en-US'}').catchError((_) {
+      if (mounted) setState(() => _speaking = false);
+    });
+  }
+
+  Future<void> _attach() async {
+    final api = AppState.read(context).api;
+    try {
+      final picked = await pickUploads(multiple: true);
+      if (picked.isEmpty) return;
+      setState(() => _uploading = true);
+      for (final f in picked.take(5 - _files.length)) {
+        final r = await api.upload(f);
+        final d = (r['document'] as Map?) ?? const {};
+        if (mounted) setState(() => _files.add({'id': d['id'], 'filename': d['filename'] ?? f.name, 'kind': d['kind']}));
+      }
+    } catch (e) {
+      if (mounted) toast(context, errorText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
   void dispose() {
+    _spoken?.cancel();
+    _dict?.dispose();
+    if (_speaking) Device(AppState.read(context).api).stopSpeaking().catchError((_) {});
     _sub?.cancel();
     _input.dispose();
     _scroll.dispose();
@@ -113,12 +203,14 @@ class _ChatScreenState extends State<ChatScreen> {
     _input.clear();
     final app = AppState.read(context);
     final reply = Msg(id: 'streaming', role: 'assistant', content: '', tools: []);
+    final files = List<Map>.of(_files);
     setState(() {
-      _messages.add(Msg(id: 'pending-${DateTime.now().microsecondsSinceEpoch}', role: 'user', content: t));
+      _messages.add(Msg(id: 'pending-${DateTime.now().microsecondsSinceEpoch}', role: 'user', content: t, attachments: files));
       _streaming = reply;
+      _files.clear();
     });
     _toEnd();
-    _sub = app.engine.stream('POST', '/conversations/${widget.conversationId}/messages', body: {'text': t}).listen((e) {
+    _sub = app.engine.stream('POST', '/conversations/${widget.conversationId}/messages', body: {'text': t, if (files.isNotEmpty) 'attachments': [for (final f in files) f['id']]}).listen((e) {
       if (!mounted) return;
       setState(() {
         switch (e.event) {
@@ -144,6 +236,7 @@ class _ChatScreenState extends State<ChatScreen> {
             final m = e.data['message'];
             if (m is Map) _messages.add(Msg.fromJson(m));
             _streaming = null;
+            if (_voiceMode && m is Map) _speak('${m['content'] ?? ''}');
           case 'error':
             _streaming = null;
             toast(context, '${e.data['message'] ?? 'The reply failed.'}', error: true);
@@ -218,7 +311,31 @@ class _ChatScreenState extends State<ChatScreen> {
                             children: [for (final m in _messages) _Bubble(m), if (_streaming != null) _Bubble(_streaming!, streaming: true)],
                           ),
                   ),
-                  _Composer(controller: _input, busy: _streaming != null, onSend: _send, onStop: _stop),
+                  if (_voiceMode)
+                    Material(
+                      color: cs.primaryContainer,
+                      child: ListTile(
+                        leading: Icon(_speaking ? Icons.volume_up : _dict!.listening ? Icons.mic : Icons.hourglass_top, color: cs.onPrimaryContainer),
+                        title: Text(_speaking ? 'Speaking…' : _dict!.listening ? (_dict!.interim.isEmpty ? 'Listening…' : _dict!.interim) : _streaming != null ? 'Thinking…' : 'Tap the mic to talk', style: TextStyle(color: cs.onPrimaryContainer)),
+                        subtitle: _dict!.error != null ? Text(_dict!.error!, style: TextStyle(color: cs.error)) : null,
+                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                          if (!_dict!.listening && !_speaking && _streaming == null) IconButton(tooltip: 'Talk', onPressed: _dict!.start, icon: const Icon(Icons.mic)),
+                          TextButton(onPressed: _toggleVoiceMode, child: const Text('End voice')),
+                        ]),
+                      ),
+                    ),
+                  _Composer(
+                    controller: _input,
+                    busy: _streaming != null,
+                    onSend: _send,
+                    onStop: _stop,
+                    files: _files,
+                    uploading: _uploading,
+                    onAttach: _attach,
+                    onRemove: (f) => setState(() => _files.remove(f)),
+                    dictation: _voiceOn && !_voiceMode ? _dict : null,
+                    onVoiceMode: _voiceOn && !_voiceMode ? _toggleVoiceMode : null,
+                  ),
                   if (lo > 0)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
@@ -245,7 +362,19 @@ class _Bubble extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final user = m.role == 'user';
     final body = user
-        ? Text(m.content, style: TextStyle(color: cs.onPrimaryContainer))
+        ? Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            if (m.attachments.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Wrap(spacing: 6, runSpacing: 6, alignment: WrapAlignment.end, children: [
+                  for (final a in m.attachments)
+                    a['kind'] == 'image'
+                        ? ClipRRect(borderRadius: BorderRadius.circular(10), child: ApiImage('/documents/${a['id']}/preview', width: 140, height: 140))
+                        : Chip(visualDensity: VisualDensity.compact, avatar: const Icon(Icons.attach_file, size: 14), label: Text('${a['filename'] ?? 'Attachment'}', style: const TextStyle(fontSize: 12))),
+                ]),
+              ),
+            Text(m.content, style: TextStyle(color: cs.onPrimaryContainer)),
+          ])
         : MarkdownBody(
             data: m.content.isEmpty && streaming ? '…' : m.content,
             selectable: !streaming,
@@ -311,28 +440,73 @@ class _Composer extends StatelessWidget {
   final bool busy;
   final void Function([String?]) onSend;
   final VoidCallback onStop;
-  const _Composer({required this.controller, required this.busy, required this.onSend, required this.onStop});
+  final List<Map> files;
+  final bool uploading;
+  final VoidCallback onAttach;
+  final void Function(Map file) onRemove;
+  final Dictation? dictation;
+  final VoidCallback? onVoiceMode;
+  const _Composer({required this.controller, required this.busy, required this.onSend, required this.onStop, required this.files, required this.uploading, required this.onAttach, required this.onRemove, this.dictation, this.onVoiceMode});
 
   @override
   Widget build(BuildContext context) {
+    final d = dictation;
+    final cs = Theme.of(context).colorScheme;
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              minLines: 1,
-              maxLines: 6,
-              textInputAction: TextInputAction.newline,
-              decoration: InputDecoration(hintText: 'Message ${AppState.of(context).assistantName}…'),
+        padding: const EdgeInsets.fromLTRB(8, 4, 12, 8),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (files.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(spacing: 6, children: [
+                for (final f in files)
+                  InputChip(
+                    avatar: f['kind'] == 'image' ? ClipRRect(borderRadius: BorderRadius.circular(4), child: ApiImage('/documents/${f['id']}/preview', width: 24, height: 24)) : const Icon(Icons.attach_file, size: 16),
+                    label: Text('${f['filename']}', overflow: TextOverflow.ellipsis),
+                    onDeleted: () => onRemove(f),
+                    deleteButtonTooltipMessage: 'Remove ${f['filename']}',
+                  ),
+              ]),
             ),
-          ),
-          const SizedBox(width: 8),
-          busy
-              ? IconButton.filledTonal(onPressed: onStop, icon: const Icon(Icons.stop_rounded), tooltip: 'Stop')
-              : IconButton.filled(onPressed: () => onSend(), icon: const Icon(Icons.arrow_upward_rounded), tooltip: 'Send'),
+          if (d != null && (d.listening || d.error != null))
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 8, bottom: 2),
+                child: Text(d.listening ? (d.interim.isEmpty ? '● Listening…' : '● ${d.interim}') : d.error!, style: TextStyle(fontSize: 12, color: d.listening ? cs.primary : cs.error)),
+              ),
+            ),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            IconButton(
+              tooltip: 'Attach a photo, PDF, Word, text, CSV or Excel file',
+              onPressed: uploading || files.length >= 5 ? null : onAttach,
+              icon: uploading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.attach_file),
+            ),
+            if (d != null)
+              IconButton(
+                tooltip: d.listening ? 'Stop recording' : 'Voice input',
+                isSelected: d.listening,
+                onPressed: d.listening ? d.stop : d.start,
+                icon: const Icon(Icons.mic_none),
+                selectedIcon: Icon(Icons.stop_circle_outlined, color: cs.error),
+              ),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                minLines: 1,
+                maxLines: 6,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(hintText: 'Message ${AppState.of(context).assistantName}…'),
+              ),
+            ),
+            if (onVoiceMode != null && !busy) IconButton(tooltip: 'Talk hands-free (voice mode)', onPressed: onVoiceMode, icon: const Icon(Icons.record_voice_over_outlined)),
+            const SizedBox(width: 4),
+            busy
+                ? IconButton.filledTonal(onPressed: onStop, icon: const Icon(Icons.stop_rounded), tooltip: 'Stop')
+                : IconButton.filled(onPressed: () => onSend(), icon: const Icon(Icons.arrow_upward_rounded), tooltip: 'Send'),
+          ]),
         ]),
       ),
     );

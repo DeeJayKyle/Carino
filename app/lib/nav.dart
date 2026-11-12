@@ -4,6 +4,7 @@ import 'app_state.dart';
 import 'screens/applications.dart';
 import 'screens/apps.dart';
 import 'screens/approvals.dart';
+import 'screens/connections.dart';
 import 'screens/connectors.dart';
 import 'screens/chat.dart';
 import 'screens/discover.dart';
@@ -37,6 +38,7 @@ final Map<String, ScreenFor> flutterScreens = {
   '/ramble': (_) => const RambleScreen(),
   '/apps': (_) => const AppsScreen(),
   '/connectors': (_) => const ConnectorsScreen(),
+  '/connections': (_) => const ConnectionsScreen(),
   '/messaging': (_) => const MessagingScreen(),
 };
 
@@ -62,8 +64,7 @@ Future<void> openPath(BuildContext context, String path) async {
   }
   if (p == '/chat/new') {
     final q = uri.queryParameters['q'];
-    if (uri.queryParameters['voice'] == '1') return WebScreen.open(context, path);
-    return ChatScreen.startNew(context, firstMessage: q);
+    return ChatScreen.startNew(context, firstMessage: q, voice: uri.queryParameters['voice'] == '1');
   }
   final appId = RegExp(r'^/apps/(\w+)$').firstMatch(p);
   if (appId != null) {
