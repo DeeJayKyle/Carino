@@ -32,6 +32,13 @@ FakeEngine world({bool onboarded = true}) {
     'GET /tasks': (_) => {'tasks': tasks},
     'POST /tasks': (b) => {'id': 't3', ...(b as Map)},
     'POST /tasks/t2/complete': (_) => {'ok': true},
+    'GET /money': (_) => {
+          'books': [{'id': null, 'name': 'Personal'}], 'book': null, 'month': '2026-11', 'today': '2026-11-12', 'currency': 'UGX',
+          'categories': [{'id': 'food', 'label': 'Eating out'}], 'total': 45000, 'count': 1, 'other': [], 'income': 0, 'net': -45000,
+          'week': {'total': 45000, 'previous': 0}, 'budgets': [], 'daysLeft': 18, 'byCategory': [{'category': 'food', 'label': 'Eating out', 'total': 45000}],
+          'expenses': [{'id': 'e1', 'amount': 45000, 'currency': 'UGX', 'category': 'food', 'note': 'Lunch', 'spent_on': '2026-11-12', 'updated_at': '2026-11-12T08:00:00Z'}],
+          'income_list': [], 'bills': [], 'debts': [], 'goals': [],
+        },
     'GET /stuff': (_) => {'tasks': {'open': 2, 'overdue': 0, 'dueToday': 1}, 'money': {'spent': 45000, 'currency': 'UGX', 'over': 0}, 'routines': {'active': 1, 'custom': 0}, 'memories': {'active': 3, 'waiting': 1}, 'reminders': {}, 'approvals': 1, 'folders': 0, 'files': 0},
     'GET /actions?status=pending': (_) => {'actions': [{'id': 'a1', 'summary': 'Delete task "Old"', 'tool': 'delete_task', 'risk': 'consequential', 'input': {'task_id': 't9'}}]},
     'GET /actions': (_) => {'actions': [{'id': 'a2', 'summary': 'Create task "X"', 'tool': 'create_task', 'risk': 'reversible', 'status': 'executed', 'origin': 'assistant', 'created_at': '2026-11-12T08:00:00Z'}]},
@@ -129,7 +136,14 @@ void main() {
     expect(find.text('UGX 45000 this month'), findsOneWidget);
     await tester.tap(find.text('Money'));
     await tester.pumpAndSettle();
-    expect(e.opened, ['/money']);
+    expect(find.text('Spent this month'), findsOneWidget); // Money, in Flutter
+    expect(find.text('UGX 45,000'), findsWidgets);
+    Navigator.of(tester.element(find.text('Spent this month'))).pop();
+    await tester.pumpAndSettle();
+    // A page without a Flutter screen opens the engine's web page; its back button returns.
+    e.emitOpen('/share');
+    await tester.pumpAndSettle();
+    expect(e.opened, ['/share']);
     e.emitOpen('back');
     await tester.pumpAndSettle();
     expect(find.text('Money'), findsOneWidget); // back on Your stuff
@@ -140,7 +154,6 @@ void main() {
     await tester.tap(find.text('Approve'));
     await tester.pumpAndSettle();
     expect(e.calls, contains('POST /actions/a1/approve'));
-    expect(e.opened, ['/money']);
     Navigator.of(tester.element(find.text('Approvals').first)).pop();
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('remembers'));
