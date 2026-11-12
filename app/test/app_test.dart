@@ -32,6 +32,11 @@ FakeEngine world({bool onboarded = true}) {
     'GET /tasks': (_) => {'tasks': tasks},
     'POST /tasks': (b) => {'id': 't3', ...(b as Map)},
     'POST /tasks/t2/complete': (_) => {'ok': true},
+    'GET /stuff': (_) => {'tasks': {'open': 2, 'overdue': 0, 'dueToday': 1}, 'money': {'spent': 45000, 'currency': 'UGX', 'over': 0}, 'routines': {'active': 1, 'custom': 0}, 'memories': {'active': 3, 'waiting': 1}, 'reminders': {}, 'approvals': 1, 'folders': 0, 'files': 0},
+    'GET /actions?status=pending': (_) => {'actions': [{'id': 'a1', 'summary': 'Delete task "Old"', 'tool': 'delete_task', 'risk': 'consequential', 'input': {'task_id': 't9'}}]},
+    'GET /actions': (_) => {'actions': [{'id': 'a2', 'summary': 'Create task "X"', 'tool': 'create_task', 'risk': 'reversible', 'status': 'executed', 'origin': 'assistant', 'created_at': '2026-11-12T08:00:00Z'}]},
+    'POST /actions/a1/approve': (_) => {'status': 'executed'},
+    'GET /memories': (_) => {'memories': [{'id': 'mm1', 'content': 'Prefers short answers', 'category': 'preference', 'status': 'active', 'source': 'user', 'created_at': '2026-11-01T08:00:00Z'}]},
   }, chat: (body) => [
         const SseEvent('start', {'provider': {'label': 'Ollama', 'model': 'qwen3:8b', 'reason': 'Kept on your devices'}}),
         const SseEvent('tool', {'id': 'x', 'name': 'create_task', 'status': 'running'}),
@@ -59,7 +64,8 @@ void main() {
     expect(find.textContaining('need'), findsOneWidget); // 1 approval waiting
     await tester.tap(find.textContaining('need'));
     await tester.pumpAndSettle();
-    expect(e.opened, ['/actions']);
+    expect(find.text('Delete task "Old"'), findsOneWidget); // Approvals, in Flutter
+    expect(e.opened, isEmpty);
   });
 
   testWidgets('chat streams the reply, shows tools, the model and a switch', (tester) async {
@@ -118,14 +124,28 @@ void main() {
   testWidgets('more opens screens not yet in Flutter, and their back button returns', (tester) async {
     final e = world();
     await boot(tester, e);
-    await tester.tap(find.text('More').last);
+    await tester.tap(find.text('Your stuff').last);
     await tester.pumpAndSettle();
+    expect(find.text('UGX 45000 this month'), findsOneWidget);
     await tester.tap(find.text('Money'));
     await tester.pumpAndSettle();
     expect(e.opened, ['/money']);
     e.emitOpen('back');
     await tester.pumpAndSettle();
-    expect(find.text('Money'), findsOneWidget); // back on More
+    expect(find.text('Money'), findsOneWidget); // back on Your stuff
+    // Approvals is a Flutter screen now.
+    await tester.tap(find.textContaining('waiting for your approval'));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete task "Old"'), findsOneWidget);
+    await tester.tap(find.text('Approve'));
+    await tester.pumpAndSettle();
+    expect(e.calls, contains('POST /actions/a1/approve'));
+    expect(e.opened, ['/money']);
+    Navigator.of(tester.element(find.text('Approvals').first)).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('remembers'));
+    await tester.pumpAndSettle();
+    expect(find.text('Prefers short answers'), findsOneWidget);
     e.emitOpen('/tasks');
     await tester.pumpAndSettle();
     expect(find.text('Call Sam'), findsOneWidget);

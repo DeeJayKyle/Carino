@@ -5,9 +5,9 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app_state.dart';
+import '../nav.dart';
 import '../engine/engine.dart';
 import '../widgets/common.dart';
-import 'web_screen.dart';
 
 /// One conversation: messages, a streamed reply, what tools did, and which model answered.
 class ChatScreen extends StatefulWidget {
@@ -294,7 +294,7 @@ class _ToolLine extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: InkWell(
-        onTap: status == 'pending_approval' ? () => WebScreen.open(context, '/actions') : null,
+        onTap: status == 'pending_approval' ? () => openPath(context, '/actions') : null,
         child: Row(children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 6),

@@ -4,14 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app_state.dart';
+import 'nav.dart';
 import 'engine/android_engine.dart';
 import 'engine/engine.dart';
-import 'screens/chat.dart';
 import 'screens/chats.dart';
 import 'screens/home.dart';
 import 'screens/more.dart';
 import 'screens/tasks.dart';
-import 'screens/web_screen.dart';
 import 'theme.dart';
 import 'widgets/engine_view.dart';
 
@@ -88,7 +87,7 @@ class _StartupState extends State<Startup> {
     }
   }
 
-  /// Opens a page by its web path: in Flutter where it's been rebuilt, otherwise its web screen.
+  /// Opens a page by its web path (notifications, widgets, the web screens' back button).
   void _open(String path) {
     final nav = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
@@ -97,20 +96,7 @@ class _StartupState extends State<Startup> {
       nav.popUntil((r) => !(r.settings.name ?? '').startsWith('web:'));
       return;
     }
-    final chat = RegExp(r'^/chat/([\w-]+)$').firstMatch(path);
-    if (chat != null && chat.group(1) != 'new') {
-      nav.push(MaterialPageRoute<void>(builder: (_) => ChatScreen(conversationId: chat.group(1)!)));
-    } else if (path == '/tasks' || path.startsWith('/tasks?')) {
-      HomeShell.select(ctx, 2);
-    } else if (path == '/' || path.startsWith('/?')) {
-      if (AppState.read(ctx).onboarded) {
-        HomeShell.select(ctx, 0);
-      } else {
-        WebScreen.open(ctx, '/');
-      }
-    } else {
-      WebScreen.open(ctx, path);
-    }
+    openPath(ctx, path);
   }
 
   @override
@@ -154,6 +140,7 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     current = this;
+    selectTab = _select;
   }
 
   @override
@@ -176,7 +163,7 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
           NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Chats'),
           NavigationDestination(icon: Icon(Icons.check_circle_outline), selectedIcon: Icon(Icons.check_circle), label: 'To-dos'),
-          NavigationDestination(icon: Icon(Icons.apps_outlined), selectedIcon: Icon(Icons.apps), label: 'More'),
+          NavigationDestination(icon: Icon(Icons.inventory_2_outlined), selectedIcon: Icon(Icons.inventory_2), label: 'Your stuff'),
         ],
       ),
     );

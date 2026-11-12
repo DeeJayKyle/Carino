@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
+import '../nav.dart';
 import '../widgets/common.dart';
 import 'chat.dart';
-import 'web_screen.dart';
 
 /// Home: a greeting, ask anything, today at a glance, and recent chats.
 class HomeScreen extends StatelessWidget {
@@ -35,7 +35,7 @@ class HomeScreen extends StatelessWidget {
                     leading: const Icon(Icons.notifications_active_outlined),
                     title: Text('${_attention(d)} thing${_attention(d) == 1 ? '' : 's'} need${_attention(d) == 1 ? 's' : ''} your attention'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => WebScreen.open(context, _pending(d) > 0 ? '/actions' : '/notifications'),
+                    onTap: () => openPath(context, _pending(d) > 0 ? '/actions' : '/notifications'),
                   ),
                 ),
               ],
@@ -113,9 +113,9 @@ class _QuickStarts extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = <(IconData, String, VoidCallback)>[
       (Icons.wb_sunny_outlined, 'My day', () => ChatScreen.startNew(context, firstMessage: 'What does my day look like? Help me plan it.')),
-      (Icons.mic_none, 'Ramble it out', () => WebScreen.open(context, '/ramble')),
+      (Icons.mic_none, 'Ramble it out', () => openPath(context, '/ramble')),
       (Icons.notifications_none, 'Remind me…', () => ChatScreen.startNew(context, draft: 'Remind me ')),
-      (Icons.record_voice_over_outlined, 'Just talk', () => WebScreen.open(context, '/chat/new?voice=1')),
+      (Icons.record_voice_over_outlined, 'Just talk', () => openPath(context, '/chat/new?voice=1')),
     ];
     return SizedBox(
       height: 40,
