@@ -71,7 +71,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          printf '## Carino %s\n\nDownload `Carino-%s.apk` on your Android phone and open it (allow *Install unknown apps* when asked). Carino runs entirely on your phone; on first start, pick one of the free AI services (Gemini, Groq, OpenRouter and more), paste its key, and tap *Test speed* to use the fastest model and paste its key.\n\nBuilt from commit %s.\n' "$V" "$V" "${{ github.sha }}" > notes.md
-          if [ -f "docs/release-notes/v$V.md" ]; then cat "docs/release-notes/v$V.md" >> notes.md; fi
+          bash .github/scripts/release-notes.sh "$V" "${{ github.sha }}"
           gh release create "v$V" "Carino-$V.apk" --repo "${{ github.repository }}" --title "Carino $V" --notes-file notes.md --target "${{ github.sha }}" || \
             gh release upload "v$V" "Carino-$V.apk" --repo "${{ github.repository }}" --clobber
