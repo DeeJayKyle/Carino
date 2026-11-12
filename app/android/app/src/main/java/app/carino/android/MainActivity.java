@@ -67,13 +67,16 @@ public class MainActivity extends FlutterActivity {
             switch (call.method) {
                 case "request": {
                     // Into the engine: an API request (answered later through CarinoFlutter.post).
-                    String js = "window.__carinoFlutter && __carinoFlutter.request(" + NativeBridge.quote(String.valueOf(call.argument("json"))) + ")";
+                    // A typed local, not String.valueOf(call.argument(...)): that picks valueOf(char[]) and fails.
+                    String json = call.argument("json");
+                    String js = "window.__carinoFlutter && __carinoFlutter.request(" + NativeBridge.quote(json == null ? "{}" : json) + ")";
                     web.evaluateJavascript(js, null);
                     result.success(null);
                     break;
                 }
                 case "abort":
-                    web.evaluateJavascript("window.__carinoFlutter && __carinoFlutter.abort(" + NativeBridge.quote(String.valueOf(call.argument("id"))) + ")", null);
+                    String id = call.argument("id");
+                    web.evaluateJavascript("window.__carinoFlutter && __carinoFlutter.abort(" + NativeBridge.quote(id == null ? "" : id) + ")", null);
                     result.success(null);
                     break;
                 case "open":
