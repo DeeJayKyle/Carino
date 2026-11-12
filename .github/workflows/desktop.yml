@@ -30,8 +30,8 @@ jobs:
         run: cargo test
       - name: Build the installer
         working-directory: desktop/app
+        # Tauri runs the web build itself (beforeBuildCommand, from desktop/).
         run: |
-          npm run build:desktop --prefix ../..
           cargo install tauri-cli --version "^2" --locked
           cargo tauri build
       - uses: actions/upload-artifact@v4
