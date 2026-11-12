@@ -33,6 +33,13 @@ abstract class Engine {
   Future<void> restart();
 }
 
+/// An engine host that handles sign-in and outside links itself (Carino for Windows).
+abstract interface class HostActions {
+  /// Opens a sign-in page in the browser and waits for it to come back; an error message, if any.
+  Future<String?> signIn(String url);
+  Future<void> openExternal(String url);
+}
+
 class EngineEvent {
   final String name;
   final Map<String, dynamic> data;

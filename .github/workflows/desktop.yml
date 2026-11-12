@@ -1,14 +1,17 @@
-# Carino for Windows: builds the installer (NSIS .exe and .msi) on a Windows runner.
-# Runs only when started by hand or for a version tag, never on an ordinary push.
+# Carino for Windows: the Flutter app (app/) with the same engine, built on a Windows runner into
+# an installer (Carino-Setup-<version>.exe). Runs when started by hand, for a version tag, or when
+# the Flutter app changes (build check only).
 name: Carino for Windows
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Attach the installers to this release (e.g. 1.5.0); leave empty to only build'
+        description: 'Attach the installer to this release (e.g. 1.6.0); leave empty to only build'
         required: false
   push:
     tags: ['v*']
+    branches: [main]
+    paths: ['app/**', 'mobile/**', '.github/workflows/desktop.yml']
 
 permissions:
   contents: write
@@ -20,32 +23,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - uses: dtolnay/rust-toolchain@stable
+        with: { node-version: 24, cache: npm }
       - run: npm ci
-      - name: Tests (the same engine runs in the Windows app)
-        run: npm test
-      - name: Sync listener tests
-        working-directory: desktop/sync-listener
-        run: cargo test
-      - name: Build the installer
-        working-directory: desktop/app
-        # Tauri runs the web build itself (beforeBuildCommand, from desktop/).
+      - name: Build the engine bundle
+        run: npm run build:desktop
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.47.9', channel: stable, cache: true }
+      - name: Flutter tests (including the Windows host's folders, apps and sync listener)
+        working-directory: app
+        run: flutter test
+      - name: Version
+        shell: bash
+        env:
+          V: ${{ inputs.version || github.ref_name }}
         run: |
-          cargo install tauri-cli --version "^2" --locked
-          cargo tauri build
+          V="${V#v}"
+          if ! [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then V=$(grep -m1 '^version:' app/pubspec.yaml | sed -E 's/version: *([0-9.]+).*/\1/'); fi
+          echo "V=$V" >> "$GITHUB_ENV"
+      - name: Build Carino for Windows
+        working-directory: app
+        shell: bash
+        run: flutter build windows --release --build-name "$V"
+      - name: Check the engine is bundled
+        shell: bash
+        run: test -f app/build/windows/x64/runner/Release/engine/index.html
+      - name: Build the installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          & $iscc "/DAppVersion=$env:V" "/DSourceDir=$PWD\app\build\windows\x64\runner\Release" "/O$PWD" app\windows\installer.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: carino-windows
-          path: |
-            desktop/app/target/release/bundle/nsis/*.exe
-            desktop/app/target/release/bundle/msi/*.msi
+          path: Carino-Setup-*.exe
       - name: Attach to the release
         if: inputs.version != '' || startsWith(github.ref, 'refs/tags/v')
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          V: ${{ inputs.version || github.ref_name }}
-        run: |
-          V="${V#v}"
-          gh release upload "v$V" desktop/app/target/release/bundle/nsis/*.exe desktop/app/target/release/bundle/msi/*.msi --repo "${{ github.repository }}" --clobber
+        run: gh release upload "v$V" Carino-Setup-*.exe --repo "${{ github.repository }}" --clobber

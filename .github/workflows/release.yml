@@ -41,20 +41,27 @@ jobs:
       - run: npm run build
       - run: npm test
       - uses: actions/setup-java@v6
-        with: { distribution: temurin, java-version: 21 }
-      - uses: gradle/actions/setup-gradle@v6
-        with: { gradle-version: '9.8.1' }
+        with: { distribution: temurin, java-version: 17 }
+      # Carino for Android is the Flutter app (app/) over the same engine; same app id and signing
+      # key as before, so it installs over the earlier version and keeps everything.
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.47.9', channel: stable, cache: true }
+      - name: Flutter tests
+        working-directory: app
+        run: flutter test
       - name: Build signed APK
-        working-directory: android
+        working-directory: app
         env:
           CARINO_KEYSTORE_PASSWORD: ${{ secrets.CARINO_KEYSTORE_PASSWORD }}
         run: |
           test -n "${{ secrets.CARINO_KEYSTORE_B64 }}" || { echo "Missing CARINO_KEYSTORE_B64 secret"; exit 1; }
           echo "${{ secrets.CARINO_KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/carino.p12"
           export CARINO_KEYSTORE_FILE="$RUNNER_TEMP/carino.p12"
-          gradle assembleRelease --no-daemon -PappVersion="$V"
+          IFS=. read -r MA MI PA <<< "$V"
+          CODE=$(( MA * 10000 + MI * 100 + ${PA%%[!0-9]*} ))
+          flutter build apk --release --build-name "$V" --build-number "$CODE"
           rm -f "$RUNNER_TEMP/carino.p12"
-          cp app/build/outputs/apk/release/app-release.apk "../Carino-$V.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "../Carino-$V.apk"
       - name: Verify signature
         run: |
           APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner

@@ -16,9 +16,17 @@ class Device {
   Future<String?> saveFile(String name, String mime, List<int> bytes) async => (await _call('saveFile', {'name': name, 'mime': mime, 'b64': base64Encode(bytes)}))['message'] as String?;
   Future<void> shareFile(String name, String mime, List<int> bytes, {String text = ''}) => _call('shareFile', {'name': name, 'mime': mime, 'b64': base64Encode(bytes), 'text': text});
   Future<void> shareText(String text) => _call('shareText', {'text': text});
-  Future<void> openExternal(String url) => _call('openExternal', {'url': url});
+  Future<void> openExternal(String url) async {
+    final e = api.engine;
+    if (e is HostActions) return (e as HostActions).openExternal(url);
+    await _call('openExternal', {'url': url});
+  }
   /// Opens a sign-in page in the browser; the result comes back by itself. Returns an error, if any.
-  Future<String?> openSignIn(String url) async => (await _call('openSignIn', {'url': url}))['error'] as String?;
+  Future<String?> openSignIn(String url) async {
+    final e = api.engine;
+    if (e is HostActions) return (e as HostActions).signIn(url);
+    return (await _call('openSignIn', {'url': url}))['error'] as String?;
+  }
   Future<void> speak(String text, String lang) => _call('speak', {'text': text, 'lang': lang});
   Future<void> stopSpeaking() => _call('stopSpeaking');
   Future<void> listen(String lang) => _call('listen', {'lang': lang});

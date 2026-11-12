@@ -4,7 +4,7 @@ project(carino LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "carino")
+set(BINARY_NAME "Carino")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -106,3 +106,12 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# Carino's engine (the same web build as the phone's, from `npm run build:desktop` in the
+# repository root), served to the app's hidden WebView from the "engine" folder next to Carino.exe.
+set(CARINO_ENGINE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../desktop/dist")
+if(NOT EXISTS "${CARINO_ENGINE_DIR}/index.html")
+  message(FATAL_ERROR "Missing desktop/dist — run `npm run build:desktop` in the repository root first.")
+endif()
+install(CODE "file(REMOVE_RECURSE \"${CMAKE_INSTALL_PREFIX}/engine\")" COMPONENT Runtime)
+install(DIRECTORY "${CARINO_ENGINE_DIR}/" DESTINATION "${CMAKE_INSTALL_PREFIX}/engine" COMPONENT Runtime)

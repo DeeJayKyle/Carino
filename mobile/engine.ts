@@ -433,6 +433,11 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
         listen(String(b.lang ?? 'en-US'), (e) => (globalThis as any).__carinoFlutterEmit?.('speech', e));
         return json({ ok: true });
       case 'stopListening': stopListening(); return json({ ok: true });
+      // Carino for Windows: the PC's addresses for pairing, and the apps the user approved.
+      case 'lanAddresses': return json({ addresses: (await (globalThis as any).CarinoDesktop?.lanAddresses?.().catch(() => [])) ?? [] });
+      case 'listApps': return json({ apps: (await (globalThis as any).CarinoDesktop?.listApps?.()) ?? [] });
+      case 'pickApp': return json({ app: (await (globalThis as any).CarinoDesktop?.pickApp?.()) ?? null });
+      case 'forgetApp': await (globalThis as any).CarinoDesktop?.forgetApp?.(String(b.id ?? '')); return json({ ok: true });
       default: return json({ error: 'Unknown action' }, 400);
     }
   }

@@ -7,6 +7,7 @@ import 'app_state.dart';
 import 'nav.dart';
 import 'screens/web_screen.dart';
 import 'engine/android_engine.dart';
+import 'engine/windows_engine.dart';
 import 'engine/engine.dart';
 import 'screens/chats.dart';
 import 'screens/home.dart';
@@ -17,7 +18,11 @@ import 'widgets/engine_view.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  final Engine engine = defaultTargetPlatform == TargetPlatform.android ? AndroidEngine() : UnavailableEngine();
+  final Engine engine = switch (defaultTargetPlatform) {
+    TargetPlatform.android => AndroidEngine(),
+    TargetPlatform.windows => WindowsEngine(),
+    _ => UnavailableEngine(),
+  };
   runApp(CarinoApp(state: AppState(engine)));
 }
 
