@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 
@@ -91,12 +92,12 @@ class _ConnectorsScreenState extends State<ConnectorsScreen> {
     final r = await showDialog<String?>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Access token for ${c['name']}'),
-        content: TextField(controller: t, obscureText: true, autofocus: true, decoration: const InputDecoration(labelText: 'New token')),
+        title: Tx('Access token for {0}', args: [c['name']]),
+        content: TextField(controller: t, obscureText: true, autofocus: true, decoration: InputDecoration(labelText: tr('New token'))),
         actions: [
-          if (c['has_token'] == true) TextButton(onPressed: () => Navigator.pop(ctx, ''), child: const Text('Remove token')),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, t.text.trim()), child: const Text('Save')),
+          if (c['has_token'] == true) TextButton(onPressed: () => Navigator.pop(ctx, ''), child: const Tx('Remove token')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Tx('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, t.text.trim()), child: const Tx('Save')),
         ],
       ),
     );
@@ -111,16 +112,16 @@ class _ConnectorsScreenState extends State<ConnectorsScreen> {
     final d = _data;
     final list = ((d?['connectors'] as List?) ?? const []).cast<Map>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Connected apps')),
-      floatingActionButton: FloatingActionButton.extended(onPressed: () => _add(), icon: const Icon(Icons.add), label: const Text('Connect an app')),
+      appBar: AppBar(title: const Tx('Connected apps')),
+      floatingActionButton: FloatingActionButton.extended(onPressed: () => _add(), icon: const Icon(Icons.add), label: const Tx('Connect an app')),
       body: d == null
           ? (_error != null ? ErrorPanel(error: _error!, retry: _load) : const Center(child: CircularProgressIndicator()))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 96), children: [
-                Text('Let Carino use your other apps — email, calendar, notes, project tools — through MCP, the open standard for AI connectors. Carino can read with them freely; anything that sends, changes or deletes waits for your approval unless you say otherwise.', style: TextStyle(color: cs.onSurfaceVariant)),
+                Tx('Let Carino use your other apps — email, calendar, notes, project tools — through MCP, the open standard for AI connectors. Carino can read with them freely; anything that sends, changes or deletes waits for your approval unless you say otherwise.', style: TextStyle(color: cs.onSurfaceVariant)),
                 const SizedBox(height: 12),
-                if (list.isEmpty) const EmptyView(icon: Icons.link, title: 'No apps connected yet', body: 'Paste the address of an MCP server. Many apps and connector services give you one.'),
+                if (list.isEmpty) EmptyView(icon: Icons.link, title: tr('No apps connected yet'), body: tr('Paste the address of an MCP server. Many apps and connector services give you one.')),
                 for (final c in list)
                   Card(
                     margin: const EdgeInsets.only(bottom: 10),
@@ -132,7 +133,7 @@ class _ConnectorsScreenState extends State<ConnectorsScreen> {
                             Text('${c['name']}${c['server_name'] != null && c['server_name'] != c['name'] ? ' · ${c['server_name']}' : ''}', style: const TextStyle(fontWeight: FontWeight.w600)),
                             Text('${c['url']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
                             const SizedBox(height: 4),
-                            Text('${(c['tools'] as List).length} tool${(c['tools'] as List).length == 1 ? '' : 's'} · ${c['signed_in'] == true ? 'signed in' : c['has_token'] == true ? 'token saved' : 'no token'}${c['last_checked_at'] != null ? ' · checked ${fmtDateTime('${c['last_checked_at']}')}' : ''}', style: const TextStyle(fontSize: 13)),
+                            Tx('{0} tool{1} · {2}{3}', args: [(c['tools'] as List).length, (c['tools'] as List).length == 1 ? '' : 's', c['signed_in'] == true ? tr('signed in') : c['has_token'] == true ? tr('token saved') : tr('no token'), c['last_checked_at'] != null ? ' · checked ${fmtDateTime('${c['last_checked_at']}')}' : ''], style: const TextStyle(fontSize: 13)),
                             if (c['last_error'] != null) Text('${c['last_error']}', style: TextStyle(fontSize: 13, color: cs.error)),
                           ])),
                           Switch(value: c['enabled'] == true, onChanged: (v) => _act('${c['id']}', () => api.patch('/connectors/${c['id']}', {'enabled': v}))),
@@ -141,20 +142,20 @@ class _ConnectorsScreenState extends State<ConnectorsScreen> {
                           TextButton.icon(onPressed: () => setState(() => _open = _open == c['id'] ? null : '${c['id']}'), icon: const Icon(Icons.tune, size: 16), label: Text(_open == c['id'] ? 'Hide tools' : 'Tools & permissions')),
                           TextButton.icon(onPressed: _busy == c['id'] ? null : () => _act('${c['id']}', () => api.post('/connectors/${c['id']}/refresh', {}), 'Tool list refreshed'), icon: const Icon(Icons.refresh, size: 16), label: Text(_busy == c['id'] ? 'Checking…' : 'Refresh')),
                           if (c['signed_in'] == true)
-                            TextButton.icon(onPressed: () => _signIn(context, '${c['name']}', '${c['url']}'), icon: const Icon(Icons.lock_outline, size: 16), label: const Text('Sign in again'))
+                            TextButton.icon(onPressed: () => _signIn(context, '${c['name']}', '${c['url']}'), icon: const Icon(Icons.lock_outline, size: 16), label: const Tx('Sign in again'))
                           else
                             TextButton.icon(onPressed: () => _token(c), icon: const Icon(Icons.key, size: 16), label: Text(c['has_token'] == true ? 'Change token' : 'Add token')),
                           TextButton.icon(
                             onPressed: () async {
-                              if (!await confirmDialog(context, title: 'Disconnect ${c['name']}?', body: 'Carino will stop using it and its saved token is deleted. Past chats are kept.', confirm: 'Disconnect', danger: true)) return;
+                              if (!await confirmDialog(context, title: tr('Disconnect {0}?', [c['name']]), body: tr('Carino will stop using it and its saved token is deleted. Past chats are kept.'), confirm: tr('Disconnect'), danger: true)) return;
                               await _act('${c['id']}', () => api.delete('/connectors/${c['id']}'), '${c['name']} disconnected');
                             },
                             icon: const Icon(Icons.delete_outline, size: 16),
-                            label: const Text('Disconnect'),
+                            label: const Tx('Disconnect'),
                           ),
                         ]),
                         if (_open == c['id']) ...[
-                          if ((c['tools'] as List).isEmpty) const Padding(padding: EdgeInsets.all(8), child: Text('This app offers no tools.')),
+                          if ((c['tools'] as List).isEmpty) const Padding(padding: EdgeInsets.all(8), child: Tx('This app offers no tools.')),
                           for (final t in (c['tools'] as List).cast<Map>())
                             ListTile(
                               contentPadding: EdgeInsets.zero,
@@ -168,9 +169,9 @@ class _ConnectorsScreenState extends State<ConnectorsScreen> {
                               trailing: DropdownButton<String>(
                                 value: '${t['mode']}',
                                 items: [
-                                  if (t['risk'] != 'consequential') const DropdownMenuItem(value: 'auto', child: Text('Allowed')),
-                                  const DropdownMenuItem(value: 'ask', child: Text('Ask me first')),
-                                  const DropdownMenuItem(value: 'off', child: Text('Off')),
+                                  if (t['risk'] != 'consequential') const DropdownMenuItem(value: 'auto', child: Tx('Allowed')),
+                                  const DropdownMenuItem(value: 'ask', child: Tx('Ask me first')),
+                                  const DropdownMenuItem(value: 'off', child: Tx('Off')),
                                 ],
                                 onChanged: (m) => _act('${c['id']}', () => api.patch('/connectors/${c['id']}', {'tool_modes': {'${t['key']}': m}})),
                               ),
@@ -180,17 +181,17 @@ class _ConnectorsScreenState extends State<ConnectorsScreen> {
                     ),
                   ),
                 const SizedBox(height: 14),
-                Text('Popular free connectors', style: Theme.of(context).textTheme.titleMedium),
+                Tx('Popular free connectors', style: Theme.of(context).textTheme.titleMedium),
                 for (final (name, url, how, icon) in _directory)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(icon),
                     title: Text(name),
-                    subtitle: Text(how),
-                    trailing: OutlinedButton(onPressed: () => _add(name: name.split(' (').first, url: url), child: const Text('Connect')),
+                    subtitle: Tx(how),
+                    trailing: OutlinedButton(onPressed: () => _add(name: name.split(' (').first, url: url), child: const Tx('Connect')),
                   ),
                 const SizedBox(height: 10),
-                Text('Where to get an address', style: Theme.of(context).textTheme.titleMedium),
+                Tx('Where to get an address', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 6),
                 Text('• Connector services such as Zapier MCP, Composio or Pipedream link Gmail, Google Calendar, Outlook, Slack, Notion, Todoist and thousands of other apps, and give you one personal MCP address. Sign in there, pick the apps and actions, and paste the address here.\n'
                     '• Apps with their own MCP server (for example GitHub, Linear or Atlassian) list the address and how to create an access token in their documentation. Use the “Streamable HTTP” address — it often ends in /mcp.\n'
@@ -223,7 +224,7 @@ class _AddConnectorState extends State<_AddConnector> {
       final c = await AppState.read(context).api.post('/connectors', {'name': _name.text.trim(), 'url': _url.text.trim(), if (_token.text.trim().isNotEmpty) 'token': _token.text.trim()}) as Map;
       final n = (c['tools'] as List?)?.length ?? 0;
       if (!mounted) return;
-      toast(context, '${c['name']} connected — $n tool${n == 1 ? '' : 's'} available');
+      toast(context, tr('{0} connected — {1} tool{2} available', [c['name'], n, n == 1 ? '' : 's']));
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) setState(() { _err = errorText(e); _needsSignIn = e is ApiError && e.code == 'needs_sign_in'; });
@@ -238,14 +239,14 @@ class _AddConnectorState extends State<_AddConnector> {
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Connect an app', style: Theme.of(context).textTheme.titleLarge),
-        TextField(controller: _name, maxLength: 40, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Name', hintText: 'e.g. Work email')),
-        TextField(controller: _url, keyboardType: TextInputType.url, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'MCP server address', hintText: 'https://…/mcp')),
-        TextField(controller: _token, obscureText: true, decoration: const InputDecoration(labelText: 'Access token (optional)', helperText: 'Sent to the app as a Bearer token. Stored encrypted and never shown again.')),
+        Tx('Connect an app', style: Theme.of(context).textTheme.titleLarge),
+        TextField(controller: _name, maxLength: 40, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Name'), hintText: tr('e.g. Work email'))),
+        TextField(controller: _url, keyboardType: TextInputType.url, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('MCP server address'), hintText: 'https://…/mcp')),
+        TextField(controller: _token, obscureText: true, decoration: InputDecoration(labelText: tr('Access token (optional)'), helperText: tr('Sent to the app as a Bearer token. Stored encrypted and never shown again.'))),
         if (_err != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_err!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
         const SizedBox(height: 12),
         Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Tx('Cancel')),
           OutlinedButton.icon(
             onPressed: ready ? () async {
               setState(() => _busy = true);
@@ -253,9 +254,9 @@ class _AddConnectorState extends State<_AddConnector> {
               if (mounted) setState(() => _busy = false);
             } : null,
             icon: const Icon(Icons.lock_outline, size: 16),
-            label: const Text('Sign in with the app'),
+            label: const Tx('Sign in with the app'),
           ),
-          if (_needsSignIn) OutlinedButton(onPressed: ready ? _save : null, child: const Text('Connect')) else FilledButton(onPressed: ready ? _save : null, child: Text(_busy ? 'Connecting…' : 'Connect')),
+          if (_needsSignIn) OutlinedButton(onPressed: ready ? _save : null, child: const Tx('Connect')) else FilledButton(onPressed: ready ? _save : null, child: Text(_busy ? 'Connecting…' : 'Connect')),
         ]),
       ]),
     );

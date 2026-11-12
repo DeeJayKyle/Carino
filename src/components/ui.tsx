@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -19,12 +20,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastCtx.Provider value={push}>
       {children}
       <div className="toasts" role="status" aria-live="polite">
-        {toasts.map((t) => (
-          <div key={t.id} className={`toast ${t.kind === 'error' ? 'error' : ''}`}>
-            <Icon name={t.kind === 'error' ? 'alert' : 'check'} size={16} style={{ marginTop: 2, flex: 'none' }} />
-            <span className="grow">{t.text}</span>
-            {t.action && <button onClick={() => { t.action!.run(); setToasts((x) => x.filter((y) => y.id !== t.id)); }}>{t.action.label}</button>}
-            <button aria-label="Dismiss" onClick={() => setToasts((x) => x.filter((y) => y.id !== t.id))}><Icon name="x" size={14} /></button>
+        {toasts.map((m) => (
+          <div key={m.id} className={`toast ${m.kind === 'error' ? 'error' : ''}`}>
+            <Icon name={m.kind === 'error' ? 'alert' : 'check'} size={16} style={{ marginTop: 2, flex: 'none' }} />
+            <span className="grow">{t(m.text)}</span>
+            {m.action && <button onClick={() => { m.action!.run(); setToasts((x) => x.filter((y) => y.id !== m.id)); }}>{t(m.action.label)}</button>}
+            <button aria-label={t('Dismiss')} onClick={() => setToasts((x) => x.filter((y) => y.id !== m.id))}><Icon name="x" size={14} /></button>
           </div>
         ))}
       </div>
@@ -65,7 +66,7 @@ export function Modal({ title, onClose, children, footer, wide, labelledBy }: { 
         {title && (
           <div className="modal-head">
             <h2 id={id} className="grow">{title}</h2>
-            <button className="btn ghost icon sm" data-close onClick={onClose} aria-label="Close"><Icon name="x" /></button>
+            <button className="btn ghost icon sm" data-close onClick={onClose} aria-label={t('Close')}><Icon name="x" /></button>
           </div>
         )}
         <div className="modal-body">{children}</div>
@@ -93,7 +94,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       {state && (
         <Modal title={state.title} onClose={() => close(false)} footer={
           <>
-            <button className="btn" onClick={() => close(false)}>Cancel</button>
+            <button className="btn" onClick={() => close(false)}>{t('Cancel')}</button>
             <button className={`btn ${state.danger ? 'danger solid' : 'primary'}`} onClick={() => close(true)}>{state.confirm ?? 'Confirm'}</button>
           </>
         }>
@@ -109,7 +110,7 @@ export const Spinner = ({ lg, label = 'Loading' }: { lg?: boolean; label?: strin
 
 export function Loading({ rows = 3 }: { rows?: number }) {
   return (
-    <div className="col" aria-busy="true" aria-label="Loading">
+    <div className="col" aria-busy="true" aria-label={t('Loading')}>
       {Array.from({ length: rows }).map((_, i) => <div key={i} className="skeleton" style={{ height: 44, opacity: 1 - i * 0.2 }} />)}
     </div>
   );
@@ -132,7 +133,7 @@ export function ErrorBox({ error, retry }: { error: { message: string } | null; 
     <div className="callout danger" role="alert">
       <Icon name="alert" size={18} style={{ flex: 'none', marginTop: 2 }} />
       <div className="grow">{error.message}</div>
-      {retry && <button className="btn sm" onClick={retry}><Icon name="refresh" size={14} />Retry</button>}
+      {retry && <button className="btn sm" onClick={retry}><Icon name="refresh" size={14} />{t('Retry')}</button>}
     </div>
   );
 }
@@ -142,7 +143,7 @@ export function StaleNote({ savedAt }: { savedAt: number | null }) {
   return (
     <div className="callout warning small" style={{ marginBottom: 12 }}>
       <Icon name="wifiOff" size={16} style={{ flex: 'none', marginTop: 2 }} />
-      <span>Offline copy from {new Date(savedAt).toLocaleString()}. Changes need a connection.</span>
+      <span>{t('Offline copy from')}{' '}{new Date(savedAt).toLocaleString()}{t('. Changes need a connection.')}</span>
     </div>
   );
 }

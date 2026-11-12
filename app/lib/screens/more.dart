@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../engine/device.dart';
@@ -28,7 +29,7 @@ class MoreScreen extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Your stuff')),
+      appBar: AppBar(title: const Tx('Your stuff')),
       body: Loader<Map>(
         reloadKey: app.revision,
         load: () async => await app.api.get('/stuff') as Map,
@@ -59,12 +60,12 @@ class MoreScreen extends StatelessWidget {
               if ((d['approvals'] ?? 0) > 0)
                 Card(
                   color: Colors.orange.withValues(alpha: 0.12),
-                  child: ListTile(leading: const Icon(Icons.shield_outlined, color: Colors.orange), title: Text('${_plural(d['approvals'], 'action')} waiting for your approval'), trailing: const Icon(Icons.chevron_right), onTap: () => openPath(context, '/actions')),
+                  child: ListTile(leading: const Icon(Icons.shield_outlined, color: Colors.orange), title: Tx('{0} waiting for your approval', args: [_plural(d['approvals'], 'action')]), trailing: const Icon(Icons.chevron_right), onTap: () => openPath(context, '/actions')),
                 ),
               if (reminders['next'] is Map)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text('🔔 Next reminder: ${(reminders['next'] as Map)['title']} · ${fmtDateTime((reminders['next'] as Map)['remind_at'] as String?)}', style: t.bodySmall),
+                  child: Tx('🔔 Next reminder: {0} · {1}', args: [(reminders['next'] as Map)['title'], fmtDateTime((reminders['next'] as Map)['remind_at'] as String?)], style: t.bodySmall),
                 ),
               const SizedBox(height: 6),
               LayoutBuilder(builder: (context, c) {
@@ -83,7 +84,7 @@ class MoreScreen extends StatelessWidget {
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Icon(icon, color: cs.primary),
                               const SizedBox(height: 8),
-                              Text(title, style: t.labelLarge?.copyWith(color: cs.onSurfaceVariant)),
+                              Tx(title, style: t.labelLarge?.copyWith(color: cs.onSurfaceVariant)),
                               Text(main, style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
                               Text(sub, style: t.bodySmall?.copyWith(color: warn ? cs.error : cs.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis),
                             ]),
@@ -93,27 +94,27 @@ class MoreScreen extends StatelessWidget {
                     ),
                 ]);
               }),
-              Padding(padding: const EdgeInsets.fromLTRB(4, 22, 4, 6), child: Text('You', style: t.titleSmall?.copyWith(color: cs.primary))),
+              Padding(padding: const EdgeInsets.fromLTRB(4, 22, 4, 6), child: Tx('You', style: t.titleSmall?.copyWith(color: cs.primary))),
               Card(
                 child: Column(children: [
                   if (app.name.isNotEmpty)
                     ListTile(
                       leading: CircleAvatar(child: Text(app.name.characters.first.toUpperCase())),
                       title: Text(app.name),
-                      subtitle: Text('Assistant: ${app.assistantName}'),
+                      subtitle: Tx('Assistant: {0}', args: [app.assistantName]),
                       onTap: () => openPath(context, '/settings'),
                     ),
-                  for (final (icon, label, path) in you) ListTile(leading: Icon(icon), title: Text(label), trailing: const Icon(Icons.chevron_right), onTap: () => openPath(context, path)),
+                  for (final (icon, label, path) in you) ListTile(leading: Icon(icon), title: Tx(label), trailing: const Icon(Icons.chevron_right), onTap: () => openPath(context, path)),
                   ListTile(
                     leading: const Icon(Icons.card_giftcard_outlined),
-                    title: const Text('Invite a friend'),
-                    subtitle: const Text('Share a link to download Carino'),
+                    title: const Tx('Invite a friend'),
+                    subtitle: const Tx('Share a link to download Carino'),
                     onTap: () => Device(app.api).shareText('I use Carino, a personal assistant that keeps things on my phone. Get it here: https://github.com/DeeJayKyle/Carino/releases/latest'),
                   ),
                   ListTile(
                     leading: const Icon(Icons.feedback_outlined),
-                    title: const Text('Send feedback'),
-                    subtitle: const Text('Report a problem or suggest something'),
+                    title: const Tx('Send feedback'),
+                    subtitle: const Tx('Report a problem or suggest something'),
                     onTap: () => _feedback(context),
                   ),
                 ]),
@@ -134,9 +135,9 @@ Future<void> _feedback(BuildContext context) async {
   final text = await showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Send feedback'),
-      content: TextField(controller: c, minLines: 4, maxLines: 10, decoration: const InputDecoration(hintText: 'What happened, or what would make Carino better? Please leave out private details.')),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Continue'))],
+      title: const Tx('Send feedback'),
+      content: TextField(controller: c, minLines: 4, maxLines: 10, decoration: InputDecoration(hintText: tr('What happened, or what would make Carino better? Please leave out private details.'))),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Tx('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Tx('Continue'))],
     ),
   );
   if (text == null || text.isEmpty) return;

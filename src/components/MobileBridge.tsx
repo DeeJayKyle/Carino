@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect } from 'react';
 import { navigate } from '../lib/router';
 import { downloadApi } from '../lib/device';
@@ -28,7 +29,7 @@ export function MobileBridge() {
   const toast = useToast();
   useEffect(() => {
     const onOpen = (e: Event) => navigate((e as CustomEvent<string>).detail || '/');
-    const onShared = () => void openShared().catch(() => toast('Could not open what was shared.', 'error'));
+    const onShared = () => void openShared().catch(() => toast(t('Could not open what was shared.'), 'error'));
     const onClick = (e: MouseEvent) => {
       const a = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
       if (!a || e.defaultPrevented) return;

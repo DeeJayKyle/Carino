@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'engine/engine.dart';
+import 'l10n.dart';
 
 /// What every screen needs: the engine, JSON helpers and the signed-in user's settings.
 class AppState extends ChangeNotifier {
@@ -30,6 +31,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> loadMe() async {
     me = await api.get('/auth/me') as Map<String, dynamic>;
+    await L10n.use('${(settings['regional'] as Map?)?['language'] ?? ''}');
     notifyListeners();
   }
 

@@ -1,3 +1,4 @@
+import { t, t as tr } from '../lib/i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Shell } from '../components/Shell';
 import { HandoffButton } from '../components/Handoff';
@@ -41,10 +42,10 @@ export default function Chat({ id }: { id?: string }) {
   return (
     <Shell title={<ChatTitle id={isNew ? undefined : id} />} actions={
       <>
-        <button className="btn ghost sm mobile-only" onClick={() => setListOpen((o) => !o)} aria-expanded={listOpen}><Icon name="chat" size={16} /> Chats</button>
+        <button className="btn ghost sm mobile-only" onClick={() => setListOpen((o) => !o)} aria-expanded={listOpen}><Icon name="chat" size={16} /> {t('Chats')}</button>
         {id && id !== 'new' && <PrivateToggle id={id} />}
         {id && id !== 'new' && <HandoffButton kind="chat" refId={id} />}
-        <Link to="/chat/new" className="btn sm"><Icon name="plus" size={16} /><span className="desktop-only">New chat</span></Link>
+        <Link to="/chat/new" className="btn sm"><Icon name="plus" size={16} /><span className="desktop-only">{t('New chat')}</span></Link>
       </>
     }>
       <div className="chat-layout">
@@ -75,13 +76,13 @@ function ConversationList({ activeId, open, refreshKey }: { activeId?: string; o
     if (refreshKey) void reload();
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <aside className={`chat-list ${open ? 'open' : ''}`} aria-label="Conversations">
-      <input className="input" placeholder="Search conversations" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search conversations" style={{ marginBottom: 8 }} />
+    <aside className={`chat-list ${open ? 'open' : ''}`} aria-label={t('Conversations')}>
+      <input className="input" placeholder={t('Search conversations')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('Search conversations')} style={{ marginBottom: 8 }} />
       <div className="seg" style={{ marginBottom: 8 }}>
-        <button className={!archived ? 'on' : ''} onClick={() => setArchived(false)}>Active</button>
-        <button className={archived ? 'on' : ''} onClick={() => setArchived(true)}>Archived</button>
+        <button className={!archived ? 'on' : ''} onClick={() => setArchived(false)}>{t('Active')}</button>
+        <button className={archived ? 'on' : ''} onClick={() => setArchived(true)}>{t('Archived')}</button>
       </div>
-      {loading && !data ? <div className="faint small" style={{ padding: 8 }}>Loading…</div> : null}
+      {loading && !data ? <div className="faint small" style={{ padding: 8 }}>{t('Loading…')}</div> : null}
       {data?.conversations.length === 0 && <p className="faint small" style={{ padding: 8 }}>{dq ? 'No conversations match.' : archived ? 'No archived conversations.' : 'No conversations yet.'}</p>}
       {data?.conversations.map((c: any) => (
         <Link key={c.id} to={`/chat/${c.id}`} className={`conv ${c.id === activeId ? 'active' : ''}`}>
@@ -132,8 +133,8 @@ function NewConversation({ initial, wide, voice }: { initial: string; wide: bool
         <div className="chat-thread" style={{ paddingTop: wide ? '8vh' : 12 }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ display: 'grid', placeItems: 'center', paddingTop: 16 }}><Avatar size={88} accessory={mascot.accessory} /></div>
-            <h2 style={{ marginTop: 14, fontSize: '1.4rem' }}>How can I help?</h2>
-            <p className="muted" style={{ marginTop: 6 }}>Ask anything, plan your day, set reminders, or send me a photo or file to look at.</p>
+            <h2 style={{ marginTop: 14, fontSize: '1.4rem' }}>{t('How can I help?')}</h2>
+            <p className="muted" style={{ marginTop: 6 }}>{t('Ask anything, plan your day, set reminders, or send me a photo or file to look at.')}</p>
           </div>
           {!configured && <NotConfigured />}
           <div className="quick" style={{ marginTop: 10 }}>
@@ -158,7 +159,7 @@ function NotConfigured() {
     <div className="callout warning">
       <Icon name="info" size={18} style={{ flex: 'none', marginTop: 2 }} />
       <div>
-        <strong>Carino needs an AI service to chat.</strong> Groq and Google Gemini are free: get a key and paste it in <Link to="/settings#ai">Settings → AI service</Link>. Your to-dos, reminders and memories work without one.
+        <strong>{t('Carino needs an AI service to chat.')}</strong> {t('Groq and Google Gemini are free: get a key and paste it in')}{' '}<Link to="/settings#ai">{t('Settings → AI service')}</Link>{t('. Your to-dos, reminders and memories work without one.')}
       </div>
     </div>
   );
@@ -225,7 +226,7 @@ function Conversation({ id, onChanged }: { id: string; onChanged: () => void }) 
     } catch (e: any) {
       setStreaming(null);
       if (e?.name === 'AbortError') {
-        toast('Stopped.');
+        toast(t('Stopped.'));
       } else {
         setSendError({ message: e.message, retryable: e instanceof ApiError ? e.retryable : true, lastText: text, attachments });
         setData((d: any) => d && ({ ...d, messages: d.messages.filter((m: Msg) => m.id !== temp.id) }));
@@ -266,7 +267,7 @@ function Conversation({ id, onChanged }: { id: string; onChanged: () => void }) 
     setMenu(false);
     const save = await confirm({ title: 'Summarise this conversation?', body: 'Carino will write a short summary of decisions and next steps. Save it to long-term memory too, so future conversations can use it?', confirm: 'Summarise & remember' });
     try {
-      toast('Summarising…');
+      toast(t('Summarising…'));
       const r = await post(`/conversations/${id}/summarize`, { save });
       toast(save ? 'Summary saved to memory' : 'Summary ready');
       setData((d: any) => d && ({ ...d, conversation: { ...d.conversation, summary: r.summary } }));
@@ -278,16 +279,16 @@ function Conversation({ id, onChanged }: { id: string; onChanged: () => void }) 
   return (
     <div className="chat-main">
       <div className="row" style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)', gap: 6 }}>
-        <span className="badge brand" title="Active AI provider">
+        <span className="badge brand" title={t('Active AI provider')}>
           {active ? `${active.label} · ${active.model}` : 'No AI provider'}
         </span>
         <span className="spacer" />
         <div style={{ position: 'relative' }}>
-          <button className="btn ghost icon sm" onClick={() => setMenu((m) => !m)} aria-label="Conversation options" aria-expanded={menu}><Icon name="more" /></button>
+          <button className="btn ghost icon sm" onClick={() => setMenu((m) => !m)} aria-label={t('Conversation options')} aria-expanded={menu}><Icon name="more" /></button>
           {menu && (
             <div className="card" style={{ position: 'absolute', right: 0, top: 36, zIndex: 25, minWidth: 220, padding: 6, boxShadow: 'var(--shadow-2)' }} role="menu">
-              <button className="nav-item" role="menuitem" onClick={() => { setMenu(false); setRenaming(true); }}><Icon name="edit" size={16} />Rename</button>
-              <button className="nav-item" role="menuitem" onClick={summarize}><Icon name="sparkle" size={16} />Summarise & remember</button>
+              <button className="nav-item" role="menuitem" onClick={() => { setMenu(false); setRenaming(true); }}><Icon name="edit" size={16} />{t('Rename')}</button>
+              <button className="nav-item" role="menuitem" onClick={summarize}><Icon name="sparkle" size={16} />{t('Summarise & remember')}</button>
               <button className="nav-item" role="menuitem" onClick={async () => { setMenu(false); await patch(`/conversations/${id}`, { archived: !conv.archived }); toast(conv.archived ? 'Restored' : 'Archived'); onChanged(); reload(); }}>
                 <Icon name="archive" size={16} />{conv?.archived ? 'Unarchive' : 'Archive'}
               </button>
@@ -297,7 +298,7 @@ function Conversation({ id, onChanged }: { id: string; onChanged: () => void }) 
                 await del(`/conversations/${id}`);
                 onChanged();
                 navigate('/chat/new', { replace: true });
-              }}><Icon name="trash" size={16} />Delete</button>
+              }}><Icon name="trash" size={16} />{t('Delete')}</button>
             </div>
           )}
         </div>
@@ -307,16 +308,16 @@ function Conversation({ id, onChanged }: { id: string; onChanged: () => void }) 
           <ErrorBox error={error} retry={reload} />
           {loading && !data && <div style={{ textAlign: 'center' }}><Spinner lg /></div>}
           {conv?.summary && (
-            <details className="card pad small"><summary style={{ cursor: 'pointer', fontWeight: 600 }}>Conversation summary</summary><div style={{ marginTop: 8 }}><Markdown text={conv.summary} /></div></details>
+            <details className="card pad small"><summary style={{ cursor: 'pointer', fontWeight: 600 }}>{t('Conversation summary')}</summary><div style={{ marginTop: 8 }}><Markdown text={conv.summary} /></div></details>
           )}
-          {data?.messages.length === 0 && !streaming && <Empty icon="chat" title="Start the conversation">Type a message below.</Empty>}
+          {data?.messages.length === 0 && !streaming && <Empty icon="chat" title={t('Start the conversation')}>{t('Type a message below.')}</Empty>}
           {data?.messages.map((m: Msg, i: number) => <MessageView key={m.id} m={m} onAnswer={!streaming && i === data.messages.length - 1 ? (t: string) => void send(t) : undefined} />)}
           {streaming && (
             <div className="msg assistant">
               <div className="avatar"><Mark size={30} /></div>
               <div className="body">
                 <ToolChips tools={streaming.tools} />
-                {streaming.text ? <Markdown text={streaming.text} /> : <div className="typing" aria-label="Carino is thinking"><span /><span /><span /></div>}
+                {streaming.text ? <Markdown text={streaming.text} /> : <div className="typing" aria-label={t('Carino is thinking')}><span /><span /><span /></div>}
               </div>
             </div>
           )}
@@ -327,7 +328,7 @@ function Conversation({ id, onChanged }: { id: string; onChanged: () => void }) 
             <div className="callout danger" role="alert">
               <Icon name="alert" size={18} style={{ flex: 'none', marginTop: 2 }} />
               <div className="grow">{sendError.message}</div>
-              {sendError.retryable && <button className="btn sm" onClick={() => send(sendError.lastText, sendError.attachments)}><Icon name="refresh" size={14} />Retry</button>}
+              {sendError.retryable && <button className="btn sm" onClick={() => send(sendError.lastText, sendError.attachments)}><Icon name="refresh" size={14} />{t('Retry')}</button>}
             </div>
           )}
           {!configured && <NotConfigured />}
@@ -344,8 +345,8 @@ function RenameModal({ conv, onClose, onSaved }: { conv: any; onClose: () => voi
   const [title, setTitle] = useState(conv.title);
   const toast = useToast();
   return (
-    <Modal title="Rename conversation" onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancel</button><button className="btn primary" onClick={async () => { try { await patch(`/conversations/${conv.id}`, { title }); onSaved(); onClose(); } catch (e: any) { toast(e.message, 'error'); } }}>Save</button></>}>
-      <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Title" maxLength={200} />
+    <Modal title={t('Rename conversation')} onClose={onClose} footer={<><button className="btn" onClick={onClose}>{t('Cancel')}</button><button className="btn primary" onClick={async () => { try { await patch(`/conversations/${conv.id}`, { title }); onSaved(); onClose(); } catch (e: any) { toast(e.message, 'error'); } }}>{t('Save')}</button></>}>
+      <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} aria-label={t('Title')} maxLength={200} />
     </Modal>
   );
 }
@@ -361,7 +362,7 @@ function ToolChips({ tools }: { tools: ToolEv[] }) {
           <span key={t.id} className={`tool-chip ${cls}`} title={t.error ?? t.summary}>
             {t.status === 'running' ? <span className="spinner" style={{ width: 12, height: 12 }} /> : <Icon name={t.status === 'error' ? 'alert' : t.status === 'pending_approval' ? 'shield' : 'check'} size={12} />}
             <span className="ellipsis" style={{ maxWidth: 360 }}>{label}</span>
-            {t.result?.download_url && <a href={t.result.download_url} style={{ fontWeight: 700 }}>Download</a>}
+            {t.result?.download_url && <a href={t.result.download_url} style={{ fontWeight: 700 }}>{tr('Download')}</a>}
           </span>
         );
       })}
@@ -385,12 +386,12 @@ function AskCard({ q, onAnswer }: { q: { question: string; options: string[]; al
       </div>
       {q.allow_other && onAnswer && (
         <form className="row" style={{ gap: 8, marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); if (!q.multiple && other.trim()) onAnswer(other.trim()); }}>
-          <input className="input grow" placeholder="Something else…" value={other} onChange={(e) => setOther(e.target.value)} aria-label="Your own answer" />
+          <input className="input grow" placeholder={t('Something else…')} value={other} onChange={(e) => setOther(e.target.value)} aria-label={t('Your own answer')} />
         </form>
       )}
       {q.multiple && onAnswer && (
         <div className="row" style={{ justifyContent: 'flex-end', marginTop: 8 }}>
-          <button className="btn primary sm" disabled={!picked.length && !other.trim()} onClick={() => onAnswer([...picked, ...(other.trim() ? [other.trim()] : [])].join(', '))}>Send</button>
+          <button className="btn primary sm" disabled={!picked.length && !other.trim()} onClick={() => onAnswer([...picked, ...(other.trim() ? [other.trim()] : [])].join(', '))}>{t('Send')}</button>
         </div>
       )}
     </div>
@@ -422,9 +423,9 @@ function MessageView({ m, onAnswer }: { m: Msg; onAnswer?: (t: string) => void }
       <div className="body">
         <ToolChips tools={(meta.tools ?? []).filter((t: ToolEv) => t.name !== 'ask_user')} />
         {(meta.tools ?? []).filter((t: ToolEv) => t.name === 'ask_user' && t.result?.options).map((t: ToolEv) => <AskCard key={t.id} q={t.result} onAnswer={onAnswer} />)}
-        {m.content ? <Markdown text={m.content} /> : <p className="faint small">(No text reply)</p>}
+        {m.content ? <Markdown text={m.content} /> : <p className="faint small">{t('(No text reply)')}</p>}
         {meta.sources?.length > 0 && (
-          <div className="sources" aria-label="Sources">
+          <div className="sources" aria-label={t('Sources')}>
             {meta.sources.map((s: any, i: number) => s.url
               ? <a key={i} className="source ellipsis" href={s.url} target="_blank" rel="noopener noreferrer nofollow" title={s.snippet}><Icon name="globe" size={11} /> {s.title}</a>
               : <span key={i} className="source ellipsis" title={s.snippet}><Icon name="file" size={11} /> {s.title}</span>)}
@@ -432,12 +433,12 @@ function MessageView({ m, onAnswer }: { m: Msg; onAnswer?: (t: string) => void }
         )}
         {meta.memoriesUsed?.length > 0 && (
           <details className="mem-used">
-            <summary>Used {meta.memoriesUsed.length} saved memor{meta.memoriesUsed.length === 1 ? 'y' : 'ies'} as context</summary>
+            <summary>{t('Used')}{' '}{meta.memoriesUsed.length} {t('saved memor')}{meta.memoriesUsed.length === 1 ? 'y' : 'ies'} {t('as context')}</summary>
             <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{meta.memoriesUsed.map((x: any) => <li key={x.id}>{x.content}</li>)}</ul>
           </details>
         )}
         <div className="msg-actions">
-          <button className="btn ghost sm" onClick={() => { void navigator.clipboard.writeText(m.content); toast('Copied'); }}><Icon name="copy" size={14} />Copy</button>
+          <button className="btn ghost sm" onClick={() => { void navigator.clipboard.writeText(m.content); toast(t('Copied')); }}><Icon name="copy" size={14} />{t('Copy')}</button>
           {me!.settings.voice.enabled && 'speechSynthesis' in window && (
             <button className="btn ghost sm" onClick={() => { if (speaking) { stopSpeaking(); setSpeaking(false); } else { speak(m.content, { lang: me!.settings.voice.language, voiceName: me!.settings.voice.voiceName }); setSpeaking(true); } }}>
               <Icon name={speaking ? 'stop' : 'speaker'} size={14} />{speaking ? 'Stop' : 'Listen'}
@@ -461,8 +462,8 @@ function ShareReply({ text }: { text: string }) {
     <button className="btn ghost sm" onClick={async () => {
       if (isNative || 'share' in navigator) return shareText(plain);
       window.open(`https://wa.me/?text=${encodeURIComponent(plain.slice(0, 3000))}`, '_blank', 'noopener');
-      toast('Opening WhatsApp…');
-    }}><Icon name="send" size={14} />Share</button>
+      toast(t('Opening WhatsApp…'));
+    }}><Icon name="send" size={14} />{t('Share')}</button>
   );
 }
 
@@ -476,8 +477,8 @@ function Rating({ m }: { m: Msg }) {
   };
   return (
     <>
-      <button className={`btn ghost icon sm ${r === 1 ? 'rated' : ''}`} aria-pressed={r === 1} aria-label="Good reply" onClick={() => rate(1)}>👍</button>
-      <button className={`btn ghost icon sm ${r === -1 ? 'rated' : ''}`} aria-pressed={r === -1} aria-label="Bad reply" onClick={() => rate(-1)}>👎</button>
+      <button className={`btn ghost icon sm ${r === 1 ? 'rated' : ''}`} aria-pressed={r === 1} aria-label={t('Good reply')} onClick={() => rate(1)}>👍</button>
+      <button className={`btn ghost icon sm ${r === -1 ? 'rated' : ''}`} aria-pressed={r === -1} aria-label={t('Bad reply')} onClick={() => rate(-1)}>👎</button>
     </>
   );
 }
@@ -488,11 +489,11 @@ function RememberThis({ text }: { text: string }) {
     <button className="btn ghost sm" onClick={async () => {
       try {
         await post('/memories', { content: text.replace(/\s+/g, ' ').trim().slice(0, 1900) });
-        toast('Remembered', 'info', { label: 'See memories', run: () => navigate('/memory') });
+        toast(t('Remembered'), 'info', { label: 'See memories', run: () => navigate('/memory') });
       } catch (e: any) {
         toast(e.message, 'error');
       }
-    }}><Icon name="brain" size={14} />Remember this</button>
+    }}><Icon name="brain" size={14} />{t('Remember this')}</button>
   );
 }
 
@@ -558,7 +559,7 @@ function Composer({ onSend, busy, onCancel, disabled, onVoice }: { onSend: (text
             ))}
           </div>
         )}
-        <label htmlFor="composer" className="sr-only">Message Carino</label>
+        <label htmlFor="composer" className="sr-only">{t('Message Carino')}</label>
         <textarea
           id="composer" ref={taRef} data-composer rows={1} value={voice.interim ? `${text} ${voice.interim}` : text}
           placeholder={disabled ? 'Connect an AI provider to chat' : voice.listening ? 'Listening…' : `Message ${me!.settings.profile.assistantName || 'Carino'}…${coarsePointer() ? '' : '  (Enter to send, Shift+Enter for a new line)'}`}
@@ -573,7 +574,7 @@ function Composer({ onSend, busy, onCancel, disabled, onVoice }: { onSend: (text
         />
         <div className="bar">
           <input ref={fileRef} type="file" hidden multiple accept={`.pdf,.txt,.md,.markdown,.docx,.csv,.xlsx,${IMAGE_ACCEPT},video/*`} onChange={(e) => attach(e.target.files)} />
-          <button className="btn ghost icon sm" onClick={() => fileRef.current?.click()} disabled={uploading || disabled} aria-label="Attach a file" title="Attach a photo, PDF, Word, text, CSV or Excel file">
+          <button className="btn ghost icon sm" onClick={() => fileRef.current?.click()} disabled={uploading || disabled} aria-label={t('Attach a file')} title={t('Attach a photo, PDF, Word, text, CSV or Excel file')}>
             {uploading ? <Spinner /> : <Icon name="paperclip" size={17} />}
           </button>
           {me!.settings.voice.enabled && voice.supported && (
@@ -582,7 +583,7 @@ function Composer({ onSend, busy, onCancel, disabled, onVoice }: { onSend: (text
             </button>
           )}
           {'geolocation' in navigator && (
-            <button className="btn ghost icon sm" disabled={disabled || locating} aria-label="Add my location" title="Add my current location (for nearby places)" onClick={() => {
+            <button className="btn ghost icon sm" disabled={disabled || locating} aria-label={t('Add my location')} title={t('Add my current location (for nearby places)')} onClick={() => {
               setLocating(true);
               navigator.geolocation.getCurrentPosition(
                 (p) => {
@@ -597,15 +598,15 @@ function Composer({ onSend, busy, onCancel, disabled, onVoice }: { onSend: (text
             }}>{locating ? <Spinner /> : <Icon name="pin" size={17} />}</button>
           )}
           {onVoice && me!.settings.voice.enabled && voice.supported && (
-            <button className="btn ghost icon sm" onClick={onVoice} disabled={disabled || busy} aria-label="Voice conversation" title="Talk hands-free (voice mode)"><Icon name="speaker" size={17} /></button>
+            <button className="btn ghost icon sm" onClick={onVoice} disabled={disabled || busy} aria-label={t('Voice conversation')} title={t('Talk hands-free (voice mode)')}><Icon name="speaker" size={17} /></button>
           )}
           <span className="grow faint tiny" style={{ paddingLeft: 4 }}>
             {voice.listening ? '● Recording — processed by your browser’s speech service' : voice.error ?? ''}
           </span>
           {busy ? (
-            <button className="btn sm" onClick={onCancel} aria-label="Stop generating"><Icon name="stop" size={14} />Stop</button>
+            <button className="btn sm" onClick={onCancel} aria-label={t('Stop generating')}><Icon name="stop" size={14} />{t('Stop')}</button>
           ) : (
-            <button className="btn primary icon sm" onClick={submit} disabled={!text.trim() || disabled} aria-label="Send"><Icon name="send" size={16} /></button>
+            <button className="btn primary icon sm" onClick={submit} disabled={!text.trim() || disabled} aria-label={t('Send')}><Icon name="send" size={16} /></button>
           )}
         </div>
       </div>
@@ -661,8 +662,8 @@ function PrivacyLine() {
     <p className={`privacy-line tiny ${local ? 'local' : ''}`}>
       <Icon name={local ? 'lock' : 'globe'} size={12} />
       {local
-        ? <> Stays on this device: answered by {active.label}.</>
-        : <> Sent to {active.label} (online) to be answered, with the memories and file text it needs. <Link to="/settings#ai">Change</Link></>}
+        ? <> {t('Stays on this device: answered by')}{' '}{active.label}.</>
+        : <> {t('Sent to')}{' '}{active.label} {t('(online) to be answered, with the memories and file text it needs.')}{' '}<Link to="/settings#ai">{t('Change')}</Link></>}
     </p>
   );
 }

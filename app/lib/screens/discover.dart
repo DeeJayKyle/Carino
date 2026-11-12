@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../nav.dart';
@@ -31,7 +32,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Widget build(BuildContext context) {
     final app = AppState.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Discover')),
+      appBar: AppBar(title: const Tx('Discover')),
       body: Loader<List>(
         load: () async => ((await app.api.get('/discover')) as Map)['cards'] as List,
         builder: (context, cards, _) {
@@ -41,9 +42,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           final active = cats.contains(_cat) ? _cat! : cats.first;
           final shown = list.where((c) => active == 'All' || (active == 'For you' ? c['forYou'] == true : c['category'] == active)).toList();
           return ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
-            Text('What can ${app.assistantName} take off your plate?', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+            Tx('What can {0} take off your plate?', args: [app.assistantName], style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            Text('Tap an idea to start. Nothing is sent, bought or deleted without your OK.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Tx('Tap an idea to start. Nothing is sent, bought or deleted without your OK.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 12),
             Wrap(spacing: 6, runSpacing: 6, children: [for (final c in cats) ChoiceChip(label: Text(c), selected: c == active, onSelected: (_) => setState(() => _cat = c))]),
             const SizedBox(height: 12),

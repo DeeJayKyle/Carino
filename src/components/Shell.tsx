@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, Wordmark } from './Icon';
 import { Link, navigate, useLocation } from '../lib/router';
@@ -78,75 +79,75 @@ export function Shell({ title, actions, children, bare }: { title?: ReactNode; a
   return (
     <div className="shell">
       {menu && <div className="scrim" onClick={() => setMenu(false)} />}
-      <aside className={`sidebar ${menu ? 'open' : ''}`} aria-label="Main navigation">
-        <div className="brand"><Link to="/" aria-label="Carino home"><Wordmark /></Link></div>
+      <aside className={`sidebar ${menu ? 'open' : ''}`} aria-label={t('Main navigation')}>
+        <div className="brand"><Link to="/" aria-label={t('Carino home')}><Wordmark /></Link></div>
         <button className="nav-item" onClick={() => setPalette(true)} style={{ border: '1px solid var(--border)', marginBottom: 8, background: 'var(--surface)' }}>
-          <Icon name="search" /> <span className="grow">Search</span> <span className="kbd desktop-only">Ctrl K</span>
+          <Icon name="search" /> <span className="grow">{t('Search')}</span> <span className="kbd desktop-only">{t('Ctrl K')}</span>
         </button>
-        <Link to="/chat/new" className="nav-item" style={{ color: 'var(--brand-text)' }}><Icon name="plus" />New chat</Link>
+        <Link to="/chat/new" className="nav-item" style={{ color: 'var(--brand-text)' }}><Icon name="plus" />{t('New chat')}</Link>
         {PRIMARY.map((n) => (
           <Link key={n.to} to={n.to} className={`nav-item ${isActive(n.to, pathname) ? 'active' : ''}`} aria-current={isActive(n.to, pathname) ? 'page' : undefined}>
             <Icon name={n.icon} /> {n.label}
           </Link>
         ))}
-        <div className="nav-section">Your stuff</div>
+        <div className="nav-section">{t('Your stuff')}</div>
         {STUFF.map((n) => (
           <Link key={n.to} to={n.to} className={`nav-item ${isActive(n.to, pathname) ? 'active' : ''}`} aria-current={isActive(n.to, pathname) ? 'page' : undefined}>
             <Icon name={n.icon} /> {n.label}
           </Link>
         ))}
-        <div className="nav-section">You</div>
+        <div className="nav-section">{t('You')}</div>
         <Link to="/actions" className={`nav-item ${isActive('/actions', pathname) ? 'active' : ''}`}>
-          <Icon name="shield" /> Approvals
+          <Icon name="shield" /> {t('Approvals')}
           {counts.pendingActions > 0 && <span className="count" aria-label={`${counts.pendingActions} waiting`}>{counts.pendingActions}</span>}
         </Link>
         <Link to="/notifications" className={`nav-item ${isActive('/notifications', pathname) ? 'active' : ''}`}>
-          <Icon name="bell" /> Notifications
+          <Icon name="bell" /> {t('Notifications')}
           {counts.unread > 0 && <span className="count">{counts.unread}</span>}
         </Link>
-        <Link to="/messaging" className={`nav-item ${isActive('/messaging', pathname) ? 'active' : ''}`}><Icon name="send" /> Messaging</Link>
-        <Link to="/apps" className={`nav-item ${isActive('/apps', pathname) || isActive('/connectors', pathname) ? 'active' : ''}`}><Icon name="link" /> My apps</Link>
-        <Link to="/connections" className={`nav-item ${isActive('/connections', pathname) ? 'active' : ''}`}><Icon name="sparkle" /> AI & connections</Link>
-        <Link to="/settings" className={`nav-item ${isActive('/settings', pathname) ? 'active' : ''}`}><Icon name="settings" /> Settings</Link>
+        <Link to="/messaging" className={`nav-item ${isActive('/messaging', pathname) ? 'active' : ''}`}><Icon name="send" /> {t('Messaging')}</Link>
+        <Link to="/apps" className={`nav-item ${isActive('/apps', pathname) || isActive('/connectors', pathname) ? 'active' : ''}`}><Icon name="link" /> {t('My apps')}</Link>
+        <Link to="/connections" className={`nav-item ${isActive('/connections', pathname) ? 'active' : ''}`}><Icon name="sparkle" /> {t('AI & connections')}</Link>
+        <Link to="/settings" className={`nav-item ${isActive('/settings', pathname) ? 'active' : ''}`}><Icon name="settings" /> {t('Settings')}</Link>
         <div className="sidebar-footer">
           <div className="row" style={{ padding: '6px 8px' }}>
             <div className="grow" style={{ minWidth: 0 }}>
               <div className="ellipsis" style={{ fontWeight: 600, fontSize: '0.9em' }}>{me?.settings.profile.displayName || me?.user.name}</div>
               <div className="ellipsis faint tiny">{me?.user.email}</div>
             </div>
-            <button className="btn ghost icon sm" onClick={() => void logout()} aria-label="Sign out" title="Sign out"><Icon name="logout" size={16} /></button>
+            <button className="btn ghost icon sm" onClick={() => void logout()} aria-label={t('Sign out')} title={t('Sign out')}><Icon name="logout" size={16} /></button>
           </div>
         </div>
       </aside>
 
       <div className="main" role="main">
         {(!online || offlineSession) && (
-          <div className="banner offline" role="status"><Icon name="wifiOff" size={16} /> You’re offline. To-dos, reminders and chats you opened before are available. New tasks and edits to tasks and notes are kept on this device and sync when you reconnect; AI, research and reminders need a connection.</div>
+          <div className="banner offline" role="status"><Icon name="wifiOff" size={16} /> {t('You’re offline. To-dos, reminders and chats you opened before are available. New tasks and edits to tasks and notes are kept on this device and sync when you reconnect; AI, research and reminders need a connection.')}</div>
         )}
         <SyncStatus />
         {update.available && (
-          <div className="banner update" role="status">A new version of Carino is ready. <button className="btn sm primary" onClick={update.apply}>Update</button></div>
+          <div className="banner update" role="status">{t('A new version of Carino is ready.')}{' '}<button className="btn sm primary" onClick={update.apply}>{t('Update')}</button></div>
         )}
         {!bare && (
           <header className="topbar">
             {IN_FLUTTER
-              ? <button className="btn ghost icon" onClick={backToFlutter} aria-label="Back"><Icon name="chevron" style={{ transform: 'rotate(180deg)' }} /></button>
-              : <button className="btn ghost icon mobile-only" onClick={() => setMenu(true)} aria-label="Open menu"><Icon name="menu" /></button>}
+              ? <button className="btn ghost icon" onClick={backToFlutter} aria-label={t('Back')}><Icon name="chevron" style={{ transform: 'rotate(180deg)' }} /></button>
+              : <button className="btn ghost icon mobile-only" onClick={() => setMenu(true)} aria-label={t('Open menu')}><Icon name="menu" /></button>}
             <h1 className="grow ellipsis">{title}</h1>
             {actions}
-            <button className="btn ghost icon mobile-only" onClick={() => setPalette(true)} aria-label="Search"><Icon name="search" /></button>
+            <button className="btn ghost icon mobile-only" onClick={() => setPalette(true)} aria-label={t('Search')}><Icon name="search" /></button>
           </header>
         )}
         {children}
       </div>
 
-      <nav className="bottom-nav" aria-label="Main sections">
+      <nav className="bottom-nav" aria-label={t('Main sections')}>
         {[...PRIMARY, { to: '/me', label: 'Me', icon: 'user' }].map((n) => {
           const on = tabActive(n.to, pathname);
           return (
             <Link key={n.to} to={n.to} className={on ? 'active' : ''} aria-current={on ? 'page' : undefined}>
               <span className="tab-ic"><Icon name={n.icon} size={21} /></span>{n.label}
-              {n.to === '/me' && counts.pendingActions + counts.unread > 0 && <span className="dot" aria-label="Something needs you" />}
+              {n.to === '/me' && counts.pendingActions + counts.unread > 0 && <span className="dot" aria-label={t('Something needs you')} />}
             </Link>
           );
         })}
@@ -200,9 +201,9 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
   return (
     <Modal onClose={onClose} labelledBy="palette-label">
       <div className="palette" style={{ margin: '-10px -20px' }}>
-        <label id="palette-label" className="sr-only" htmlFor="palette-input">Search Carino</label>
+        <label id="palette-label" className="sr-only" htmlFor="palette-input">{t('Search Carino')}</label>
         <input
-          id="palette-input" ref={inputRef} className="input" autoFocus placeholder="Search to-dos, memories, chats… or type a command"
+          id="palette-input" ref={inputRef} className="input" autoFocus placeholder={t('Search to-dos, memories, chats… or type a command')}
           value={q} onChange={(e) => { setQ(e.target.value); setSel(0); }}
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown') { e.preventDefault(); setSel((s) => Math.min(s + 1, items.length - 1)); }
@@ -222,7 +223,7 @@ function CommandPalette({ onClose }: { onClose: () => void }) {
               {it.entity && <span className="badge">{it.entity}</span>}
             </div>
           ))}
-          {q.length >= 2 && !results.length && <div className="faint small" style={{ padding: 12 }}>No saved items match “{q}”.</div>}
+          {q.length >= 2 && !results.length && <div className="faint small" style={{ padding: 12 }}>{t('No saved items match “')}{q}”.</div>}
         </div>
       </div>
     </Modal>
@@ -273,24 +274,24 @@ function SyncStatus() {
     <>
       <div className={`banner ${problems.length ? 'offline' : 'update'}`} role="status">
         <Icon name={problems.length ? 'alert' : 'refresh'} size={16} />
-        {s.pending > 0 && <span>{s.syncing ? 'Syncing' : 'Waiting to sync'} {s.pending} change{s.pending === 1 ? '' : 's'} made offline.</span>}
+        {s.pending > 0 && <span>{s.syncing ? 'Syncing' : 'Waiting to sync'} {s.pending} change{s.pending === 1 ? '' : 's'} {t('made offline.')}</span>}
         {problems.length > 0 && (
           <>
-            <span>{problems.length} change{problems.length === 1 ? '' : 's'} could not be synced.</span>
-            <button className="btn sm" onClick={() => setOpen(true)}>Review</button>
+            <span>{problems.length} change{problems.length === 1 ? '' : 's'} {t('could not be synced.')}</span>
+            <button className="btn sm" onClick={() => setOpen(true)}>{t('Review')}</button>
           </>
         )}
       </div>
       {open && (
-        <Modal title="Offline changes to review" onClose={() => setOpen(false)}>
+        <Modal title={t('Offline changes to review')} onClose={() => setOpen(false)}>
           <ul className="list">
             {problems.map((op) => (
               <li key={op.id} style={{ padding: '8px 0' }}>
                 <div><strong>{op.label}</strong></div>
                 <div className="small muted">{op.status === 'conflict' ? 'This item was changed elsewhere after you edited it offline.' : op.error}</div>
                 <div className="row" style={{ marginTop: 6 }}>
-                  <button className="btn sm" onClick={() => void resolveOp(op, 'discard')}>Discard my change</button>
-                  {op.status === 'conflict' && <button className="btn sm primary" onClick={() => void resolveOp(op, 'overwrite')}>Keep my change</button>}
+                  <button className="btn sm" onClick={() => void resolveOp(op, 'discard')}>{t('Discard my change')}</button>
+                  {op.status === 'conflict' && <button className="btn sm primary" onClick={() => void resolveOp(op, 'overwrite')}>{t('Keep my change')}</button>}
                 </div>
               </li>
             ))}

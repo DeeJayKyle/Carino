@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { Loading, useToast } from './ui';
@@ -124,40 +125,40 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
 
   return (
     <div className="stack device-ai">
-      {vaultInfo.keysUnreadable && <div className="callout warning small"><Icon name="alert" size={16} />Your saved keys couldn’t be unlocked on this device (its secure key store was reset). Please enter them again.</div>}
-      <div className="preset-grid" role="radiogroup" aria-label="AI service">
+      {vaultInfo.keysUnreadable && <div className="callout warning small"><Icon name="alert" size={16} />{t('Your saved keys couldn’t be unlocked on this device (its secure key store was reset). Please enter them again.')}</div>}
+      <div className="preset-grid" role="radiogroup" aria-label={t('AI service')}>
         {shown.map((x, i) => (
           <button key={x.id} type="button" role="radio" aria-checked={form.provider === x.id} className={`preset ${form.provider === x.id ? 'on' : ''}`}
             onClick={() => { set({ provider: x.id, model: '', baseUrl: x.ownAddress ? form.baseUrl : '' }); setLive(null); setTyping(false); }}>
-            <span className="preset-name">{x.label}{!x.hidden && (x.paid ? <span className="badge warn">Paid</span> : <span className="badge success">{i === 0 ? 'Free · best' : 'Free'}</span>)}</span>
+            <span className="preset-name">{x.label}{!x.hidden && (x.paid ? <span className="badge warn">{t('Paid')}</span> : <span className="badge success">{i === 0 ? 'Free · best' : 'Free'}</span>)}</span>
             {!compact && <span className="tiny muted">{x.free}</span>}
           </button>
         ))}
       </div>
       {p.onDevice && <LocalModels value={current} onChange={(model) => set({ model })} onReady={setLocalReady} />}
       {p.keyUrl && (
-        <p className="tiny muted"><Icon name="lock" size={12} /> {VAULT_TEXT[vaultInfo.protection ?? ''] ?? 'Keys are stored encrypted on this device.'} Only the last 4 characters are ever shown.</p>
+        <p className="tiny muted"><Icon name="lock" size={12} /> {VAULT_TEXT[vaultInfo.protection ?? ''] ?? 'Keys are stored encrypted on this device.'} {t('Only the last 4 characters are ever shown.')}</p>
       )}
       {p.keyUrl && (
         <p className="small muted">
-          Get a free key: <button type="button" className="linklike" onClick={() => openExternal(p.keyUrl)}>{p.keyUrl.replace('https://', '')}</button>. Sign in, create a key, copy it and paste it below.
+          {t('Get a free key:')}{' '}<button type="button" className="linklike" onClick={() => openExternal(p.keyUrl)}>{p.keyUrl.replace('https://', '')}</button>{t('. Sign in, create a key, copy it and paste it below.')}
         </p>
       )}
       {p.ownAddress && !p.onDevice && (
-        <div className="field"><label htmlFor="dai-url">Address</label>
+        <div className="field"><label htmlFor="dai-url">{t('Address')}</label>
           <input id="dai-url" className="input" inputMode="url" placeholder={p.baseUrl} value={form.baseUrl ?? ''} onChange={(e) => set({ baseUrl: e.target.value })} /></div>
       )}
       {!p.onDevice && (
-        <div className="field"><label htmlFor="dai-key">API key{p.ownAddress ? ' (if needed)' : ''}</label>
-          <input id="dai-key" className="input" type="password" autoComplete="off" spellCheck={false} placeholder="Paste your key" value={form.apiKey ?? ''} onChange={(e) => set({ apiKey: e.target.value })} /></div>
+        <div className="field"><label htmlFor="dai-key">{t('API key')}{p.ownAddress ? ' (if needed)' : ''}</label>
+          <input id="dai-key" className="input" type="password" autoComplete="off" spellCheck={false} placeholder={t('Paste your key')} value={form.apiKey ?? ''} onChange={(e) => set({ apiKey: e.target.value })} /></div>
       )}
       {!p.hidden && !p.onDevice && (
         <div className="field">
-          <label htmlFor="dai-model">Model <span className="faint">(free, best first)</span></label>
+          <label htmlFor="dai-model">{t('Model')}{' '}<span className="faint">{t('(free, best first)')}</span></label>
           {typing || (!inList && !!form.model) ? (
             <div className="row">
               <input id="dai-model" className="input grow" placeholder={p.model} value={form.model ?? ''} onChange={(e) => set({ model: e.target.value })} autoFocus={typing} />
-              <button type="button" className="btn sm" onClick={() => { setTyping(false); set({ model: '' }); }}>List</button>
+              <button type="button" className="btn sm" onClick={() => { setTyping(false); set({ model: '' }); }}>{t('List')}</button>
             </div>
           ) : (
             <select id="dai-model" className="select" value={current} onChange={(e) => (e.target.value === OTHER ? (setTyping(true), set({ model: '' })) : set({ model: e.target.value }))}>
@@ -167,11 +168,11 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
                 </option>
               ))}
               {extra.length > 0 && <optgroup label={p.ownAddress ? 'On your computer' : 'Other free models right now'}>{extra.map((id) => <option key={id} value={id}>{id} ✓</option>)}</optgroup>}
-              <option value={OTHER}>Type a model name…</option>
+              <option value={OTHER}>{t('Type a model name…')}</option>
             </select>
           )}
           <div className="row wrap" style={{ marginTop: 6 }}>
-            <button type="button" className="btn sm" disabled={busy || timing || (!form.apiKey && !p.ownAddress)} onClick={check}><Icon name="refresh" size={14} />Check my key</button>
+            <button type="button" className="btn sm" disabled={busy || timing || (!form.apiKey && !p.ownAddress)} onClick={check}><Icon name="refresh" size={14} />{t('Check my key')}</button>
             <button type="button" className="btn sm" disabled={busy || timing || (!form.apiKey && !p.ownAddress)} onClick={runSpeed}><Icon name="clock" size={14} />{timing ? 'Timing each model…' : 'Test speed'}</button>
             {live?.provider === p.id && (
               <span className="tiny muted">{live.error ?? (live.ids.length ? `${p.models.filter((m) => works(m.id)).length + extra.length} free model(s) available to this key` : 'The service didn’t list its models; the list above is used as is.')}</span>
@@ -179,32 +180,32 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
           </div>
           {speed?.provider === p.id && (
             <div className="speed-results" role="status" aria-live="polite">
-              {speed.results.length === 0 ? <p className="tiny muted">Nothing to time.</p> : (
+              {speed.results.length === 0 ? <p className="tiny muted">{t('Nothing to time.')}</p> : (
                 <ol className="list">
                   {speed.results.map((r, i) => (
                     <li key={r.model} className={`speed-row ${r.ok ? '' : 'failed'}`}>
-                      <span className="grow ellipsis">{label(r.model)}{i === 0 && r.ok ? <span className="badge success" style={{ marginLeft: 6 }}>Fastest · chosen</span> : null}</span>
+                      <span className="grow ellipsis">{label(r.model)}{i === 0 && r.ok ? <span className="badge success" style={{ marginLeft: 6 }}>{t('Fastest · chosen')}</span> : null}</span>
                       <span className="tiny muted">{r.ok ? `starts in ${secs(r.firstMs)} · done in ${secs(r.totalMs)}` : r.error}</span>
                     </li>
                   ))}
                 </ol>
               )}
-              <p className="faint tiny">Timed from this phone just now. Speeds change during the day; tap Save and test to keep the choice.</p>
+              <p className="faint tiny">{t('Timed from this phone just now. Speeds change during the day; tap Save and test to keep the choice.')}</p>
             </div>
           )}
-          {!p.ownAddress && <p className="faint tiny">If a model is retired, busy or over its free limit, Carino switches to the next one in this list on its own.</p>}
+          {!p.ownAddress && <p className="faint tiny">{t('If a model is retired, busy or over its free limit, Carino switches to the next one in this list on its own.')}</p>}
         </div>
       )}
       <details>
-        <summary className="small">More options</summary>
+        <summary className="small">{t('More options')}</summary>
         <div className="stack" style={{ marginTop: 8 }}>
           {p.id !== 'groq' && (
-            <div className="field"><label htmlFor="dai-groq">Groq key for voice notes (free, optional)</label>
-              <input id="dai-groq" className="input" type="password" autoComplete="off" placeholder="Turns Telegram voice notes into text" value={form.groqKey ?? ''} onChange={(e) => set({ groqKey: e.target.value })} /></div>
+            <div className="field"><label htmlFor="dai-groq">{t('Groq key for voice notes (free, optional)')}</label>
+              <input id="dai-groq" className="input" type="password" autoComplete="off" placeholder={t('Turns Telegram voice notes into text')} value={form.groqKey ?? ''} onChange={(e) => set({ groqKey: e.target.value })} /></div>
           )}
-          <div className="field"><label htmlFor="dai-brave">Brave Search key for web research (free tier, optional)</label>
+          <div className="field"><label htmlFor="dai-brave">{t('Brave Search key for web research (free tier, optional)')}</label>
             <input id="dai-brave" className="input" type="password" autoComplete="off" value={form.braveKey ?? ''} onChange={(e) => set({ braveKey: e.target.value })} /></div>
-          <div className="field"><label htmlFor="dai-searx">…or a SearXNG address (free, optional)</label>
+          <div className="field"><label htmlFor="dai-searx">{t('…or a SearXNG address (free, optional)')}</label>
             <input id="dai-searx" className="input" inputMode="url" placeholder="https://searx.example.org" value={form.searxngUrl ?? ''} onChange={(e) => set({ searxngUrl: e.target.value })} /></div>
         </div>
       </details>
@@ -260,8 +261,8 @@ function LocalModels({ value, onChange, onReady }: { value: string; onChange: (i
   const s = info.status;
   return (
     <div className="field local-models">
-      <span className="label">Model on this phone</span>
-      <div role="radiogroup" aria-label="Model on this phone" className="stack" style={{ gap: 8 }}>
+      <span className="label">{t('Model on this phone')}</span>
+      <div role="radiogroup" aria-label={t('Model on this phone')} className="stack" style={{ gap: 8 }}>
         {info.models.map((m) => {
           const mine = s.model === m.id;
           const pct = mine && downloading && s.total ? Math.floor(((s.loaded ?? 0) / s.total) * 100) : 0;
@@ -278,16 +279,16 @@ function LocalModels({ value, onChange, onReady }: { value: string; onChange: (i
               {mine && downloading ? (
                 <div className="lm-progress">
                   <span className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`Downloading ${m.label}`}><span style={{ width: `${pct}%` }} /></span>
-                  <span className="row"><span className="tiny muted grow">{gb(s.loaded ?? 0)} of {gb(s.total ?? m.size)} · keep Carino open</span>
-                    <button type="button" className="btn ghost sm" onClick={() => act({ action: 'cancel' })}>Cancel</button></span>
+                  <span className="row"><span className="tiny muted grow">{gb(s.loaded ?? 0)} of {gb(s.total ?? m.size)} {t('· keep Carino open')}</span>
+                    <button type="button" className="btn ghost sm" onClick={() => act({ action: 'cancel' })}>{t('Cancel')}</button></span>
                 </div>
               ) : m.downloaded ? (
-                <div className="row lm-actions"><span className="badge success"><Icon name="check" size={12} /> On this phone</span><span className="grow" />
-                  <button type="button" className="btn ghost sm" onClick={() => act({ action: 'remove', model: m.id })} aria-label={`Remove ${m.label}`}><Icon name="trash" size={14} />Remove</button></div>
+                <div className="row lm-actions"><span className="badge success"><Icon name="check" size={12} /> {t('On this phone')}</span><span className="grow" />
+                  <button type="button" className="btn ghost sm" onClick={() => act({ action: 'remove', model: m.id })} aria-label={`Remove ${m.label}`}><Icon name="trash" size={14} />{t('Remove')}</button></div>
               ) : (
                 <div className="row lm-actions">
-                  <button type="button" className="btn sm" disabled={downloading || tooBig} onClick={() => act({ action: 'download', model: m.id })}><Icon name="download" size={14} />Download {gb(m.size)}</button>
-                  {tooBig && <span className="tiny warn-text">Not enough free space</span>}
+                  <button type="button" className="btn sm" disabled={downloading || tooBig} onClick={() => act({ action: 'download', model: m.id })}><Icon name="download" size={14} />{t('Download')}{' '}{gb(m.size)}</button>
+                  {tooBig && <span className="tiny warn-text">{t('Not enough free space')}</span>}
                 </div>
               )}
               {s.state === 'error' && s.model === m.id && <p className="tiny" style={{ color: 'var(--danger)' }}>{s.error}</p>}
@@ -295,7 +296,7 @@ function LocalModels({ value, onChange, onReady }: { value: string; onChange: (i
           );
         })}
       </div>
-      <p className="faint tiny">Use Wi-Fi for the download. After that it works with no internet. {info.threads > 1 ? `Uses ${info.threads} processor cores.` : ''}</p>
+      <p className="faint tiny">{t('Use Wi-Fi for the download. After that it works with no internet.')}{' '}{info.threads > 1 ? `Uses ${info.threads} processor cores.` : ''}</p>
     </div>
   );
 }

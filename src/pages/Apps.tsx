@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -55,67 +56,67 @@ function guide(group: Group, redirect: string): { steps: ReactNode[]; note?: Rea
       return {
         idLabel: 'Client ID', secretLabel: 'Client secret',
         steps: [
-          <>Open <A href="https://console.cloud.google.com/projectcreate">Google Cloud</A> and create a project (any name, e.g. “Carino”). It’s free.</>,
-          <>In <A href="https://console.cloud.google.com/apis/library">APIs &amp; Services → Library</A>, turn on <b>Gmail API</b>, <b>Google Calendar API</b>, <b>Google Drive API</b>, <b>Google Sheets API</b> and <b>Google Docs API</b>.</>,
-          <>Open <A href="https://console.cloud.google.com/auth/overview">Google Auth Platform</A> → <b>Get started</b>: app name “Carino”, your email, audience <b>External</b>. Then under <b>Audience</b> tap <b>Publish app</b> (otherwise Google signs you out every 7 days).</>,
-          <>Under <b>Clients</b> → <b>Create client</b>, choose <b>Desktop app</b>. Copy the <b>Client ID</b> and <b>Client secret</b> here.</>,
+          <>{t('Open')}{' '}<A href="https://console.cloud.google.com/projectcreate">{t('Google Cloud')}</A> {t('and create a project (any name, e.g. “Carino”). It’s free.')}</>,
+          <>{t('In')}{' '}<A href="https://console.cloud.google.com/apis/library">{t('APIs & Services → Library')}</A>{t(', turn on')}{' '}<b>{t('Gmail API')}</b>, <b>{t('Google Calendar API')}</b>, <b>{t('Google Drive API')}</b>, <b>{t('Google Sheets API')}</b> and <b>{t('Google Docs API')}</b>.</>,
+          <>{t('Open')}{' '}<A href="https://console.cloud.google.com/auth/overview">{t('Google Auth Platform')}</A> → <b>{t('Get started')}</b>{t(': app name “Carino”, your email, audience')}{' '}<b>{t('External')}</b>{t('. Then under')}{' '}<b>{t('Audience')}</b> tap <b>{t('Publish app')}</b> {t('(otherwise Google signs you out every 7 days).')}</>,
+          <>{t('Under')}{' '}<b>{t('Clients')}</b> → <b>{t('Create client')}</b>{t(', choose')}{' '}<b>{t('Desktop app')}</b>{t('. Copy the')}{' '}<b>{t('Client ID')}</b> and <b>{t('Client secret')}</b> here.</>,
         ],
-        note: <>When you sign in, Google says the app isn’t verified — that’s expected for your own app. Tap <b>Advanced → Go to Carino</b>. For a second Google account, just sign in again.</>,
+        note: <>{t('When you sign in, Google says the app isn’t verified — that’s expected for your own app. Tap')}{' '}<b>{t('Advanced → Go to Carino')}</b>{t('. For a second Google account, just sign in again.')}</>,
       };
     case 'microsoft':
       return {
         idLabel: 'Application (client) ID', secretLabel: '',
         steps: [
-          <>Open <A href="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade">Microsoft Entra → App registrations</A> (free, sign in with your Microsoft account) and tap <b>New registration</b>.</>,
-          <>Name it “Carino”. Who can use it: <b>Accounts in any organizational directory and personal Microsoft accounts</b>.</>,
-          <>Redirect URI: choose <b>Public client/native (mobile &amp; desktop)</b> and enter {R} Tap <b>Register</b>.</>,
-          <>Copy the <b>Application (client) ID</b> here. No secret is needed.</>,
+          <>{t('Open')}{' '}<A href="https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade">{t('Microsoft Entra → App registrations')}</A> {t('(free, sign in with your Microsoft account) and tap')}{' '}<b>{t('New registration')}</b>.</>,
+          <>{t('Name it “Carino”. Who can use it:')}{' '}<b>{t('Accounts in any organizational directory and personal Microsoft accounts')}</b>.</>,
+          <>{t('Redirect URI: choose')}{' '}<b>{t('Public client/native (mobile & desktop)')}</b> {t('and enter')}{' '}{R} {t('Tap')}{' '}<b>{t('Register')}</b>.</>,
+          <>{t('Copy the')}{' '}<b>{t('Application (client) ID')}</b> {t('here. No secret is needed.')}</>,
         ],
-        note: <>Work or school accounts may need their IT admin to allow the app.</>,
+        note: <>{t('Work or school accounts may need their IT admin to allow the app.')}</>,
       };
     case 'meta':
       return {
         idLabel: 'App ID', secretLabel: 'App secret',
         steps: [
-          <>Open <A href="https://developers.facebook.com/apps/creation/">Meta for Developers → Create app</A> (free). Choose the use cases <b>Manage everything on your Page</b> and <b>Manage messaging &amp; content on Instagram</b>.</>,
-          <>In <b>App settings → Basic</b>, copy the <b>App ID</b> and <b>App secret</b> here.</>,
-          <>In <b>Facebook Login → Settings</b>, add this to <b>Valid OAuth Redirect URIs</b>: {R}</>,
-          <>Leave the app in <b>Development</b> mode: as its admin you can use it without Meta’s review.</>,
+          <>{t('Open')}{' '}<A href="https://developers.facebook.com/apps/creation/">{t('Meta for Developers → Create app')}</A> {t('(free). Choose the use cases')}{' '}<b>{t('Manage everything on your Page')}</b> and <b>{t('Manage messaging & content on Instagram')}</b>.</>,
+          <>{t('In')}{' '}<b>{t('App settings → Basic')}</b>{t(', copy the')}{' '}<b>{t('App ID')}</b> and <b>{t('App secret')}</b> here.</>,
+          <>{t('In')}{' '}<b>{t('Facebook Login → Settings')}</b>{t(', add this to')}{' '}<b>{t('Valid OAuth Redirect URIs')}</b>: {R}</>,
+          <>{t('Leave the app in')}{' '}<b>{t('Development')}</b> {t('mode: as its admin you can use it without Meta’s review.')}</>,
         ],
-        note: <>Facebook lets apps post to <b>Pages</b> you manage, not your personal profile. Instagram needs a <b>Business or Creator</b> account linked to one of your Pages. One Meta app works for Facebook, Instagram and WhatsApp.</>,
+        note: <>{t('Facebook lets apps post to')}{' '}<b>{t('Pages')}</b> {t('you manage, not your personal profile. Instagram needs a')}{' '}<b>{t('Business or Creator')}</b> {t('account linked to one of your Pages. One Meta app works for Facebook, Instagram and WhatsApp.')}</>,
       };
     case 'x':
       return {
         idLabel: 'OAuth 2.0 Client ID', secretLabel: 'Client secret (if shown)',
         steps: [
-          <>Open the <A href="https://developer.x.com/en/portal/dashboard">X Developer Portal</A> and sign up for the <b>Free</b> plan.</>,
-          <>In your app → <b>User authentication settings → Set up</b>: permissions <b>Read and write</b>, type <b>Native App</b>.</>,
-          <>Callback URI: {R} — website: any link of yours.</>,
-          <>Under <b>Keys and tokens</b>, copy the <b>OAuth 2.0 Client ID</b> (and secret, if X shows one) here.</>,
+          <>{t('Open the')}{' '}<A href="https://developer.x.com/en/portal/dashboard">{t('X Developer Portal')}</A> {t('and sign up for the')}{' '}<b>{t('Free')}</b> plan.</>,
+          <>{t('In your app →')}{' '}<b>{t('User authentication settings → Set up')}</b>{t(': permissions')}{' '}<b>{t('Read and write')}</b>{t(', type')}{' '}<b>{t('Native App')}</b>.</>,
+          <>{t('Callback URI:')}{' '}{R} {t('— website: any link of yours.')}</>,
+          <>{t('Under')}{' '}<b>{t('Keys and tokens')}</b>{t(', copy the')}{' '}<b>{t('OAuth 2.0 Client ID')}</b> {t('(and secret, if X shows one) here.')}</>,
         ],
-        note: <>X’s free plan allows about 500 posts a month and very few reads.</>,
+        note: <>{t('X’s free plan allows about 500 posts a month and very few reads.')}</>,
       };
     case 'linkedin':
       return {
         idLabel: 'Client ID', secretLabel: 'Client secret',
         steps: [
-          <>Open <A href="https://www.linkedin.com/developers/apps/new">LinkedIn Developers → Create app</A> (free). LinkedIn asks for a Page to link it to; any Page you manage works.</>,
-          <>Under <b>Products</b>, add <b>Sign In with LinkedIn using OpenID Connect</b> and <b>Share on LinkedIn</b>.</>,
-          <>Under <b>Auth</b>, add this <b>Authorized redirect URL</b>: {R}</>,
-          <>Copy the <b>Client ID</b> and <b>Client secret</b> here.</>,
+          <>{t('Open')}{' '}<A href="https://www.linkedin.com/developers/apps/new">{t('LinkedIn Developers → Create app')}</A> {t('(free). LinkedIn asks for a Page to link it to; any Page you manage works.')}</>,
+          <>{t('Under')}{' '}<b>{t('Products')}</b>{t(', add')}{' '}<b>{t('Sign In with LinkedIn using OpenID Connect')}</b> and <b>{t('Share on LinkedIn')}</b>.</>,
+          <>{t('Under')}{' '}<b>{t('Auth')}</b>{t(', add this')}{' '}<b>{t('Authorized redirect URL')}</b>: {R}</>,
+          <>{t('Copy the')}{' '}<b>{t('Client ID')}</b> and <b>{t('Client secret')}</b> here.</>,
         ],
-        note: <>LinkedIn sign-ins last 60 days; Carino tells you when to sign in again.</>,
+        note: <>{t('LinkedIn sign-ins last 60 days; Carino tells you when to sign in again.')}</>,
       };
     case 'tiktok':
       return {
         idLabel: 'Client key', secretLabel: 'Client secret',
         steps: [
-          <>Open <A href="https://developers.tiktok.com/apps/">TikTok for Developers → Manage apps</A> and connect a new app (free).</>,
-          <>Add the products <b>Login Kit</b> and <b>Content Posting API</b>. Platform: <b>Desktop</b>. Redirect URI: {R}</>,
-          <>Turn on <b>Sandbox</b> and add your TikTok account under <b>Target users</b> (no review needed for your own account).</>,
-          <>Copy the <b>Client key</b> and <b>Client secret</b> here.</>,
+          <>{t('Open')}{' '}<A href="https://developers.tiktok.com/apps/">{t('TikTok for Developers → Manage apps')}</A> {t('and connect a new app (free).')}</>,
+          <>{t('Add the products')}{' '}<b>{t('Login Kit')}</b> and <b>{t('Content Posting API')}</b>{t('. Platform:')}{' '}<b>{t('Desktop')}</b>{t('. Redirect URI:')}{' '}{R}</>,
+          <>{t('Turn on')}{' '}<b>{t('Sandbox')}</b> {t('and add your TikTok account under')}{' '}<b>{t('Target users')}</b> {t('(no review needed for your own account).')}</>,
+          <>{t('Copy the')}{' '}<b>{t('Client key')}</b> and <b>{t('Client secret')}</b> here.</>,
         ],
-        note: <>Videos arrive in your TikTok notifications as drafts; you add the sound and caption and post them yourself.</>,
+        note: <>{t('Videos arrive in your TikTok notifications as drafts; you add the sound and caption and post them yourself.')}</>,
       };
   }
 }
@@ -142,8 +143,8 @@ export default function Apps({ id }: { id?: string }) {
     if (failed) toast(failed, 'error');
   }, [connected, failed, toast]);
 
-  if (apps.loading) return <Shell title="My apps"><Loading /></Shell>;
-  if (apps.error) return <Shell title="My apps"><ErrorBox error={apps.error} retry={apps.reload} /></Shell>;
+  if (apps.loading) return <Shell title={t('My apps')}><Loading /></Shell>;
+  if (apps.error) return <Shell title={t('My apps')}><ErrorBox error={apps.error} retry={apps.reload} /></Shell>;
   const list = apps.data!.apps;
   const app = id ? list.find((a) => a.id === id) : undefined;
   if (app?.key) return <KeyAppDetail app={app} reload={apps.reload} />;
@@ -153,13 +154,13 @@ export default function Apps({ id }: { id?: string }) {
   const tg = chans.data?.channels?.find((c: any) => c.kind === 'telegram');
   const order = ['google', 'microsoft', 'instagram', 'facebook', 'x', 'linkedin', 'tiktok'];
   return (
-    <Shell title="My apps">
+    <Shell title={t('My apps')}>
       <div className="page narrow">
         <div className="page-head"><div>
-          <h1><Icon name="link" /> My apps</h1>
-          <p className="sub">Connect your accounts so Carino can read and act for you. Sending email and posting always waits for your OK.</p>
+          <h1><Icon name="link" /> {t('My apps')}</h1>
+          <p className="sub">{t('Connect your accounts so Carino can read and act for you. Sending email and posting always waits for your OK.')}</p>
         </div></div>
-        <ul className="app-list" aria-label="Apps">
+        <ul className="app-list" aria-label={t('Apps')}>
           <AppItem to="/messaging#whatsapp" logo="whatsapp" name="WhatsApp" beta ok={!!wa?.config?.relay_url && wa.enabled} status={wa?.config?.relay_url ? (wa.enabled ? 'Connected' : 'Turned off') : 'Tap to set up'} />
           {order.map((pid) => {
             const a = list.find((x) => x.id === pid)!;
@@ -203,7 +204,7 @@ function AppItem({ to, logo, name, status, ok, beta, badge, parts, warn }: { to:
       <Link to={to} className="app-item">
         <AppLogo id={logo} size={44} />
         <span className="grow" style={{ minWidth: 0 }}>
-          <span className="app-name">{name}{beta && <span className="badge">Beta</span>}{badge && <span className="badge">{badge}</span>}</span>
+          <span className="app-name">{name}{beta && <span className="badge">{t('Beta')}</span>}{badge && <span className="badge">{badge}</span>}</span>
           {parts ? (
             <span className="app-parts">{parts.map((p) => <span key={p} className="chip-sm">{p}</span>)}</span>
           ) : (
@@ -244,7 +245,7 @@ function AppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
     setBusy(true);
     try {
       await put(`/apps/clients/${app.group}`, { client_id: clientId.trim(), client_secret: secret.trim() || undefined });
-      toast('Saved. Now sign in.');
+      toast(t('Saved. Now sign in.'));
       reload();
     } catch (e: any) {
       toast(e.message, 'error');
@@ -256,17 +257,17 @@ function AppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
   return (
     <Shell title={about.name}>
       <div className="page narrow">
-        <button className="btn ghost sm" onClick={() => navigate('/apps')} style={{ marginBottom: 8 }}><Icon name="chevron" size={14} style={{ transform: 'rotate(180deg)' }} />My apps</button>
+        <button className="btn ghost sm" onClick={() => navigate('/apps')} style={{ marginBottom: 8 }}><Icon name="chevron" size={14} style={{ transform: 'rotate(180deg)' }} />{t('My apps')}</button>
         <section className="card pad app-hero">
           <AppLogo id={app.id as AppLogoId} size={56} />
           <div className="grow">
-            <h1>{about.name}{about.beta && <span className="badge" style={{ marginLeft: 8 }}>Beta</span>}</h1>
+            <h1>{about.name}{about.beta && <span className="badge" style={{ marginLeft: 8 }}>{t('Beta')}</span>}</h1>
             <ul className="small muted app-does">{about.does.map((d) => <li key={d}>{d}</li>)}</ul>
           </div>
         </section>
 
         <section className="card pad" style={{ marginTop: 14 }}>
-          <h2>Accounts</h2>
+          <h2>{t('Accounts')}</h2>
           {app.accounts.length ? (
             <ul className="list divided" style={{ marginTop: 6 }}>
               {app.accounts.map((a) => (
@@ -276,7 +277,7 @@ function AppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
                     <span className="ellipsis" style={{ display: 'block' }}>{a.label}</span>
                     {a.last_error && <span className="tiny" style={{ color: 'var(--danger)' }}>{a.last_error}</span>}
                   </span>
-                  {a.last_error && <button className="btn sm" onClick={signIn} disabled={busy}>Sign in again</button>}
+                  {a.last_error && <button className="btn sm" onClick={signIn} disabled={busy}>{t('Sign in again')}</button>}
                   <button className="btn ghost icon sm" aria-label={`Disconnect ${a.label}`} onClick={async () => {
                     if (!(await confirm({ title: `Disconnect ${a.label}?`, body: `Carino forgets this ${about.name} sign-in. Nothing in your account is changed.`, confirm: 'Disconnect', danger: true }))) return;
                     await del(`/apps/accounts/${a.id}`).catch((e) => toast(e.message, 'error'));
@@ -285,33 +286,33 @@ function AppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
                 </li>
               ))}
             </ul>
-          ) : <p className="small muted" style={{ marginTop: 4 }}>Not connected yet.</p>}
+          ) : <p className="small muted" style={{ marginTop: 4 }}>{t('Not connected yet.')}</p>}
           <div className="row wrap" style={{ marginTop: 12 }}>
             <button className="btn primary" disabled={busy || (!app.client && !app.one_tap)} onClick={signIn}>
               <Icon name="lock" size={15} />{app.accounts.length ? `Add another ${about.name} account` : `Sign in with ${about.name}`}
             </button>
-            {!app.client && !app.one_tap && <span className="small muted">First do the one-time setup below.</span>}
+            {!app.client && !app.one_tap && <span className="small muted">{t('First do the one-time setup below.')}</span>}
           </div>
         </section>
 
         {app.one_tap && !app.client && (
-          <p className="small muted" style={{ marginTop: 10 }}>You sign in on {about.name}’s own page and choose what Carino may do. Your sign-in is kept on this phone.</p>
+          <p className="small muted" style={{ marginTop: 10 }}>{t('You sign in on')}{' '}{about.name}{t('’s own page and choose what Carino may do. Your sign-in is kept on this phone.')}</p>
         )}
         <details className="card pad" style={{ marginTop: 14 }} open={!app.client && !app.one_tap}>
           {app.one_tap
-            ? <summary><h2 style={{ display: 'inline', fontSize: '1rem' }}>Advanced: use my own developer app</h2></summary>
-            : <summary><h2 style={{ display: 'inline' }}>One-time setup</h2> <span className="small muted">· about 5 minutes, free</span></summary>}
+            ? <summary><h2 style={{ display: 'inline', fontSize: '1rem' }}>{t('Advanced: use my own developer app')}</h2></summary>
+            : <summary><h2 style={{ display: 'inline' }}>{t('One-time setup')}</h2> <span className="small muted">{t('· about 5 minutes, free')}</span></summary>}
           <p className="small muted" style={{ marginTop: 8 }}>
-            Carino talks to {about.name} directly from your phone, with your own free developer app — nothing goes through anyone else’s server.
-            {shared && <> This is the same Meta app as {shared}: set it up once for both.</>}
+            {t('Carino talks to')}{' '}{about.name} {t('directly from your phone, with your own free developer app — nothing goes through anyone else’s server.')}
+            {shared && <> {t('This is the same Meta app as')}{' '}{shared}{t(': set it up once for both.')}</>}
           </p>
           <ol className="small steps">{g.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
           {g.note && <div className="callout small" style={{ marginTop: 10 }}><Icon name="info" size={16} /><span>{g.note}</span></div>}
           <div className="field" style={{ marginTop: 12 }}>
-            <label htmlFor="redirect">Redirect address</label>
+            <label htmlFor="redirect">{t('Redirect address')}</label>
             <div className="row">
               <input id="redirect" className="input mono grow" readOnly value={app.redirect_uri} />
-              <button className="btn sm" onClick={() => navigator.clipboard?.writeText(app.redirect_uri).then(() => toast('Copied'), () => undefined)}><Icon name="copy" size={14} />Copy</button>
+              <button className="btn sm" onClick={() => navigator.clipboard?.writeText(app.redirect_uri).then(() => toast(t('Copied')), () => undefined)}><Icon name="copy" size={14} />{t('Copy')}</button>
             </div>
           </div>
           <div className="field" style={{ marginTop: 10 }}>
@@ -325,17 +326,17 @@ function AppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
             </div>
           )}
           <div className="row wrap" style={{ marginTop: 12 }}>
-            <button className="btn" disabled={busy || clientId.trim().length < 4 || (app.needs_secret && !secret.trim())} onClick={save}>Save</button>
+            <button className="btn" disabled={busy || clientId.trim().length < 4 || (app.needs_secret && !secret.trim())} onClick={save}>{t('Save')}</button>
             {app.client && <button className="btn ghost sm" onClick={async () => {
               if (!(await confirm({ title: 'Remove the developer app?', body: 'Signed-in accounts keep working until their sign-in expires.', confirm: 'Remove', danger: true }))) return;
               await del(`/apps/clients/${app.group}`);
               setClientId('');
               setSecret('');
               reload();
-            }}>Remove</button>}
+            }}>{t('Remove')}</button>}
           </div>
         </details>
-        <p className="tiny faint" style={{ marginTop: 12 }}>Your sign-ins are stored encrypted on this phone. Carino asks before sending email or posting anything. You can change what it may do on its own in <Link to="/settings#permissions">Settings</Link>.</p>
+        <p className="tiny faint" style={{ marginTop: 12 }}>{t('Your sign-ins are stored encrypted on this phone. Carino asks before sending email or posting anything. You can change what it may do on its own in')}{' '}<Link to="/settings#permissions">{t('Settings')}</Link>.</p>
       </div>
     </Shell>
   );
@@ -368,8 +369,8 @@ function KeyAppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
           <Mark id={app.id} />
           <div><h1>{about.name}</h1>{about.does.map((d) => <p key={d} className="muted small">• {d}</p>)}</div>
         </div>
-        <h2>Accounts</h2>
-        {!app.accounts.length && <p className="muted">Not connected yet.</p>}
+        <h2>{t('Accounts')}</h2>
+        {!app.accounts.length && <p className="muted">{t('Not connected yet.')}</p>}
         {app.accounts.map((a) => (
           <div key={a.id} className="row">
             <Dot ok={!a.last_error} />
@@ -378,16 +379,16 @@ function KeyAppDetail({ app, reload }: { app: AppRow; reload: () => void }) {
               if (!(await confirm({ title: `Disconnect ${a.label}?`, body: `Carino forgets this ${about.name} token. Nothing in your account changes.`, confirm: 'Disconnect', danger: true }))) return;
               await del(`/apps/accounts/${a.id}`).catch((e) => toast(e.message, 'error'));
               reload();
-            }}>Disconnect</button>
+            }}>{t('Disconnect')}</button>
           </div>
         ))}
         <div className="card stack">
           <h2>{app.accounts.length ? 'Add another account' : 'Connect with a personal token'}</h2>
-          <p className="small">{app.key!.steps} <A href={app.key!.url}>Open {about.name}</A></p>
-          <input type="password" autoComplete="off" placeholder={app.key!.placeholder} value={token} onChange={(e) => setToken(e.target.value)} aria-label="Token" />
-          <button className="btn primary" disabled={busy || token.trim().length < 8} onClick={connect}>Connect</button>
+          <p className="small">{app.key!.steps} <A href={app.key!.url}>{t('Open')}{' '}{about.name}</A></p>
+          <input type="password" autoComplete="off" placeholder={app.key!.placeholder} value={token} onChange={(e) => setToken(e.target.value)} aria-label={t('Token')} />
+          <button className="btn primary" disabled={busy || token.trim().length < 8} onClick={connect}>{t('Connect')}</button>
         </div>
-        <p className="muted small">The token is stored encrypted and only sent to {about.name}. Changes and messages wait for your OK unless you allow them in Settings → Permissions.</p>
+        <p className="muted small">{t('The token is stored encrypted and only sent to')}{' '}{about.name}{t('. Changes and messages wait for your OK unless you allow them in Settings → Permissions.')}</p>
       </div>
     </Shell>
   );

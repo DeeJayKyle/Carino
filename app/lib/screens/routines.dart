@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../nav.dart';
@@ -53,14 +54,14 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
   Widget build(BuildContext context) {
     final app = AppState.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Routines')),
+      appBar: AppBar(title: const Tx('Routines')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit({'title': '', 'prompt': '', 'time_local': '08:00', 'days': [1, 2, 3, 4, 5]}),
         icon: const Icon(Icons.add),
-        label: const Text('New routine'),
+        label: const Tx('New routine'),
       ),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 96), children: [
-        Text('Your routines', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+        Tx('Your routines', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Loader<List>(
           reloadKey: _bump,
@@ -75,7 +76,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(children: [
-                    Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: const Text('All goals'), selected: _goal == null, onSelected: (_) => setState(() => _goal = null))),
+                    Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: const Tx('All goals'), selected: _goal == null, onSelected: (_) => setState(() => _goal = null))),
                     for (final g in goals) Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: Text(goalLabels[g] ?? g), selected: _goal == g, onSelected: (_) => setState(() => _goal = g))),
                   ]),
                 ),
@@ -84,7 +85,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
           },
         ),
         const SizedBox(height: 18),
-        Text('Ideas to get started', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+        Tx('Ideas to get started', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Loader<List>(
           load: () async => ((await app.api.get('/routines/ideas')) as Map)['ideas'] as List,
@@ -108,7 +109,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                     title: Text('${i['title']}'),
                     subtitle: Text('${i['blurb']}\n${scheduleText(i['days'] as List, '${i['time']}')}'),
                     isThreeLine: true,
-                    trailing: TextButton(onPressed: () => _edit(_fromIdea(i)), child: const Text('Use this')),
+                    trailing: TextButton(onPressed: () => _edit(_fromIdea(i)), child: const Tx('Use this')),
                   ),
                 ),
             ]);
@@ -165,7 +166,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
           if (r['last_run_at'] != null) ...[
             const Divider(height: 18),
             Row(children: [
-              Text('Last run ${fmtDateTime(r['last_run_at'] as String?)} ', style: t.bodySmall),
+              Tx('Last run {0} ', args: [fmtDateTime(r['last_run_at'] as String?)], style: t.bodySmall),
               Pill(r['last_status'] == 'failed' ? 'failed' : 'ok', color: r['last_status'] == 'failed' ? Theme.of(context).colorScheme.error : Colors.green),
             ]),
             if (r['last_status'] == 'failed' && r['last_error'] != null) Text('${r['last_error']}', style: t.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error)),
@@ -181,7 +182,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                         setState(() => _running = r['id'] as String);
                         try {
                           await api.post('/routines/${r['id']}/run');
-                          if (context.mounted) toast(context, '“${r['title']}” ran — see the result above');
+                          if (context.mounted) toast(context, tr('“{0}” ran — see the result above', [r['title']]));
                         } catch (e) {
                           if (context.mounted) toast(context, errorText(e), error: true);
                         } finally {
@@ -192,17 +193,17 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
                 icon: const Icon(Icons.play_arrow, size: 18),
                 label: Text(_running == r['id'] ? 'Running…' : 'Run now'),
               ),
-            TextButton.icon(onPressed: () => _edit({'id': r['id'], 'title': r['title'], 'prompt': r['prompt'] ?? '', 'time_local': r['time_local'], 'days': r['days'], 'steps': r['steps'] ?? [], 'access': r['access'], 'goal': r['goal'], 'builtIn': !custom}), icon: const Icon(Icons.edit_outlined, size: 18), label: const Text('Edit')),
-            if (r['conversation_id'] != null) TextButton.icon(onPressed: () => openPath(context, '/chat/${r['conversation_id']}'), icon: const Icon(Icons.chat_bubble_outline, size: 18), label: const Text('Open chat')),
+            TextButton.icon(onPressed: () => _edit({'id': r['id'], 'title': r['title'], 'prompt': r['prompt'] ?? '', 'time_local': r['time_local'], 'days': r['days'], 'steps': r['steps'] ?? [], 'access': r['access'], 'goal': r['goal'], 'builtIn': !custom}), icon: const Icon(Icons.edit_outlined, size: 18), label: const Tx('Edit')),
+            if (r['conversation_id'] != null) TextButton.icon(onPressed: () => openPath(context, '/chat/${r['conversation_id']}'), icon: const Icon(Icons.chat_bubble_outline, size: 18), label: const Tx('Open chat')),
             if (custom)
               TextButton.icon(
                 onPressed: () async {
-                  if (!await confirmDialog(context, title: 'Delete “${r['title']}”?', body: 'It will stop running. Its chat history stays in Chats.', confirm: 'Delete', danger: true)) return;
+                  if (!await confirmDialog(context, title: tr('Delete “{0}”?', [r['title']]), body: tr('It will stop running. Its chat history stays in Chats.'), confirm: tr('Delete'), danger: true)) return;
                   await api.delete('/routines/${r['id']}');
                   _reload();
                 },
                 icon: const Icon(Icons.delete_outline, size: 18),
-                label: const Text('Delete'),
+                label: const Tx('Delete'),
               ),
           ]),
         ]),
@@ -275,28 +276,28 @@ class _RoutineEditorState extends State<RoutineEditor> {
         Text(widget.draft['id'] != null ? 'Edit routine' : 'New routine', style: t.titleLarge),
         const SizedBox(height: 12),
         if (!_builtIn) ...[
-          TextField(controller: _title, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Name')),
+          TextField(controller: _title, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Name'))),
           const SizedBox(height: 10),
           DropdownButtonFormField<String?>(
             initialValue: _goalSel,
-            decoration: const InputDecoration(labelText: 'Goal it serves (optional)'),
-            items: [const DropdownMenuItem(value: null, child: Text('None')), for (final e in goalLabels.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+            decoration: InputDecoration(labelText: tr('Goal it serves (optional)')),
+            items: [const DropdownMenuItem(value: null, child: Tx('None')), for (final e in goalLabels.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
             onChanged: (v) => setState(() => _goalSel = v),
           ),
           const SizedBox(height: 10),
-          TextField(controller: _prompt, onChanged: (_) => setState(() {}), minLines: 3, maxLines: 8, decoration: const InputDecoration(labelText: 'What should Carino do each time?', hintText: 'e.g. Look at what I finished this week and save a short wins note.')),
-          if (_blanks.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Replace ${_blanks.join(', ')} with your own details.', style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12.5))),
-          if ((widget.draft['needs'] as List?)?.contains('connector') == true) Padding(padding: const EdgeInsets.only(top: 4), child: Text('This idea uses a connected app (e.g. your email or calendar).', style: t.bodySmall)),
+          TextField(controller: _prompt, onChanged: (_) => setState(() {}), minLines: 3, maxLines: 8, decoration: InputDecoration(labelText: tr('What should Carino do each time?'), hintText: tr('e.g. Look at what I finished this week and save a short wins note.'))),
+          if (_blanks.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Tx('Replace {0} with your own details.', args: [_blanks.join(', ')], style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12.5))),
+          if ((widget.draft['needs'] as List?)?.contains('connector') == true) Padding(padding: const EdgeInsets.only(top: 4), child: Tx('This idea uses a connected app (e.g. your email or calendar).', style: t.bodySmall)),
           const SizedBox(height: 12),
-          Text('Steps (optional)', style: t.titleSmall),
+          Tx('Steps (optional)', style: t.titleSmall),
           for (var n = 0; n < _steps.length; n++)
             Row(children: [
               Text('${n + 1}.'),
               const SizedBox(width: 6),
-              Expanded(child: TextField(controller: _steps[n], decoration: InputDecoration(isDense: true, hintText: 'Step ${n + 1}'))),
-              IconButton(tooltip: 'Remove step ${n + 1}', icon: const Icon(Icons.close), onPressed: () => setState(() => _steps = [..._steps]..removeAt(n))),
+              Expanded(child: TextField(controller: _steps[n], decoration: InputDecoration(isDense: true, hintText: tr('Step {0}', [n + 1])))),
+              IconButton(tooltip: tr('Remove step {0}', [n + 1]), icon: const Icon(Icons.close), onPressed: () => setState(() => _steps = [..._steps]..removeAt(n))),
             ]),
-          if (_steps.length < 12) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => setState(() => _steps = [..._steps, TextEditingController()]), icon: const Icon(Icons.add), label: const Text('Add a step'))),
+          if (_steps.length < 12) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => setState(() => _steps = [..._steps, TextEditingController()]), icon: const Icon(Icons.add), label: const Tx('Add a step'))),
           const SizedBox(height: 8),
           _AccessPicker(access: _access, onChanged: (a) => setState(() => _access = a)),
         ],
@@ -304,7 +305,7 @@ class _RoutineEditorState extends State<RoutineEditor> {
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.schedule),
-          title: const Text('Time'),
+          title: const Tx('Time'),
           trailing: Text(_timeText, style: t.titleMedium),
           onTap: () async {
             final v = await showTimePicker(context: context, initialTime: _time);
@@ -315,7 +316,7 @@ class _RoutineEditorState extends State<RoutineEditor> {
           for (final d in _order) FilterChip(label: Text(_dayNames[d]), selected: _days.contains(d), onSelected: (v) => setState(() => v ? _days.add(d) : _days.remove(d))),
         ]),
         const SizedBox(height: 6),
-        Text('Times are in your time zone. A routine missed by more than three hours is skipped until its next day.', style: t.bodySmall),
+        Tx('Times are in your time zone. A routine missed by more than three hours is skipped until its next day.', style: t.bodySmall),
         const SizedBox(height: 14),
         FilledButton(onPressed: _saving || !valid ? null : _save, child: Text(_saving ? 'Saving…' : widget.draft['id'] != null ? 'Save' : 'Add routine')),
       ]),
@@ -334,13 +335,13 @@ class _AccessPicker extends StatelessWidget {
     final app = AppState.of(context);
     final t = Theme.of(context).textTheme;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('What it can use', style: t.titleSmall),
+      Tx('What it can use', style: t.titleSmall),
       RadioGroup<bool>(
         groupValue: access != null,
         onChanged: (v) => onChanged(v == true ? (access ?? <String>[]) : null),
         child: const Column(children: [
-          RadioListTile<bool>(contentPadding: EdgeInsets.zero, value: false, title: Text('Everything Carino can use')),
-          RadioListTile<bool>(contentPadding: EdgeInsets.zero, value: true, title: Text('Only what I pick')),
+          RadioListTile<bool>(contentPadding: EdgeInsets.zero, value: false, title: Tx('Everything Carino can use')),
+          RadioListTile<bool>(contentPadding: EdgeInsets.zero, value: true, title: Tx('Only what I pick')),
         ]),
       ),
       if (access != null)
@@ -361,7 +362,7 @@ class _AccessPicker extends StatelessWidget {
               ),
           ]),
         ),
-      Text('It can always look at your to-dos, notes and saved knowledge. Sending, deleting, posting and other big actions always wait for your OK.', style: t.bodySmall),
+      Tx('It can always look at your to-dos, notes and saved knowledge. Sending, deleting, posting and other big actions always wait for your OK.', style: t.bodySmall),
     ]);
   }
 }

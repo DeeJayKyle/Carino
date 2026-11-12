@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 /// A titled card section, like the web app's "card pad".
 class Section extends StatelessWidget {
@@ -79,7 +80,7 @@ Future<bool> confirmDialog(BuildContext context, {required String title, String?
       title: Text(title),
       content: body == null ? null : Text(body),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Tx('Cancel')),
         FilledButton(
           style: danger ? FilledButton.styleFrom(backgroundColor: cs.error, foregroundColor: cs.onError) : null,
           onPressed: () => Navigator.pop(ctx, true),

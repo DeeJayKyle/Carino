@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 
@@ -90,27 +91,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final first = _you.text.trim().split(' ').first;
     final steps = <Widget>[
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Hi! Let’s get you set up.', style: t.headlineSmall),
+        Tx('Hi! Let’s get you set up.', style: t.headlineSmall),
         const SizedBox(height: 8),
-        Text('I’m your personal assistant. I remember what matters, keep your to-dos and reminders, and do the small stuff you’d rather not.', style: muted),
+        Tx('I’m your personal assistant. I remember what matters, keep your to-dos and reminders, and do the small stuff you’d rather not.', style: muted),
         const SizedBox(height: 16),
-        TextField(controller: _you, maxLength: 80, autofocus: true, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'What should I call you?')),
+        TextField(controller: _you, maxLength: 80, autofocus: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('What should I call you?'))),
       ]),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('What will you call me?', style: t.headlineSmall),
+        Tx('What will you call me?', style: t.headlineSmall),
         const SizedBox(height: 8),
-        Text('Pick a name, or type your own. You can change it any time in Settings.', style: muted),
+        Tx('Pick a name, or type your own. You can change it any time in Settings.', style: muted),
         const SizedBox(height: 12),
-        TextField(controller: _assistant, maxLength: 40, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Assistant name')),
+        TextField(controller: _assistant, maxLength: 40, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Assistant name'))),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final n in _suggestions) ChoiceChip(label: Text(n), selected: _assistant.text == n, onSelected: (_) => setState(() => _assistant.text = n)),
-          TextButton.icon(onPressed: () => setState(() => _suggestions = ([..._names]..shuffle(Random())).take(6).toList()), icon: const Icon(Icons.refresh, size: 16), label: const Text('More names')),
+          TextButton.icon(onPressed: () => setState(() => _suggestions = ([..._names]..shuffle(Random())).take(6).toList()), icon: const Icon(Icons.refresh, size: 16), label: const Tx('More names')),
         ]),
       ]),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('How should I talk to you?', style: t.headlineSmall),
+        Tx('How should I talk to you?', style: t.headlineSmall),
         const SizedBox(height: 8),
-        Text('Pick a personality. You can change it, or teach me to sound like you, in Settings.', style: muted),
+        Tx('Pick a personality. You can change it, or teach me to sound like you, in Settings.', style: muted),
         const SizedBox(height: 12),
         for (final (v, title, example) in const [
           ('balanced', 'Balanced', 'Clear answers, more detail when it helps.'),
@@ -131,16 +132,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
       ]),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Give ${_assistant.text.trim().isEmpty ? 'me' : _assistant.text.trim()} a brain', style: t.headlineSmall),
+        Tx('Give {0} a brain', args: [_assistant.text.trim().isEmpty ? 'me' : _assistant.text.trim()], style: t.headlineSmall),
         const SizedBox(height: 8),
-        Text('I live on your phone, and I use an AI service to think. Groq and Google Gemini are free — pick one, get a key in a minute, and paste it here. You can do this later in Settings.', style: muted),
+        Tx('I live on your phone, and I use an AI service to think. Groq and Google Gemini are free — pick one, get a key in a minute, and paste it here. You can do this later in Settings.', style: muted),
         const SizedBox(height: 12),
         AiSettings(compact: true, onSaved: () => setState(() => _step++)),
       ]),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('What would you like help with, ${first.isEmpty ? 'friend' : first}?', style: t.headlineSmall),
+        Tx('What would you like help with, {0}?', args: [first.isEmpty ? 'friend' : first], style: t.headlineSmall),
         const SizedBox(height: 8),
-        Text('Choose a few. I’ll suggest the right ideas first.', style: muted),
+        Tx('Choose a few. I’ll suggest the right ideas first.', style: muted),
         const SizedBox(height: 12),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final (id, label, icon) in _interests)
@@ -153,9 +154,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ]),
       ]),
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Let’s set up your first routines', style: t.headlineSmall),
+        Tx('Let’s set up your first routines', style: t.headlineSmall),
         const SizedBox(height: 8),
-        Text('Routines run on their own and send you a notification. Tick the ones you want — you can change or add more on the Routines page.', style: muted),
+        Tx('Routines run on their own and send you a notification. Tick the ones you want — you can change or add more on the Routines page.', style: muted),
         const SizedBox(height: 8),
         for (final r in [
           {'id': 'morning_briefing', 'title': 'Morning briefing', 'blurb': 'Your day at 07:00: tasks, deadlines and reminders.'},
@@ -184,7 +185,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Row(children: [
                 CircleAvatar(radius: 26, backgroundColor: Theme.of(context).colorScheme.primaryContainer, child: Icon(last ? Icons.record_voice_over : Icons.waving_hand_outlined, color: Theme.of(context).colorScheme.onPrimaryContainer)),
                 const Spacer(),
-                TextButton(onPressed: _busy ? null : () => _finish(skip: true), child: const Text('Skip')),
+                TextButton(onPressed: _busy ? null : () => _finish(skip: true), child: const Tx('Skip')),
               ]),
             ),
             Expanded(child: SingleChildScrollView(padding: const EdgeInsets.all(20), child: steps[_step])),
@@ -193,18 +194,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Row(children: [
                 Expanded(
                   child: Semantics(
-                    label: 'Step ${_step + 1} of ${steps.length}',
+                    label: tr('Step {0} of {1}', [_step + 1, steps.length]),
                     child: Row(children: [
                       for (var i = 0; i < steps.length; i++)
                         Container(margin: const EdgeInsets.only(right: 6), width: i == _step ? 18 : 8, height: 8, decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: i == _step ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outlineVariant)),
                     ]),
                   ),
                 ),
-                if (_step > 0) TextButton(onPressed: _busy ? null : () => setState(() => _step--), child: const Text('Back')),
+                if (_step > 0) TextButton(onPressed: _busy ? null : () => setState(() => _step--), child: const Tx('Back')),
                 const SizedBox(width: 8),
                 last
                     ? FilledButton(onPressed: _busy ? null : _finish, child: Text(_busy ? 'Setting up…' : 'Let’s go'))
-                    : FilledButton(onPressed: canNext ? () => setState(() => _step++) : null, child: const Text('Next')),
+                    : FilledButton(onPressed: canNext ? () => setState(() => _step++) : null, child: const Tx('Next')),
               ]),
             ),
           ]),

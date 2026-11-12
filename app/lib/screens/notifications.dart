@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 
@@ -30,12 +31,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final app = AppState.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications'), actions: [
+      appBar: AppBar(title: const Tx('Notifications'), actions: [
         IconButton(
-          tooltip: 'Clear all',
+          tooltip: tr('Clear all'),
           icon: const Icon(Icons.delete_sweep_outlined),
           onPressed: () async {
-            if (!await confirmDialog(context, title: 'Clear all notifications?', body: 'This permanently deletes every notification. Reminders and routines keep working.', confirm: 'Clear all', danger: true)) return;
+            if (!await confirmDialog(context, title: tr('Clear all notifications?'), body: tr('This permanently deletes every notification. Reminders and routines keep working.'), confirm: tr('Clear all'), danger: true)) return;
             await app.api.delete('/notifications');
             setState(() => _bump++);
           },
@@ -50,7 +51,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             _read?.cancel();
             _read = Timer(const Duration(milliseconds: 1500), () => app.api.post('/notifications/read', {}).catchError((_) => null));
           }
-          if (list.isEmpty) return const EmptyView(icon: Icons.notifications_none, title: 'No notifications', body: 'Reminders, briefings and failed actions will appear here.');
+          if (list.isEmpty) return EmptyView(icon: Icons.notifications_none, title: tr('No notifications'), body: tr('Reminders, briefings and failed actions will appear here.'));
           return RefreshIndicator(
             onRefresh: reload,
             child: ListView.separated(

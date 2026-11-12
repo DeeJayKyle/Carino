@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../engine/device.dart';
@@ -52,18 +53,18 @@ class _FilesScreenState extends State<FilesScreen> {
           length: 4,
           child: Scaffold(
             appBar: AppBar(
-              title: const Text('Files'),
+              title: const Tx('Files'),
               bottom: has ? const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [Tab(text: 'Search'), Tab(text: 'Duplicates'), Tab(text: 'Tidy up'), Tab(text: 'History')]) : null,
             ),
             body: data['available'] == false
-                ? const EmptyView(icon: Icons.folder_outlined, title: 'Not on this device', body: 'Folders can be shared from Carino for Windows and the Android app.')
+                ? EmptyView(icon: Icons.folder_outlined, title: tr('Not on this device'), body: tr('Folders can be shared from Carino for Windows and the Android app.'))
                 : NestedScrollView(
                     headerSliverBuilder: (context, _) => [
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                           child: Section(
-                            title: 'Folders Carino may read',
+                            title: tr('Folders Carino may read'),
                             action: FilledButton.tonalIcon(
                               onPressed: _busy.isNotEmpty
                                   ? null
@@ -75,9 +76,9 @@ class _FilesScreenState extends State<FilesScreen> {
                               icon: const Icon(Icons.add),
                               label: Text(_busy == 'add' ? 'Reading…' : 'Add a folder'),
                             ),
-                            subtitle: 'Carino can read only the folders you choose. Your files stay where they are.',
+                            subtitle: tr('Carino can read only the folders you choose. Your files stay where they are.'),
                             child: !has
-                                ? const Text('None yet. Choose a folder in your phone’s own folder picker; you can remove it any time.')
+                                ? const Tx('None yet. Choose a folder in your phone’s own folder picker; you can remove it any time.')
                                 : Column(children: [for (final f in folders) _folder(context, f, device)]),
                           ),
                         ),
@@ -101,12 +102,12 @@ class _FilesScreenState extends State<FilesScreen> {
         title: Text('${f['label']}', style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text('${f['files']} file${f['files'] == 1 ? '' : 's'}${f['last_scan_at'] != null ? ' · checked ${fmtDateTime(f['last_scan_at'] as String?)}' : ''}${f['last_error'] != null ? ' · ${f['last_error']}' : ''}'),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-          IconButton(tooltip: 'Check again', icon: _busy == 'scan-${f['id']}' ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.refresh), onPressed: () => _run('scan-${f['id']}', () => api.post('/files/folders/${f['id']}/scan', {}), (r) => '${(r as Map)['files']} files, ${r['read']} new or changed')),
+          IconButton(tooltip: tr('Check again'), icon: _busy == 'scan-${f['id']}' ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.refresh), onPressed: () => _run('scan-${f['id']}', () => api.post('/files/folders/${f['id']}/scan', {}), (r) => '${(r as Map)['files']} files, ${r['read']} new or changed')),
           IconButton(
-            tooltip: 'Remove ${f['label']}',
+            tooltip: tr('Remove {0}', [f['label']]),
             icon: const Icon(Icons.close),
             onPressed: () async {
-              if (!await confirmDialog(context, title: 'Remove ${f['label']}?', body: 'Carino stops reading it and forgets what it noted. Your files aren’t touched.', confirm: 'Remove')) return;
+              if (!await confirmDialog(context, title: tr('Remove {0}?', [f['label']]), body: tr('Carino stops reading it and forgets what it noted. Your files aren’t touched.'), confirm: tr('Remove'))) return;
               await _run('rm', () => api.delete('/files/folders/${f['id']}'), (_) => 'Removed');
               await device.forgetFolder('${f['root']}');
             },
@@ -118,15 +119,15 @@ class _FilesScreenState extends State<FilesScreen> {
         contentPadding: EdgeInsets.zero,
         value: f['can_change'] == true,
         onChanged: (v) => _run('perm', () => api.patch('/files/folders/${f['id']}', {'can_change': v}), (_) => v ? 'Changes allowed — each one still asks you first' : 'Read only'),
-        title: const Text('Allow changes (each one asks first)'),
+        title: const Tx('Allow changes (each one asks first)'),
       ),
       SwitchListTile(
         dense: true,
         contentPadding: EdgeInsets.zero,
         value: f['local_only'] == true,
         onChanged: (v) => _run('lo', () => api.patch('/files/folders/${f['id']}', {'local_only': v}), (_) => v ? 'Only AI on your devices may read this folder' : 'Online AI may read files you ask about'),
-        title: const Text('Keep on my devices only'),
-        subtitle: Text('Only local AI reads it', style: t.bodySmall),
+        title: const Tx('Keep on my devices only'),
+        subtitle: Tx('Only local AI reads it', style: t.bodySmall),
       ),
       const Divider(),
     ]);
@@ -149,14 +150,14 @@ class _SearchState extends State<_Search> {
       TextField(
         textInputAction: TextInputAction.search,
         onSubmitted: (v) => setState(() => _q = v.trim()),
-        decoration: const InputDecoration(hintText: 'Search inside your files… e.g. “insurance”', prefixIcon: Icon(Icons.search)),
+        decoration: InputDecoration(hintText: tr('Search inside your files… e.g. “insurance”'), prefixIcon: Icon(Icons.search)),
       ),
       if (_q.length >= 2)
         Loader<List>(
           reloadKey: _q,
           load: () async => ((await app.api.get('/files/search?q=${Uri.encodeQueryComponent(_q)}')) as Map)['results'] as List,
           builder: (context, results, _) => results.isEmpty
-              ? const Padding(padding: EdgeInsets.all(16), child: Text('Nothing found.'))
+              ? const Padding(padding: EdgeInsets.all(16), child: Tx('Nothing found.'))
               : Column(children: [
                   for (final f in results.cast<Map>())
                     ListTile(
@@ -169,13 +170,13 @@ class _SearchState extends State<_Search> {
                       ]),
                       trailing: TextButton(
                         onPressed: () => openPath(context, '/chat/new?q=${Uri.encodeQueryComponent('Summarise the file "${f['name']}" from my folder ${f['folder']} (file id ${f['id']}).')}'),
-                        child: const Text('Summarise'),
+                        child: const Tx('Summarise'),
                       ),
                     ),
                 ]),
         ),
       const SizedBox(height: 8),
-      Text('Searching happens on this device. “Summarise” sends that file’s text to your AI service — except from folders kept on your devices, which only local AI reads.', style: Theme.of(context).textTheme.bodySmall),
+      Tx('Searching happens on this device. “Summarise” sends that file’s text to your AI service — except from folders kept on your devices, which only local AI reads.', style: Theme.of(context).textTheme.bodySmall),
     ]);
   }
 }
@@ -209,16 +210,16 @@ class _Duplicates extends StatelessWidget {
     return Loader<List>(
       load: () async => ((await app.api.get('/files/duplicates')) as Map)['groups'] as List,
       builder: (context, groups, _) => groups.isEmpty
-          ? const EmptyView(icon: Icons.check, title: 'No duplicates found')
+          ? EmptyView(icon: Icons.check, title: tr('No duplicates found'))
           : ListView(padding: const EdgeInsets.all(16), children: [
-              const Text('The same content in more than one place. To remove extra copies, see Tidy up.'),
+              const Tx('The same content in more than one place. To remove extra copies, see Tidy up.'),
               for (final g in groups.cast<Map>())
                 Card(
                   margin: const EdgeInsets.only(top: 10),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${g['copies']} copies · ${_bytes(g['size'] as num?)} each', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Tx('{0} copies · {1} each', args: [g['copies'], _bytes(g['size'] as num?)], style: const TextStyle(fontWeight: FontWeight.w600)),
                       for (final (i, f) in (g['files'] as List).cast<Map>().indexed) Text('${f['folder']}/${f['rel_path']}${i == 0 ? ' — kept' : ''}', style: const TextStyle(fontSize: 12.5)),
                     ]),
                   ),
@@ -244,7 +245,7 @@ class _TidyState extends State<_Tidy> {
       reloadKey: _bump,
       load: () async => ((await app.api.get('/files/suggestions')) as Map)['suggestions'] as List,
       builder: (context, list, _) => list.isEmpty
-          ? const EmptyView(icon: Icons.check, title: 'Nothing to tidy', body: 'Ideas appear here when there are duplicates or loose files.')
+          ? EmptyView(icon: Icons.check, title: tr('Nothing to tidy'), body: tr('Ideas appear here when there are duplicates or loose files.'))
           : ListView(padding: const EdgeInsets.all(16), children: [
               for (final s in list.cast<Map>())
                 Card(
@@ -268,12 +269,12 @@ class _TidyState extends State<_Tidy> {
                             if (context.mounted) toast(context, errorText(e), error: true);
                           }
                         },
-                        child: Text('Ask to do this (${(s['ops'] as List).length} change${(s['ops'] as List).length == 1 ? '' : 's'})'),
+                        child: Tx('Ask to do this ({0} change{1})', args: [(s['ops'] as List).length, (s['ops'] as List).length == 1 ? '' : 's']),
                       ),
                     ],
                   ),
                 ),
-              Text('Nothing changes until you approve it in Approvals, and only in folders where you allowed changes.', style: Theme.of(context).textTheme.bodySmall),
+              Tx('Nothing changes until you approve it in Approvals, and only in folders where you allowed changes.', style: Theme.of(context).textTheme.bodySmall),
             ]),
     );
   }
@@ -295,7 +296,7 @@ class _HistoryState extends State<_History> {
       reloadKey: _bump,
       load: () async => ((await app.api.get('/files/history')) as Map)['history'] as List,
       builder: (context, list, _) => list.isEmpty
-          ? const EmptyView(icon: Icons.schedule, title: 'No changes yet')
+          ? EmptyView(icon: Icons.schedule, title: tr('No changes yet'))
           : ListView(children: [
               for (final h in list.cast<Map>())
                 ListTile(
@@ -306,13 +307,13 @@ class _HistoryState extends State<_History> {
                           onPressed: () async {
                             try {
                               await app.api.post('/files/history/${h['id']}/undo', {});
-                              if (context.mounted) toast(context, 'Undone');
+                              if (context.mounted) toast(context, tr('Undone'));
                               setState(() => _bump++);
                             } catch (e) {
                               if (context.mounted) toast(context, errorText(e), error: true);
                             }
                           },
-                          child: const Text('Undo'),
+                          child: const Tx('Undo'),
                         )
                       : null,
                 ),

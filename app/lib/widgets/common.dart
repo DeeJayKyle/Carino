@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../engine/engine.dart';
 
@@ -63,7 +64,7 @@ class ErrorPanel extends StatelessWidget {
             const SizedBox(height: 8),
             Text(error is ApiError ? (error as ApiError).message : 'Something went wrong.', textAlign: TextAlign.center),
             const SizedBox(height: 8),
-            OutlinedButton(onPressed: retry, child: const Text('Try again')),
+            OutlinedButton(onPressed: retry, child: const Tx('Try again')),
           ]),
         ),
       );

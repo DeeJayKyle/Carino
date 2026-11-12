@@ -72,6 +72,7 @@ export function buildSystemPrompt(user: SessionUser, settings: Settings): string
     '',
     'Formatting: use Markdown (headings, lists, tables, code blocks) when it helps readability. Keep chat replies focused.',
     settings.profile.replyLanguage ? `Reply in ${settings.profile.replyLanguage} unless the user asks otherwise.` : 'Reply in the language the user writes in.',
+    !settings.profile.replyLanguage && APP_LANGUAGE[settings.regional.language] ? `The app is set to ${APP_LANGUAGE[settings.regional.language]}: use it for briefings and messages you start yourself.` : '',
     settings.profile.customInstructions ? `\nThe user's own instructions for you:\n${settings.profile.customInstructions}` : '',
   ].join('\n');
 }
@@ -80,6 +81,9 @@ export function buildSystemPrompt(user: SessionUser, settings: Settings): string
  * For a small model running on the phone itself, where reading each word of the prompt takes
  * time: the same rules, in as few words as possible.
  */
+/** Names of the app languages other than English, for the prompt. */
+const APP_LANGUAGE: Record<string, string> = { 'pt-BR': 'Brazilian Portuguese', de: 'German', fr: 'French', es: 'Spanish', nl: 'Dutch', it: 'Italian', pl: 'Polish' };
+
 export function buildPhonePrompt(user: SessionUser, settings: Settings): string {
   const name = settings.profile.displayName || user.name;
   const me = settings.profile.assistantName?.trim() || 'Carino';

@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useState } from 'react';
 import { Icon } from './Icon';
 import { ApiDownload } from './ApiFile';
@@ -50,32 +51,32 @@ export function BackupCard() {
   const backups: any[] = data?.backups ?? [];
   return (
     <div className="stack">
-      <p className="small muted">A backup is locked with a passphrase you choose; without it nobody — not even you — can open it. Each backup is checked by restoring it in a test before it’s kept. Sign-ins to your apps aren’t included: you sign in again after restoring.</p>
+      <p className="small muted">{t('A backup is locked with a passphrase you choose; without it nobody — not even you — can open it. Each backup is checked by restoring it in a test before it’s kept. Sign-ins to your apps aren’t included: you sign in again after restoring.')}</p>
       <div className="row wrap" style={{ gap: 8 }}>
-        <input className="input grow" type="password" autoComplete="new-password" placeholder="Passphrase (10+ characters)" value={pass} onChange={(e) => setPass(e.target.value)} aria-label="Backup passphrase" />
+        <input className="input grow" type="password" autoComplete="new-password" placeholder={t('Passphrase (10+ characters)')} value={pass} onChange={(e) => setPass(e.target.value)} aria-label={t('Backup passphrase')} />
         <button className="btn primary" disabled={!!busy || pass.length < 10} onClick={make}><Icon name="lock" size={14} />{busy === 'make' ? 'Making and checking…' : 'Make a backup'}</button>
       </div>
       {backups.length > 0 && (
         <ul className="list divided">
           {backups.map((b) => (
             <li key={b.name} className="list-item backup-row">
-              <span className="grow"><span>{b.kind === 'safety' ? 'Before restore · ' : ''}{when(b.name)}</span><span className="tiny muted" style={{ display: 'block' }}>{fmtBytes(b.size)} · encrypted</span></span>
-              <ApiDownload className="btn ghost sm" href={`/api/backup/files/${b.name}`} name={b.name}><Icon name="download" size={14} />Save</ApiDownload>
-              {(data?.cloud ?? []).length > 0 && <button className="btn ghost sm" onClick={() => setCloudFor(b.name)}><Icon name="upload" size={14} />Cloud</button>}
-              <button className="btn ghost sm" onClick={() => setRestoring({ name: b.name })}>Restore</button>
-              <button className="btn ghost sm" aria-label="Delete this backup" onClick={async () => { if (await confirm({ title: 'Delete this backup?', danger: true, confirm: 'Delete' })) { await del(`/backup/files/${b.name}`); reload(); } }}><Icon name="trash" size={14} /></button>
+              <span className="grow"><span>{b.kind === 'safety' ? 'Before restore · ' : ''}{when(b.name)}</span><span className="tiny muted" style={{ display: 'block' }}>{fmtBytes(b.size)} {t('· encrypted')}</span></span>
+              <ApiDownload className="btn ghost sm" href={`/api/backup/files/${b.name}`} name={b.name}><Icon name="download" size={14} />{t('Save')}</ApiDownload>
+              {(data?.cloud ?? []).length > 0 && <button className="btn ghost sm" onClick={() => setCloudFor(b.name)}><Icon name="upload" size={14} />{t('Cloud')}</button>}
+              <button className="btn ghost sm" onClick={() => setRestoring({ name: b.name })}>{t('Restore')}</button>
+              <button className="btn ghost sm" aria-label={t('Delete this backup')} onClick={async () => { if (await confirm({ title: 'Delete this backup?', danger: true, confirm: 'Delete' })) { await del(`/backup/files/${b.name}`); reload(); } }}><Icon name="trash" size={14} /></button>
             </li>
           ))}
         </ul>
       )}
       <div className="row wrap" style={{ gap: 8 }}>
-        <button className="btn" onClick={pickFile}><Icon name="upload" size={14} />Restore from a file…</button>
-        {!(data?.cloud ?? []).length && <span className="tiny muted">To keep a copy in Google Drive or OneDrive, connect it in My apps (optional).</span>}
+        <button className="btn" onClick={pickFile}><Icon name="upload" size={14} />{t('Restore from a file…')}</button>
+        {!(data?.cloud ?? []).length && <span className="tiny muted">{t('To keep a copy in Google Drive or OneDrive, connect it in My apps (optional).')}</span>}
       </div>
       {restoring && <RestoreDialog target={restoring} onClose={() => { setRestoring(null); reload(); }} />}
       {cloudFor && (
-        <Modal title="Copy to the cloud" onClose={() => setCloudFor(null)}>
-          <p className="small muted">The copy stays encrypted with your passphrase: Google or Microsoft can’t read it.</p>
+        <Modal title={t('Copy to the cloud')} onClose={() => setCloudFor(null)}>
+          <p className="small muted">{t('The copy stays encrypted with your passphrase: Google or Microsoft can’t read it.')}</p>
           <div className="stack" style={{ marginTop: 10 }}>
             {(data?.cloud ?? []).map((a: any) => (
               <button key={a.id} className="btn" disabled={!!busy} onClick={async () => {
@@ -137,29 +138,29 @@ function RestoreDialog({ target, onClose }: { target: { name?: string; file?: Fi
   };
   const rows = (preview?.tables ?? []).filter((t: any) => t.in_backup || t.on_device);
   return (
-    <Modal wide title="Restore a backup" onClose={onClose} footer={<>
-      <button className="btn ghost" onClick={onClose}>Cancel</button>
+    <Modal wide title={t('Restore a backup')} onClose={onClose} footer={<>
+      <button className="btn ghost" onClick={onClose}>{t('Cancel')}</button>
       {!preview ? <button className="btn primary" disabled={busy || !pass} onClick={open}>{busy ? 'Opening…' : 'Open and preview'}</button>
         : <button className={`btn ${mode === 'replace' ? 'danger solid' : 'primary'}`} disabled={busy} onClick={restore}>{busy ? 'Restoring…' : mode === 'replace' ? 'Replace everything' : 'Add what’s missing'}</button>}
     </>}>
       {!preview ? (
         <div className="field">
-          <label htmlFor="rp">Passphrase for {target.name ?? target.file?.name}</label>
+          <label htmlFor="rp">{t('Passphrase for')}{' '}{target.name ?? target.file?.name}</label>
           <input id="rp" className="input" type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus onKeyDown={(e) => { if (e.key === 'Enter' && pass) void open(); }} />
-          <span className="tiny muted">Opening it only checks and previews: nothing changes yet.</span>
+          <span className="tiny muted">{t('Opening it only checks and previews: nothing changes yet.')}</span>
         </div>
       ) : (
         <div className="stack">
-          <p className="small">Backup from <b>{new Date(preview.created_at).toLocaleString()}</b>{preview.from?.name ? ` (${preview.from.name})` : ''} — opened and checked.</p>
+          <p className="small">{t('Backup from')}{' '}<b>{new Date(preview.created_at).toLocaleString()}</b>{preview.from?.name ? ` (${preview.from.name})` : ''} {t('— opened and checked.')}</p>
           <div className="table-wrap"><table className="data-table small">
-            <thead><tr><th>What</th><th>In backup</th><th>Here now</th><th>New</th><th>Different</th></tr></thead>
+            <thead><tr><th>{t('What')}</th><th>{t('In backup')}</th><th>{t('Here now')}</th><th>{t('New')}</th><th>{t('Different')}</th></tr></thead>
             <tbody>{rows.map((t: any) => <tr key={t.table}><td>{TABLE_LABEL[t.table] ?? t.table.replace(/_/g, ' ')}</td><td>{t.in_backup}</td><td>{t.on_device}</td><td>{t.new}</td><td>{t.different}</td></tr>)}</tbody>
           </table></div>
-          <div role="radiogroup" aria-label="How to restore" className="stack" style={{ gap: 6 }}>
-            <label className="row small" style={{ gap: 8, alignItems: 'flex-start' }}><input type="radio" name="mode" checked={mode === 'merge'} onChange={() => setMode('merge')} style={{ marginTop: 3 }} /><span><b>Add what’s missing</b> — keeps everything here; where a record differs, the one here is kept.</span></label>
-            <label className="row small" style={{ gap: 8, alignItems: 'flex-start' }}><input type="radio" name="mode" checked={mode === 'replace'} onChange={() => setMode('replace')} style={{ marginTop: 3 }} /><span><b>Replace everything</b> — this account becomes exactly the backup. Anything added since is removed.</span></label>
+          <div role="radiogroup" aria-label={t('How to restore')} className="stack" style={{ gap: 6 }}>
+            <label className="row small" style={{ gap: 8, alignItems: 'flex-start' }}><input type="radio" name="mode" checked={mode === 'merge'} onChange={() => setMode('merge')} style={{ marginTop: 3 }} /><span><b>{t('Add what’s missing')}</b> {t('— keeps everything here; where a record differs, the one here is kept.')}</span></label>
+            <label className="row small" style={{ gap: 8, alignItems: 'flex-start' }}><input type="radio" name="mode" checked={mode === 'replace'} onChange={() => setMode('replace')} style={{ marginTop: 3 }} /><span><b>{t('Replace everything')}</b> {t('— this account becomes exactly the backup. Anything added since is removed.')}</span></label>
           </div>
-          <p className="tiny muted">Before restoring, what’s here now is saved as an encrypted “Before restore” backup with the same passphrase, so you can undo it. Not in backups: {preview.left_out.join(', ').toLowerCase()}.</p>
+          <p className="tiny muted">{t('Before restoring, what’s here now is saved as an encrypted “Before restore” backup with the same passphrase, so you can undo it. Not in backups:')}{' '}{preview.left_out.join(', ').toLowerCase()}.</p>
         </div>
       )}
     </Modal>

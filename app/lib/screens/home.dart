@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../nav.dart';
@@ -33,7 +34,7 @@ class HomeScreen extends StatelessWidget {
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.notifications_active_outlined),
-                    title: Text('${_attention(d)} thing${_attention(d) == 1 ? '' : 's'} need${_attention(d) == 1 ? 's' : ''} your attention'),
+                    title: Tx('{0} thing{1} need{2} your attention', args: [_attention(d), _attention(d) == 1 ? '' : 's', _attention(d) == 1 ? 's' : '']),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => openPath(context, _pending(d) > 0 ? '/actions' : '/notifications'),
                   ),
@@ -97,9 +98,9 @@ class _AskBarState extends State<AskBar> {
       textInputAction: TextInputAction.send,
       onSubmitted: (_) => _ask(),
       decoration: InputDecoration(
-        hintText: 'Ask ${app.assistantName} anything…',
+        hintText: tr('Ask {0} anything…', [app.assistantName]),
         prefixIcon: const Icon(Icons.auto_awesome_outlined),
-        suffixIcon: IconButton(icon: const Icon(Icons.send_rounded), tooltip: 'Send', onPressed: _ask),
+        suffixIcon: IconButton(icon: const Icon(Icons.send_rounded), tooltip: tr('Send'), onPressed: _ask),
       ),
     );
   }
@@ -150,7 +151,7 @@ class _Highlights extends StatelessWidget {
         onTap: () => onTab(2),
       ),
       _Highlight(
-        icon: Icons.wb_sunny_outlined, color: Colors.orange, kicker: 'Your briefing', title: 'Here’s your day',
+        icon: Icons.wb_sunny_outlined, color: Colors.orange, kicker: 'Your briefing', title: tr('Here’s your day'),
         body: (d['briefing'] as String?) ?? '', onTap: () => ChatScreen.startNew(context, firstMessage: 'What does my day look like? Help me plan it.'),
       ),
       _Highlight(
@@ -207,7 +208,7 @@ class _RecentChats extends StatelessWidget {
     if (list.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const SizedBox(height: 18),
-      Text('Recent chats', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+      Tx('Recent chats', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
       const SizedBox(height: 6),
       Card(
         child: Column(children: [

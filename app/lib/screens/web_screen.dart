@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 
@@ -11,7 +12,7 @@ class WebScreen extends StatefulWidget {
   static Future<void> open(BuildContext context, String path) async {
     final app = AppState.of(context);
     if (!app.engine.hasWebScreens) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This part of Carino isn’t available here yet.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Tx('This part of Carino isn’t available here yet.')));
       return;
     }
     await app.engine.openWebScreen(path);

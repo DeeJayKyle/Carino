@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Icon } from './Icon';
 import { useConfirm, useToast } from './ui';
@@ -42,13 +43,13 @@ export function AccessOverview() {
 
   return (
     <div className="stack access-overview">
-      <Group icon={ai?.capabilities.local ? 'lock' : 'globe'} title="Who answers your chats" empty="No AI service set up yet." items={ai ? [
+      <Group icon={ai?.capabilities.local ? 'lock' : 'globe'} title={t('Who answers your chats')} empty="No AI service set up yet." items={ai ? [
         <Item key="ai" name={ai.label} detail={ai.capabilities.local ? 'Runs on this device: your messages stay here.' : 'Online: your messages, plus the memories and file text needed to answer, are sent to it.'}>
-          <Link className="btn ghost sm" to="/settings#ai">Change</Link>
+          <Link className="btn ghost sm" to="/settings#ai">{t('Change')}</Link>
         </Item>,
       ] : []} />
 
-      <Group icon="folder" title="Folders" more={<Link to="/files">Files</Link>} empty="No folders shared." items={(files.data?.folders ?? []).map((f: any) => (
+      <Group icon="folder" title={t('Folders')} more={<Link to="/files">{t('Files')}</Link>} empty="No folders shared." items={(files.data?.folders ?? []).map((f: any) => (
         <Item key={f.id} name={f.label} detail={f.can_change ? 'Can read · can change with your OK' : 'Read only'}>
           <RemoveBtn label={f.label} onClick={() => revoke(f.label, 'Carino stops reading it and forgets what it noted. Your files aren’t touched.', async () => { await del(`/files/folders/${f.id}`); forgetFolder(f.root); }, files.reload)} />
         </Item>
@@ -56,25 +57,25 @@ export function AccessOverview() {
 
       {desktop()?.listApps && <PcApps />}
 
-      <Group icon="user" title="Signed-in accounts" more={<Link to="/apps">Apps</Link>} empty="No accounts connected." items={accounts.map((a: any) => (
+      <Group icon="user" title={t('Signed-in accounts')} more={<Link to="/apps">{t('Apps')}</Link>} empty="No accounts connected." items={accounts.map((a: any) => (
         <Item key={a.id} name={`${a.provider}: ${a.label}`} detail={a.last_error ? `Problem: ${a.last_error}` : 'Reads with your OK per app settings; sending and posting always ask first.'}>
           <RemoveBtn label={a.label} onClick={() => revoke(`${a.provider} (${a.label})`, 'Carino signs out of this account and deletes its saved sign-in.', () => del(`/apps/accounts/${a.id}`), apps.reload)} />
         </Item>
       ))} />
 
-      <Group icon="link" title="Connected tools" more={<Link to="/connectors">Connectors</Link>} empty="No connected tools." items={(connectors.data?.connectors ?? []).map((c: any) => (
+      <Group icon="link" title={t('Connected tools')} more={<Link to="/connectors">{t('Connectors')}</Link>} empty="No connected tools." items={(connectors.data?.connectors ?? []).map((c: any) => (
         <Item key={c.id} name={c.name} detail={`${hostOf(c.url)} · ${c.tools.length} tool${c.tools.length === 1 ? '' : 's'}${c.enabled ? '' : ' · switched off'}`}>
           <RemoveBtn label={c.name} onClick={() => revoke(c.name, 'Carino disconnects it and forgets its saved sign-in.', () => del(`/connectors/${c.id}`), connectors.reload)} />
         </Item>
       ))} />
 
-      <Group icon="phone" title="Paired devices" more={<Link to="/settings#devices">Devices</Link>} empty="No paired devices." items={(sync.data?.peers ?? []).map((p: any) => (
+      <Group icon="phone" title={t('Paired devices')} more={<Link to="/settings#devices">{t('Devices')}</Link>} empty="No paired devices." items={(sync.data?.peers ?? []).map((p: any) => (
         <Item key={p.device_id} name={p.name} detail={p.confirmed ? 'Keeps your data in step over your Wi-Fi' : 'Waiting for the check number'}>
           <RemoveBtn label={p.name} onClick={() => revoke(p.name, 'They stop syncing. Nothing already on either device is deleted.', () => del(`/sync/peers/${p.device_id}`), sync.reload)} />
         </Item>
       ))} />
 
-      <Group icon="chat" title="Messaging" more={<Link to="/messaging">Messaging</Link>} empty="No messaging channels." items={(channels.data?.channels ?? []).map((ch: any) => (
+      <Group icon="chat" title={t('Messaging')} more={<Link to="/messaging">{t('Messaging')}</Link>} empty="No messaging channels." items={(channels.data?.channels ?? []).map((ch: any) => (
         <Item key={ch.id} name={ch.kind === 'whatsapp' ? 'WhatsApp' : ch.kind === 'telegram' ? 'Telegram' : ch.kind} detail={`${ch.chats.length} chat${ch.chats.length === 1 ? '' : 's'} can talk to Carino`}>
           <RemoveBtn label={ch.kind} onClick={() => revoke(ch.kind === 'whatsapp' ? 'WhatsApp' : 'Telegram', 'Carino stops answering there.', () => del(`/channels/${ch.id}`), channels.reload)} />
         </Item>
@@ -99,7 +100,7 @@ function PcApps() {
     }
   };
   return (
-    <Group icon="briefcase" title="Apps on this PC" more={<button className="btn ghost sm" onClick={add}><Icon name="plus" size={14} />Add an app</button>}
+    <Group icon="briefcase" title={t('Apps on this PC')} more={<button className="btn ghost sm" onClick={add}><Icon name="plus" size={14} />{t('Add an app')}</button>}
       empty="None. Add an app (like Excel) so Carino can open it for you, with a file if you like. It can’t control apps once they’re open."
       items={(list ?? []).map((a) => (
         <Item key={a.id} name={a.name} detail="Can be opened by Carino">
@@ -128,7 +129,7 @@ function Item({ name, detail, children }: { name: string; detail: string; childr
 }
 
 function RemoveBtn({ label, onClick }: { label: string; onClick: () => void }) {
-  return <button className="btn ghost sm" aria-label={`Remove ${label}`} onClick={onClick}><Icon name="x" size={14} />Remove</button>;
+  return <button className="btn ghost sm" aria-label={`Remove ${label}`} onClick={onClick}><Icon name="x" size={14} />{t('Remove')}</button>;
 }
 
 function hostOf(url: string) {

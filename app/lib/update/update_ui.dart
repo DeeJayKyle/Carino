@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 
@@ -24,15 +25,15 @@ Future<void> autoUpdate(BuildContext context) async {
     if (!context.mounted) return;
     if (Platform.isWindows) {
       final messenger = ScaffoldMessenger.of(context);
-      messenger.showSnackBar(SnackBar(content: Text('Updating Carino to ${u.version}… it reopens in a moment.')));
+      messenger.showSnackBar(SnackBar(content: Tx('Updating Carino to {0}… it reopens in a moment.', args: [u.version])));
       await Future<void>.delayed(const Duration(seconds: 3));
       await install(f);
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       duration: const Duration(seconds: 20),
-      content: Text('Carino ${u.version} is ready to install.'),
-      action: SnackBarAction(label: 'Install', onPressed: () => install(f)),
+      content: Tx('Carino {0} is ready to install.', args: [u.version]),
+      action: SnackBarAction(label: tr('Install'), onPressed: () => install(f)),
     ));
   } catch (_) {
     // Updates are a convenience: try again next time.
@@ -81,17 +82,17 @@ class _UpdateSettingsState extends State<UpdateSettings> {
   @override
   Widget build(BuildContext context) {
     final u = (AppState.of(context).settings['updates'] as Map?) ?? const {};
-    return SettingsPage(title: 'Updates', intro: 'Carino updates itself from its official releases. Each download is checked before it is installed, and your data is kept.', children: [
-      ListTile(contentPadding: EdgeInsets.zero, title: const Text('This version'), trailing: Text(_current ?? '…')),
+    return SettingsPage(title: tr('Updates'), intro: tr('Carino updates itself from its official releases. Each download is checked before it is installed, and your data is kept.'), children: [
+      ListTile(contentPadding: EdgeInsets.zero, title: const Tx('This version'), trailing: Text(_current ?? '…')),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
         value: u['auto'] != false,
         onChanged: (v) => saveSettings(context, {'updates': {'auto': v}}),
-        title: const Text('Update automatically'),
+        title: const Tx('Update automatically'),
         subtitle: Text(Platform.isAndroid ? 'Downloads new versions; Android asks you to confirm the install.' : 'Installs new versions quietly when Carino opens.'),
       ),
       const SizedBox(height: 8),
-      FilledButton.tonal(onPressed: _busy ? null : _check, child: const Text('Check now')),
+      FilledButton.tonal(onPressed: _busy ? null : _check, child: const Tx('Check now')),
       if (_progress != null) Padding(padding: const EdgeInsets.only(top: 10), child: LinearProgressIndicator(value: _progress)),
       if (_status != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_status!)),
     ]);

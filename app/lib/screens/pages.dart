@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show Platform;
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -24,12 +25,12 @@ class _PagesScreenState extends State<PagesScreen> {
   Widget build(BuildContext context) {
     final api = AppState.of(context).api;
     return Scaffold(
-      appBar: AppBar(title: const Text('Pages & apps')),
+      appBar: AppBar(title: const Tx('Pages & apps')),
       body: Loader<List>(
         reloadKey: _bump,
         load: () async => ((await api.get('/pages')) as Map)['pages'] as List,
         builder: (context, list, _) => list.isEmpty
-            ? const EmptyView(icon: Icons.web_outlined, title: 'Nothing built yet', body: 'Ask Carino to make a page or a small app — an invite, a menu, a checklist, a quiz — and it appears here.')
+            ? EmptyView(icon: Icons.web_outlined, title: tr('Nothing built yet'), body: tr('Ask Carino to make a page or a small app — an invite, a menu, a checklist, a quiz — and it appears here.'))
             : ListView(padding: const EdgeInsets.all(16), children: [
                 for (final p in list.cast<Map>())
                   Card(
@@ -37,7 +38,7 @@ class _PagesScreenState extends State<PagesScreen> {
                     child: ListTile(
                       leading: Icon(p['kind'] == 'app' ? Icons.widgets_outlined : Icons.web_outlined),
                       title: Text('${p['title']}'),
-                      subtitle: Text('Version ${p['version']} · ${fmtDateTime('${p['updated_at']}')}'),
+                      subtitle: Tx('Version {0} · {1}', args: [p['version'], fmtDateTime('${p['updated_at']}')]),
                       onTap: () async {
                         await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => BuiltPageView('${p['id']}')));
                         setState(() => _bump++);
@@ -119,12 +120,12 @@ class _BuiltPageViewState extends State<BuiltPageView> {
         actions: [
           if (history.isNotEmpty)
             PopupMenuButton<int>(
-              tooltip: 'Versions',
+              tooltip: tr('Versions'),
               icon: const Icon(Icons.history),
               onSelected: (v) => _load(v == p?['version'] ? null : v),
               itemBuilder: (_) => [
-                PopupMenuItem(value: (p?['version'] as num?)?.toInt() ?? 0, child: Text('Version ${p?['version']} (latest)')),
-                for (final h in history.reversed) PopupMenuItem(value: (h['version'] as num).toInt(), child: Text('Version ${h['version']} · ${fmtDateTime('${h['at']}')}')),
+                PopupMenuItem(value: (p?['version'] as num?)?.toInt() ?? 0, child: Tx('Version {0} (latest)', args: [p?['version']])),
+                for (final h in history.reversed) PopupMenuItem(value: (h['version'] as num).toInt(), child: Tx('Version {0} · {1}', args: [h['version'], fmtDateTime('${h['at']}')])),
               ],
             ),
           if (_version != null && p != null && _version != p['version'])
@@ -132,20 +133,20 @@ class _BuiltPageViewState extends State<BuiltPageView> {
               onPressed: () async {
                 await api.post('/pages/${widget.id}/restore', {'version': _version});
                 await _load();
-                if (context.mounted) toast(context, 'Restored as the latest version');
+                if (context.mounted) toast(context, tr('Restored as the latest version'));
               },
-              child: const Text('Restore this'),
+              child: const Tx('Restore this'),
             ),
           IconButton(
-            tooltip: 'Share',
+            tooltip: tr('Share'),
             icon: const Icon(Icons.share_outlined),
             onPressed: _html == null ? null : () => Device(api).shareFile('${p?['title'] ?? 'page'}.html', 'text/html', utf8.encode(_html!)),
           ),
           IconButton(
-            tooltip: 'Delete',
+            tooltip: tr('Delete'),
             icon: const Icon(Icons.delete_outline),
             onPressed: () async {
-              if (!await confirmDialog(context, title: 'Delete this page?', body: 'Its earlier versions go too.', confirm: 'Delete', danger: true)) return;
+              if (!await confirmDialog(context, title: tr('Delete this page?'), body: tr('Its earlier versions go too.'), confirm: tr('Delete'), danger: true)) return;
               await api.delete('/pages/${widget.id}');
               if (context.mounted) Navigator.pop(context);
             },

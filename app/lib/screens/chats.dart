@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 
@@ -27,17 +28,17 @@ class _ChatsScreenState extends State<ChatsScreen> {
   Widget build(BuildContext context) {
     final app = AppState.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Chats')),
+      appBar: AppBar(title: const Tx('Chats')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => ChatScreen.startNew(context),
         icon: const Icon(Icons.add),
-        label: const Text('New chat'),
+        label: const Tx('New chat'),
       ),
       body: Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
           child: TextField(
-            decoration: const InputDecoration(hintText: 'Search chats', prefixIcon: Icon(Icons.search), isDense: true),
+            decoration: InputDecoration(hintText: tr('Search chats'), prefixIcon: Icon(Icons.search), isDense: true),
             onChanged: (v) {
               _debounce?.cancel();
               _debounce = Timer(const Duration(milliseconds: 300), () => setState(() => _q = v.trim()));
@@ -84,11 +85,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete this chat?'),
-        content: Text('“${c['title']}” and its messages will be deleted.'),
+        title: const Tx('Delete this chat?'),
+        content: Tx('“{0}” and its messages will be deleted.', args: [c['title']]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Tx('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Tx('Delete')),
         ],
       ),
     );

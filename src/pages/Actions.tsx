@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useState } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -14,24 +15,24 @@ export default function Actions() {
   const pending = useData<any>('/actions?status=pending');
   const history = useData<any>(`/actions?limit=200${filter ? `&status=${filter}` : ''}`);
   return (
-    <Shell title="Approvals & activity">
+    <Shell title={t('Approvals & activity')}>
       <div className="page narrow">
-        <div className="page-head"><div><h1>Approvals</h1><p className="sub">Carino runs read-only and reversible actions within the permissions you set. Deletions and other consequential actions always wait here for you.</p></div></div>
+        <div className="page-head"><div><h1>{t('Approvals')}</h1><p className="sub">{t('Carino runs read-only and reversible actions within the permissions you set. Deletions and other consequential actions always wait here for you.')}</p></div></div>
         <ErrorBox error={pending.error} retry={pending.reload} />
         {pending.loading && !pending.data ? <Loading rows={2} /> : pending.data?.actions.length === 0 ? (
-          <div className="card pad row"><Icon name="check" style={{ color: 'var(--success)' }} /><span>Nothing waiting for approval.</span></div>
+          <div className="card pad row"><Icon name="check" style={{ color: 'var(--success)' }} /><span>{t('Nothing waiting for approval.')}</span></div>
         ) : (
           <div className="stack">{pending.data?.actions.map((a: any) => <ApprovalCard key={a.id} action={a} onDecided={() => { pending.reload(); history.reload(); }} />)}</div>
         )}
         <div className="row" style={{ margin: '28px 0 10px' }}>
-          <h2 className="grow">Action history</h2>
-          <select className="select" style={{ maxWidth: 170 }} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter history">
-            <option value="">All</option><option value="executed">Completed</option><option value="failed">Failed</option><option value="rejected">Declined</option>
+          <h2 className="grow">{t('Action history')}</h2>
+          <select className="select" style={{ maxWidth: 170 }} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t('Filter history')}>
+            <option value="">{t('All')}</option><option value="executed">{t('Completed')}</option><option value="failed">{t('Failed')}</option><option value="rejected">{t('Declined')}</option>
           </select>
-          <Link to="/settings#permissions" className="btn sm"><Icon name="shield" size={14} />Permissions</Link>
+          <Link to="/settings#permissions" className="btn sm"><Icon name="shield" size={14} />{t('Permissions')}</Link>
         </div>
         <ErrorBox error={history.error} retry={history.reload} />
-        {history.loading && !history.data ? <Loading /> : history.data?.actions.length === 0 ? <Empty icon="clock" title="No actions yet" /> : (
+        {history.loading && !history.data ? <Loading /> : history.data?.actions.length === 0 ? <Empty icon="clock" title={t('No actions yet')} /> : (
           <div className="card"><ul className="list divided">
             {history.data?.actions.filter((a: any) => a.status !== 'pending').map((a: any) => (
               <li key={a.id} className="list-item" style={{ alignItems: 'flex-start' }}>
@@ -48,7 +49,7 @@ export default function Actions() {
             ))}
           </ul></div>
         )}
-        <p className="faint tiny" style={{ marginTop: 10 }}>History stores what each action did, not the full content you discussed.</p>
+        <p className="faint tiny" style={{ marginTop: 10 }}>{t('History stores what each action did, not the full content you discussed.')}</p>
       </div>
     </Shell>
   );

@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useState } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -66,26 +67,26 @@ export default function Ramble() {
   const kept = items?.filter((i) => i.keep).length ?? 0;
 
   return (
-    <Shell title="Ramble it out">
+    <Shell title={t('Ramble it out')}>
       <div className="page" style={{ maxWidth: 820 }}>
         <div className="page-head"><div>
-          <h1>Ramble it out</h1>
-          <p className="sub">Got a lot on your mind? Talk or type it all out, in any order. Carino sorts it into to-dos, reminders and things to remember, and you choose what to keep.</p>
+          <h1>{t('Ramble it out')}</h1>
+          <p className="sub">{t('Got a lot on your mind? Talk or type it all out, in any order. Carino sorts it into to-dos, reminders and things to remember, and you choose what to keep.')}</p>
         </div></div>
 
         {done && (
           <div className="callout small" style={{ marginBottom: 16 }}>
             <Icon name="check" size={16} />
-            <span className="grow">Added {[done.tasks && `${done.tasks} task${done.tasks > 1 ? 's' : ''}`, done.reminders && `${done.reminders} reminder${done.reminders > 1 ? 's' : ''}`, done.memories && `${done.memories} memor${done.memories > 1 ? 'ies' : 'y'}`].filter(Boolean).join(', ')}.</span>
-            <Link to="/tasks">Open tasks</Link>
+            <span className="grow">{t('Added')}{' '}{[done.tasks && `${done.tasks} task${done.tasks > 1 ? 's' : ''}`, done.reminders && `${done.reminders} reminder${done.reminders > 1 ? 's' : ''}`, done.memories && `${done.memories} memor${done.memories > 1 ? 'ies' : 'y'}`].filter(Boolean).join(', ')}.</span>
+            <Link to="/tasks">{t('Open tasks')}</Link>
           </div>
         )}
 
         {!items && (
           <section className="card pad stack">
-            <label htmlFor="ramble" className="sr-only">Your ramble</label>
+            <label htmlFor="ramble" className="sr-only">{t('Your ramble')}</label>
             <textarea id="ramble" className="textarea" rows={10} maxLength={20000} value={voice.interim ? `${text} ${voice.interim}` : text} onChange={(e) => setText(e.target.value)}
-              placeholder="e.g. I need to order paracetamol by Friday, remind me to call Mama tomorrow at 5, the shop sign is broken, and I had an idea for a loyalty card…" />
+              placeholder={t('e.g. I need to order paracetamol by Friday, remind me to call Mama tomorrow at 5, the shop sign is broken, and I had an idea for a loyalty card…')} />
             <div className="row wrap">
               {me!.settings.voice.enabled && voice.supported && (
                 <button type="button" className={`btn ${voice.listening ? 'recording' : ''}`} onClick={voice.listening ? voice.stop : voice.start} aria-pressed={voice.listening}>
@@ -95,7 +96,7 @@ export default function Ramble() {
               <span className="grow small faint">{text.length > 0 && `${text.length.toLocaleString()} characters`}</span>
               <button className="btn primary" disabled={!text.trim() || busy === 'sort'} onClick={sort}><Icon name="sparkle" size={16} />{busy === 'sort' ? 'Sorting…' : 'Sort it out'}</button>
             </div>
-            {voice.listening && <p className="faint tiny">Listening — take your time, pauses are fine. Speech is transcribed by your browser’s speech service.</p>}
+            {voice.listening && <p className="faint tiny">{t('Listening — take your time, pauses are fine. Speech is transcribed by your browser’s speech service.')}</p>}
             {voice.error && <p className="small" style={{ color: 'var(--danger)' }}>{voice.error}</p>}
           </section>
         )}
@@ -103,28 +104,28 @@ export default function Ramble() {
         {items && (
           <section className="stack">
             {items.length === 0 ? (
-              <Empty icon="check" title="Nothing to add">Carino didn’t find any to-dos, reminders or things to remember in that. <button className="btn sm" onClick={() => setItems(null)}>Go back</button></Empty>
+              <Empty icon="check" title={t('Nothing to add')}>{t('Carino didn’t find any to-dos, reminders or things to remember in that.')}{' '}<button className="btn sm" onClick={() => setItems(null)}>{t('Go back')}</button></Empty>
             ) : (
               <>
-                <p className="small muted">Here’s what Carino picked out. Untick anything you don’t want, and check the dates before adding.</p>
+                <p className="small muted">{t('Here’s what Carino picked out. Untick anything you don’t want, and check the dates before adding.')}</p>
                 <ul className="list" style={{ gap: 10, display: 'grid' }}>
                   {items.map((i, n) => (
                     <li key={n} className={`card pad ramble-item ${i.keep ? '' : 'off'}`}>
                       <div className="row" style={{ alignItems: 'flex-start' }}>
                         <input type="checkbox" className="ramble-check" checked={i.keep} onChange={(e) => edit(n, { keep: e.target.checked })} aria-label={`Keep ${i.title}`} />
                         <div className="grow stack" style={{ gap: 6 }}>
-                          <input className="input" value={i.title} maxLength={300} onChange={(e) => edit(n, { title: e.target.value })} aria-label="Title" />
+                          <input className="input" value={i.title} maxLength={300} onChange={(e) => edit(n, { title: e.target.value })} aria-label={t('Title')} />
                           {i.details && <p className="small muted">{i.details}</p>}
                           <div className="row wrap small">
-                            <select className="input" style={{ width: 'auto' }} value={i.type} onChange={(e) => edit(n, { type: e.target.value as Item['type'] })} aria-label="Type">
+                            <select className="input" style={{ width: 'auto' }} value={i.type} onChange={(e) => edit(n, { type: e.target.value as Item['type'] })} aria-label={t('Type')}>
                               {(['task', 'reminder', 'memory'] as const).map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
                             </select>
                             {i.type !== 'memory' && (
-                              <input type="datetime-local" className="input" style={{ width: 'auto' }} aria-label="When"
+                              <input type="datetime-local" className="input" style={{ width: 'auto' }} aria-label={t('When')}
                                 value={i.when_iso ? toLocalInput(i.when_iso) : ''}
                                 onChange={(e) => edit(n, { when_iso: e.target.value ? fromLocalInput(e.target.value) : null, all_day: false, warning: undefined })} />
                             )}
-                            {i.type !== 'memory' && i.when_text && <span className="faint">from “{i.when_text}”</span>}
+                            {i.type !== 'memory' && i.when_text && <span className="faint">{t('from “')}{i.when_text}”</span>}
                             {i.priority === 1 && <span className="badge danger">urgent</span>}
                             <Icon name={TYPE_ICON[i.type]} size={14} style={{ color: 'var(--text-3)' }} />
                           </div>
@@ -137,7 +138,7 @@ export default function Ramble() {
               </>
             )}
             <div className="row wrap">
-              <button className="btn" onClick={() => setItems(null)}><Icon name="edit" size={16} />Back to my ramble</button>
+              <button className="btn" onClick={() => setItems(null)}><Icon name="edit" size={16} />{t('Back to my ramble')}</button>
               <span className="grow" />
               {items.length > 0 && <button className="btn primary" disabled={!kept || busy === 'add'} onClick={add}><Icon name="check" size={16} />{busy === 'add' ? 'Adding…' : `Add ${kept} item${kept === 1 ? '' : 's'}`}</button>}
             </div>

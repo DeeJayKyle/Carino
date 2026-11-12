@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -21,18 +22,18 @@ export default function Notifications() {
     }
   }, [data?.unread, refreshCounts]);
   return (
-    <Shell title="Notifications" actions={data?.notifications.length > 0 && (
+    <Shell title={t('Notifications')} actions={data?.notifications.length > 0 && (
       <button className="btn ghost sm" onClick={async () => {
         if (!(await confirm({ title: 'Clear all notifications?', body: 'This permanently deletes every notification in your inbox. Reminders and routines keep working.', confirm: 'Clear all', danger: true }))) return;
         await del('/notifications');
         reload();
         refreshCounts();
-      }}><Icon name="trash" size={15} />Clear all</button>
+      }}><Icon name="trash" size={15} />{t('Clear all')}</button>
     )}>
       <div className="page narrow">
         <ErrorBox error={error} retry={reload} />
         {loading && !data ? <Loading /> : data?.notifications.length === 0 ? (
-          <Empty icon="bell" title="No notifications">Reminders, briefings and failed actions will appear here.</Empty>
+          <Empty icon="bell" title={t('No notifications')}>{t('Reminders, briefings and failed actions will appear here.')}</Empty>
         ) : (
           <div className="card"><ul className="list divided">
             {data?.notifications.map((n: any) => (

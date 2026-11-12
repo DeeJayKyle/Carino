@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../engine/device.dart';
@@ -51,10 +52,10 @@ class SettingsScreen extends StatelessWidget {
     final direct = settingsSections.where((s) => s.$1 == section).firstOrNull;
     if (direct != null) return direct.$4();
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: const Tx('Settings')),
       body: ListView(children: [
         for (final (_, label, icon, page) in settingsSections)
-          ListTile(leading: Icon(icon), title: Text(label), trailing: const Icon(Icons.chevron_right), onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page()))),
+          ListTile(leading: Icon(icon), title: Tx(label), trailing: const Icon(Icons.chevron_right), onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page()))),
       ]),
     );
   }
@@ -69,7 +70,7 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(title)),
+        appBar: AppBar(title: Tx(title)),
         body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
           if (intro != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(intro!, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))),
           ...children,
@@ -101,7 +102,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
       await app.loadMe();
       if (!mounted) return;
       setState(() => _style = 'mine');
-      toast(context, 'Got it — drafts will sound like you.');
+      toast(context, tr('Got it — drafts will sound like you.'));
     } catch (e) {
       if (!mounted) return;
       if (samples == null && e is ApiError && e.status == 400) {
@@ -109,9 +110,9 @@ class _ProfileSettingsState extends State<ProfileSettings> {
         final pasted = await showDialog<String>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Show me how you write'),
-            content: TextField(controller: c, minLines: 5, maxLines: 10, decoration: const InputDecoration(hintText: 'Paste a few messages or emails you have sent (no private details needed).')),
-            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Learn'))],
+            title: const Tx('Show me how you write'),
+            content: TextField(controller: c, minLines: 5, maxLines: 10, decoration: InputDecoration(hintText: tr('Paste a few messages or emails you have sent (no private details needed).'))),
+            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Tx('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Tx('Learn'))],
           ),
         );
         if (pasted != null && pasted.trim().isNotEmpty && mounted) {
@@ -129,24 +130,24 @@ class _ProfileSettingsState extends State<ProfileSettings> {
   @override
   Widget build(BuildContext context) {
     AppState.of(context); // rebuild when the profile changes (e.g. after learning a voice)
-    return SettingsPage(title: 'Profile & assistant', intro: 'How Carino addresses you and how it responds. Changes apply to new conversations.', children: [
-      TextField(controller: _name, decoration: const InputDecoration(labelText: 'Your name'), onSubmitted: (v) => saveSettings(context, {'profile': {'displayName': v.trim()}})),
+    return SettingsPage(title: tr('Profile & assistant'), intro: tr('How Carino addresses you and how it responds. Changes apply to new conversations.'), children: [
+      TextField(controller: _name, decoration: InputDecoration(labelText: tr('Your name')), onSubmitted: (v) => saveSettings(context, {'profile': {'displayName': v.trim()}})),
       const SizedBox(height: 12),
-      TextField(controller: _assistant, maxLength: 40, decoration: const InputDecoration(labelText: 'Assistant’s name', helperText: 'Give your assistant any name you like.'), onSubmitted: (v) => v.trim().isEmpty ? null : saveSettings(context, {'profile': {'assistantName': v.trim()}})),
+      TextField(controller: _assistant, maxLength: 40, decoration: InputDecoration(labelText: tr('Assistant’s name'), helperText: tr('Give your assistant any name you like.')), onSubmitted: (v) => v.trim().isEmpty ? null : saveSettings(context, {'profile': {'assistantName': v.trim()}})),
       const SizedBox(height: 4),
       Autocomplete<String>(
         initialValue: TextEditingValue(text: _lang.text),
         optionsBuilder: (v) => const ['English', 'Luganda', 'Swahili', 'Kinyarwanda', 'French', 'Spanish', 'Portuguese', 'German', 'Arabic', 'Hindi'].where((l) => l.toLowerCase().startsWith(v.text.toLowerCase())),
         onSelected: (v) => saveSettings(context, {'profile': {'replyLanguage': v}}),
-        fieldViewBuilder: (context, c, f, onSubmit) => TextField(controller: c, focusNode: f, decoration: const InputDecoration(labelText: 'Reply language', helperText: 'Leave empty to reply in whatever language you write in.'), onSubmitted: (v) => saveSettings(context, {'profile': {'replyLanguage': v.trim()}})),
+        fieldViewBuilder: (context, c, f, onSubmit) => TextField(controller: c, focusNode: f, decoration: InputDecoration(labelText: tr('Reply language'), helperText: tr('Leave empty to reply in whatever language you write in.')), onSubmitted: (v) => saveSettings(context, {'profile': {'replyLanguage': v.trim()}})),
       ),
       const SizedBox(height: 14),
-      const Text('Response style'),
+      const Tx('Response style'),
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final (v, label) in const [('balanced', 'Balanced'), ('concise', 'Short and direct'), ('detailed', 'Detailed'), ('warm', 'Warm'), ('upbeat', 'Upbeat'), ('playful', 'A little cheeky'), ('mine', 'Like me')])
           ChoiceChip(
-            label: Text(label),
+            label: Tx(label),
             selected: _style == v,
             onSelected: v == 'mine' && '${p['voiceProfile'] ?? ''}'.isEmpty
                 ? (_) => _learn()
@@ -162,7 +163,7 @@ class _ProfileSettingsState extends State<ProfileSettings> {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Sound like me', style: TextStyle(fontWeight: FontWeight.w600)),
+            const Tx('Sound like me', style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             Text(
               '${p['voiceProfile'] ?? ''}'.isEmpty
@@ -181,15 +182,15 @@ class _ProfileSettingsState extends State<ProfileSettings> {
                     await app.loadMe();
                     if (mounted) setState(() => _style = '${app.settings['profile']?['assistantStyle'] ?? 'balanced'}');
                   },
-                  child: const Text('Forget it'),
+                  child: const Tx('Forget it'),
                 ),
             ]),
           ]),
         ),
       ),
       const SizedBox(height: 14),
-      TextField(controller: _instr, maxLength: 2000, minLines: 3, maxLines: 8, decoration: const InputDecoration(labelText: 'Instructions for Carino', hintText: 'e.g. I run a community pharmacy in Kampala. Use UGX for money.')),
-      Align(alignment: Alignment.centerRight, child: FilledButton(onPressed: () => saveSettings(context, {'profile': {'customInstructions': _instr.text, 'displayName': _name.text.trim(), if (_assistant.text.trim().isNotEmpty) 'assistantName': _assistant.text.trim()}}), child: const Text('Save'))),
+      TextField(controller: _instr, maxLength: 2000, minLines: 3, maxLines: 8, decoration: InputDecoration(labelText: tr('Instructions for Carino'), hintText: tr('e.g. I run a community pharmacy in Kampala. Use UGX for money.'))),
+      Align(alignment: Alignment.centerRight, child: FilledButton(onPressed: () => saveSettings(context, {'profile': {'customInstructions': _instr.text, 'displayName': _name.text.trim(), if (_assistant.text.trim().isNotEmpty) 'assistantName': _assistant.text.trim()}}), child: const Tx('Save'))),
     ]);
   }
 }
@@ -201,16 +202,16 @@ class MemorySettings extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = (AppState.of(context).settings['memory'] as Map?) ?? const {};
     final disabled = ((m['disabledCategories'] as List?) ?? const []).cast<String>();
-    return SettingsPage(title: 'Memory', intro: 'Long-term memory lets Carino remember what matters between conversations.', children: [
-      SwitchListTile(contentPadding: EdgeInsets.zero, value: m['enabled'] != false, onChanged: (v) => saveSettings(context, {'memory': {'enabled': v}}), title: const Text('Use long-term memory'), subtitle: const Text('When off, Carino neither reads nor saves memories.')),
+    return SettingsPage(title: tr('Memory'), intro: tr('Long-term memory lets Carino remember what matters between conversations.'), children: [
+      SwitchListTile(contentPadding: EdgeInsets.zero, value: m['enabled'] != false, onChanged: (v) => saveSettings(context, {'memory': {'enabled': v}}), title: const Tx('Use long-term memory'), subtitle: const Tx('When off, Carino neither reads nor saves memories.')),
       DropdownButtonFormField<String>(
         initialValue: '${m['saveMode'] ?? 'ask_sensitive'}',
         isExpanded: true,
-        decoration: const InputDecoration(labelText: 'When Carino wants to remember something', helperText: 'Sensitive details and guesses always need your approval.', helperMaxLines: 2),
+        decoration: InputDecoration(labelText: tr('When Carino wants to remember something'), helperText: tr('Sensitive details and guesses always need your approval.'), helperMaxLines: 2),
         items: const [
-          DropdownMenuItem(value: 'ask_sensitive', child: Text('Save what I say; ask about sensitive or inferred')),
-          DropdownMenuItem(value: 'ask', child: Text('Always ask me first')),
-          DropdownMenuItem(value: 'explicit', child: Text('Only when I say “remember”')),
+          DropdownMenuItem(value: 'ask_sensitive', child: Tx('Save what I say; ask about sensitive or inferred')),
+          DropdownMenuItem(value: 'ask', child: Tx('Always ask me first')),
+          DropdownMenuItem(value: 'explicit', child: Tx('Only when I say “remember”')),
         ],
         onChanged: (v) => saveSettings(context, {'memory': {'saveMode': v}}),
       ),
@@ -218,17 +219,17 @@ class MemorySettings extends StatelessWidget {
       TextFormField(
         initialValue: '${m['retentionDays'] ?? 0}',
         keyboardType: TextInputType.number,
-        decoration: const InputDecoration(labelText: 'Forget new memories after (days)', helperText: '0 keeps them until you delete them.'),
+        decoration: InputDecoration(labelText: tr('Forget new memories after (days)'), helperText: tr('0 keeps them until you delete them.')),
         onFieldSubmitted: (v) => saveSettings(context, {'memory': {'retentionDays': int.tryParse(v) ?? 0}}),
       ),
       const SizedBox(height: 14),
-      const Text('Categories Carino may use'),
+      const Tx('Categories Carino may use'),
       Wrap(spacing: 6, children: [
         for (final c in const ['profile', 'preference', 'goal', 'routine', 'project', 'date', 'fact', 'summary'])
-          FilterChip(label: Text(c), selected: !disabled.contains(c), onSelected: (on) => saveSettings(context, {'memory': {'disabledCategories': on ? disabled.where((x) => x != c).toList() : [...disabled, c]}})),
+          FilterChip(label: Tx(c), selected: !disabled.contains(c), onSelected: (on) => saveSettings(context, {'memory': {'disabledCategories': on ? disabled.where((x) => x != c).toList() : [...disabled, c]}})),
       ]),
       const SizedBox(height: 10),
-      TextButton(onPressed: () => openPath(context, '/memory'), child: const Text('Manage your memories')),
+      TextButton(onPressed: () => openPath(context, '/memory'), child: const Tx('Manage your memories')),
     ]);
   }
 }
@@ -246,12 +247,12 @@ class _PermissionSettingsState extends State<PermissionSettings> {
   Widget build(BuildContext context) {
     final app = AppState.of(context);
     final p = (app.settings['permissions'] as Map?) ?? const {};
-    return SettingsPage(title: 'Permissions', intro: 'Carino only acts through narrowly scoped tools — no general computer or shell access. Revoke any tool at any time.', children: [
+    return SettingsPage(title: tr('Permissions'), intro: tr('Carino only acts through narrowly scoped tools — no general computer or shell access. Revoke any tool at any time.'), children: [
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
         value: p['autoReversible'] != false,
-        title: const Text('Allow reversible changes without asking'),
-        subtitle: const Text('E.g. adding to-dos and reminders when you ask. Turn off to approve each one.'),
+        title: const Tx('Allow reversible changes without asking'),
+        subtitle: const Tx('E.g. adding to-dos and reminders when you ask. Turn off to approve each one.'),
         onChanged: (v) async {
           await saveSettings(context, {'permissions': {'autoReversible': v}});
           setState(() => _bump++);
@@ -271,7 +272,7 @@ class _PermissionSettingsState extends State<PermissionSettings> {
                 trailing: DropdownButton<String>(
                   value: '${t['mode']}',
                   underline: const SizedBox(),
-                  items: [if (risk != 'consequential') const DropdownMenuItem(value: 'auto', child: Text('Allowed')), const DropdownMenuItem(value: 'ask', child: Text('Ask first')), const DropdownMenuItem(value: 'off', child: Text('Off'))],
+                  items: [if (risk != 'consequential') const DropdownMenuItem(value: 'auto', child: Tx('Allowed')), const DropdownMenuItem(value: 'ask', child: Tx('Ask first')), const DropdownMenuItem(value: 'off', child: Tx('Off'))],
                   onChanged: (v) async {
                     final cur = Map<String, dynamic>.from((p['tools'] as Map?) ?? const {});
                     await saveSettings(context, {'permissions': {'tools': {...cur, '${t['name']}': v}}}, 'Permission updated');
@@ -305,28 +306,28 @@ class _NotificationSettingsState extends State<NotificationSettings> {
       if (t != null && context.mounted) await saveSettings(context, {'notifications': {key: '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}'}});
     }
 
-    return SettingsPage(title: 'Notifications & routines', intro: 'Reminders ring on this phone, even when Carino is closed.', children: [
-      SwitchListTile(contentPadding: EdgeInsets.zero, value: n['push'] != false, onChanged: (v) => saveSettings(context, {'notifications': {'push': v}}), title: const Text('Notifications'), subtitle: const Text('Turn off to keep reminders in the app only.')),
-      ListTile(contentPadding: EdgeInsets.zero, title: const Text('Send a test'), subtitle: const Text('Check notifications are allowed for Carino in your phone’s settings.'), trailing: OutlinedButton(onPressed: () async {
+    return SettingsPage(title: tr('Notifications & routines'), intro: tr('Reminders ring on this phone, even when Carino is closed.'), children: [
+      SwitchListTile(contentPadding: EdgeInsets.zero, value: n['push'] != false, onChanged: (v) => saveSettings(context, {'notifications': {'push': v}}), title: const Tx('Notifications'), subtitle: const Tx('Turn off to keep reminders in the app only.')),
+      ListTile(contentPadding: EdgeInsets.zero, title: const Tx('Send a test'), subtitle: const Tx('Check notifications are allowed for Carino in your phone’s settings.'), trailing: OutlinedButton(onPressed: () async {
         try {
           await app.api.post('/push/test');
-          if (context.mounted) toast(context, 'Test notification sent');
+          if (context.mounted) toast(context, tr('Test notification sent'));
         } catch (e) {
           if (context.mounted) toast(context, errorText(e), error: true);
         }
-      }, child: const Text('Send test'))),
+      }, child: const Tx('Send test'))),
       ListTile(
         contentPadding: EdgeInsets.zero,
-        title: const Text('Quiet hours'),
+        title: const Tx('Quiet hours'),
         subtitle: Text(n['quietHoursStart'] == null ? 'Off — reminders ring any time' : '${n['quietHoursStart']} to ${n['quietHoursEnd'] ?? '…'} · reminders wait until they end'),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-          TextButton(onPressed: () => pickTime('quietHoursStart'), child: const Text('From')),
-          TextButton(onPressed: () => pickTime('quietHoursEnd'), child: const Text('To')),
-          if (n['quietHoursStart'] != null) IconButton(tooltip: 'Turn off quiet hours', icon: const Icon(Icons.close), onPressed: () => saveSettings(context, {'notifications': {'quietHoursStart': null, 'quietHoursEnd': null}})),
+          TextButton(onPressed: () => pickTime('quietHoursStart'), child: const Tx('From')),
+          TextButton(onPressed: () => pickTime('quietHoursEnd'), child: const Tx('To')),
+          if (n['quietHoursStart'] != null) IconButton(tooltip: tr('Turn off quiet hours'), icon: const Icon(Icons.close), onPressed: () => saveSettings(context, {'notifications': {'quietHoursStart': null, 'quietHoursEnd': null}})),
         ]),
       ),
       const SizedBox(height: 14),
-      Text('Briefings', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary)),
+      Tx('Briefings', style: Theme.of(context).textTheme.titleSmall?.copyWith(color: Theme.of(context).colorScheme.primary)),
       Loader<List>(
         reloadKey: _bump,
         load: () async => ((await app.api.get('/routines')) as Map)['routines'] as List,
@@ -335,7 +336,7 @@ class _NotificationSettingsState extends State<NotificationSettings> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text('${r['title']}'),
-              subtitle: Text('At ${r['time_local']}'),
+              subtitle: Tx('At {0}', args: [r['time_local']]),
               onTap: () async {
                 final p = '${r['time_local']}'.split(':');
                 final t = await showTimePicker(context: context, initialTime: TimeOfDay(hour: int.parse(p[0]), minute: int.parse(p[1])));
@@ -348,7 +349,7 @@ class _NotificationSettingsState extends State<NotificationSettings> {
                 setState(() => _bump++);
               }),
             ),
-          TextButton(onPressed: () => openPath(context, '/routines'), child: const Text('All routines')),
+          TextButton(onPressed: () => openPath(context, '/routines'), child: const Tx('All routines')),
         ]),
       ),
     ]);
@@ -361,19 +362,19 @@ class AppearanceSettings extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = (AppState.of(context).settings['appearance'] as Map?) ?? const {};
-    return SettingsPage(title: 'Appearance & accessibility', children: [
-      const Text('Theme'),
+    return SettingsPage(title: tr('Appearance & accessibility'), children: [
+      const Tx('Theme'),
       const SizedBox(height: 6),
-      SegmentedButton<String>(segments: const [ButtonSegment(value: 'system', label: Text('System')), ButtonSegment(value: 'light', label: Text('Light')), ButtonSegment(value: 'dark', label: Text('Dark'))], selected: {'${a['theme'] ?? 'system'}'}, onSelectionChanged: (s) => saveSettings(context, {'appearance': {'theme': s.first}})),
+      SegmentedButton<String>(segments: const [ButtonSegment(value: 'system', label: Tx('System')), ButtonSegment(value: 'light', label: Tx('Light')), ButtonSegment(value: 'dark', label: Tx('Dark'))], selected: {'${a['theme'] ?? 'system'}'}, onSelectionChanged: (s) => saveSettings(context, {'appearance': {'theme': s.first}})),
       const SizedBox(height: 16),
-      const Text('Colour palette'),
+      const Tx('Colour palette'),
       const SizedBox(height: 6),
-      SegmentedButton<String>(segments: const [ButtonSegment(value: 'classic', label: Text('Classic')), ButtonSegment(value: 'midnight', label: Text('Midnight'))], selected: {'${a['palette'] ?? 'classic'}'}, onSelectionChanged: (s) => saveSettings(context, {'appearance': {'palette': s.first}})),
+      SegmentedButton<String>(segments: const [ButtonSegment(value: 'classic', label: Tx('Classic')), ButtonSegment(value: 'midnight', label: Tx('Midnight'))], selected: {'${a['palette'] ?? 'classic'}'}, onSelectionChanged: (s) => saveSettings(context, {'appearance': {'palette': s.first}})),
       const SizedBox(height: 16),
-      const Text('Text size'),
+      const Tx('Text size'),
       const SizedBox(height: 6),
-      SegmentedButton<String>(segments: const [ButtonSegment(value: 'normal', label: Text('Normal')), ButtonSegment(value: 'large', label: Text('Large'))], selected: {'${a['textSize'] ?? 'normal'}'}, onSelectionChanged: (s) => saveSettings(context, {'appearance': {'textSize': s.first}})),
-      SwitchListTile(contentPadding: EdgeInsets.zero, value: a['reduceMotion'] == true, onChanged: (v) => saveSettings(context, {'appearance': {'reduceMotion': v}}), title: const Text('Reduce motion'), subtitle: const Text('Turns off animations.')),
+      SegmentedButton<String>(segments: const [ButtonSegment(value: 'normal', label: Tx('Normal')), ButtonSegment(value: 'large', label: Tx('Large'))], selected: {'${a['textSize'] ?? 'normal'}'}, onSelectionChanged: (s) => saveSettings(context, {'appearance': {'textSize': s.first}})),
+      SwitchListTile(contentPadding: EdgeInsets.zero, value: a['reduceMotion'] == true, onChanged: (v) => saveSettings(context, {'appearance': {'reduceMotion': v}}), title: const Tx('Reduce motion'), subtitle: const Tx('Turns off animations.')),
     ]);
   }
 }
@@ -385,24 +386,31 @@ class RegionalSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = (AppState.of(context).settings['regional'] as Map?) ?? const {};
     final tz = '${r['timeZone'] ?? ''}';
-    return SettingsPage(title: 'Language & region', intro: 'Used for dates, reminders, briefings and natural-language scheduling.', children: [
+    return SettingsPage(title: tr('Language & region'), intro: tr('Used for dates, reminders, briefings and natural-language scheduling.'), children: [
+      DropdownButtonFormField<String>(
+        initialValue: appLanguages.containsKey(r['language']) ? '${r['language']}' : '',
+        decoration: InputDecoration(labelText: tr('App language')),
+        items: [for (final e in appLanguages.entries) DropdownMenuItem(value: e.key, child: Text(e.key.isEmpty ? tr(e.value) : e.value))],
+        onChanged: (v) => saveSettings(context, {'regional': {'language': v ?? ''}}, tr('Language changed')),
+      ),
+      const SizedBox(height: 14),
       TextFormField(
         initialValue: tz,
-        decoration: const InputDecoration(labelText: 'Time zone', helperText: 'e.g. Africa/Kampala, Europe/London'),
+        decoration: InputDecoration(labelText: tr('Time zone'), helperText: tr('e.g. Africa/Kampala, Europe/London')),
         onFieldSubmitted: (v) => saveSettings(context, {'regional': {'timeZone': v.trim()}}),
       ),
       const SizedBox(height: 14),
       DropdownButtonFormField<String>(
         initialValue: '${r['locale'] ?? 'en-GB'}',
-        decoration: const InputDecoration(labelText: 'Date format'),
+        decoration: InputDecoration(labelText: tr('Date format')),
         items: const [
-          DropdownMenuItem(value: 'en-GB', child: Text('16 Oct 2026 (UK)')), DropdownMenuItem(value: 'en-US', child: Text('Oct 16, 2026 (US)')),
-          DropdownMenuItem(value: 'en-UG', child: Text('Uganda (en-UG)')), DropdownMenuItem(value: 'en-KE', child: Text('Kenya (en-KE)')),
-          DropdownMenuItem(value: 'fr-FR', child: Text('Français')), DropdownMenuItem(value: 'sw-KE', child: Text('Kiswahili')),
+          DropdownMenuItem(value: 'en-GB', child: Tx('16 Oct 2026 (UK)')), DropdownMenuItem(value: 'en-US', child: Tx('Oct 16, 2026 (US)')),
+          DropdownMenuItem(value: 'en-UG', child: Tx('Uganda (en-UG)')), DropdownMenuItem(value: 'en-KE', child: Tx('Kenya (en-KE)')),
+          DropdownMenuItem(value: 'fr-FR', child: Tx('Français')), DropdownMenuItem(value: 'sw-KE', child: Tx('Kiswahili')),
         ],
         onChanged: (v) => saveSettings(context, {'regional': {'locale': v}}),
       ),
-      SwitchListTile(contentPadding: EdgeInsets.zero, value: r['hour12'] == true, onChanged: (v) => saveSettings(context, {'regional': {'hour12': v}}), title: const Text('12-hour clock')),
+      SwitchListTile(contentPadding: EdgeInsets.zero, value: r['hour12'] == true, onChanged: (v) => saveSettings(context, {'regional': {'hour12': v}}), title: const Tx('12-hour clock')),
     ]);
   }
 }
@@ -414,23 +422,23 @@ class VoiceSettings extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = AppState.of(context);
     final v = (app.settings['voice'] as Map?) ?? const {};
-    return SettingsPage(title: 'Voice', intro: 'Optional. Carino only listens while the microphone is on, and never records in the background. Speech uses your phone’s own speech service and voices.', children: [
-      SwitchListTile(contentPadding: EdgeInsets.zero, value: v['enabled'] != false, onChanged: (x) => saveSettings(context, {'voice': {'enabled': x}}), title: const Text('Enable voice features')),
+    return SettingsPage(title: tr('Voice'), intro: tr('Optional. Carino only listens while the microphone is on, and never records in the background. Speech uses your phone’s own speech service and voices.'), children: [
+      SwitchListTile(contentPadding: EdgeInsets.zero, value: v['enabled'] != false, onChanged: (x) => saveSettings(context, {'voice': {'enabled': x}}), title: const Tx('Enable voice features')),
       DropdownButtonFormField<String>(
         initialValue: '${v['language'] ?? 'en-US'}',
-        decoration: const InputDecoration(labelText: 'Speech language'),
+        decoration: InputDecoration(labelText: tr('Speech language')),
         items: [for (final l in const ['en-US', 'en-GB', 'en-UG', 'en-KE', 'sw-KE', 'fr-FR', 'lg-UG']) DropdownMenuItem(value: l, child: Text(l))],
         onChanged: (x) => saveSettings(context, {'voice': {'language': x}}),
       ),
-      SwitchListTile(contentPadding: EdgeInsets.zero, value: v['speakReplies'] == true, onChanged: (x) => saveSettings(context, {'voice': {'speakReplies': x}}), title: const Text('Read replies aloud automatically')),
-      SwitchListTile(contentPadding: EdgeInsets.zero, value: v['speakBrief'] == true, onChanged: (x) => saveSettings(context, {'voice': {'speakBrief': x}}), title: const Text('Read my brief aloud when I first open Carino each day')),
+      SwitchListTile(contentPadding: EdgeInsets.zero, value: v['speakReplies'] == true, onChanged: (x) => saveSettings(context, {'voice': {'speakReplies': x}}), title: const Tx('Read replies aloud automatically')),
+      SwitchListTile(contentPadding: EdgeInsets.zero, value: v['speakBrief'] == true, onChanged: (x) => saveSettings(context, {'voice': {'speakBrief': x}}), title: const Tx('Read my brief aloud when I first open Carino each day')),
       const SizedBox(height: 8),
-      const Text('In voice mode you can say “pause”, “repeat that”, “skip”, “read my brief” or “stop”. These are handled on your phone, not sent to the AI.'),
+      const Tx('In voice mode you can say “pause”, “repeat that”, “skip”, “read my brief” or “stop”. These are handled on your phone, not sent to the AI.'),
       const SizedBox(height: 12),
-      OutlinedButton.icon(onPressed: () => Device(app.api).speak('Hello, I’m ${app.assistantName}. This is how I sound.', '${v['language'] ?? 'en-US'}'), icon: const Icon(Icons.volume_up_outlined), label: const Text('Test the voice')),
+      OutlinedButton.icon(onPressed: () => Device(app.api).speak('Hello, I’m ${app.assistantName}. This is how I sound.', '${v['language'] ?? 'en-US'}'), icon: const Icon(Icons.volume_up_outlined), label: const Tx('Test the voice')),
       const Divider(height: 32),
-      Text('Live voice', style: Theme.of(context).textTheme.titleSmall),
-      const Text('A real-time spoken conversation through OpenAI or Google Gemini, if you connected one. Your audio goes to that service while the call is on.'),
+      Tx('Live voice', style: Theme.of(context).textTheme.titleSmall),
+      const Tx('A real-time spoken conversation through OpenAI or Google Gemini, if you connected one. Your audio goes to that service while the call is on.'),
       Loader<Map>(
         load: () async => await app.api.get('/live') as Map,
         builder: (context, d, _) {
@@ -439,12 +447,12 @@ class VoiceSettings extends StatelessWidget {
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             DropdownButtonFormField<String>(
               initialValue: voices.contains(v['liveVoice']) ? '${v['liveVoice']}' : '',
-              decoration: const InputDecoration(labelText: 'Live voice'),
-              items: [const DropdownMenuItem(value: '', child: Text('Default')), for (final x in voices) DropdownMenuItem(value: x, child: Text(x))],
+              decoration: InputDecoration(labelText: tr('Live voice')),
+              items: [const DropdownMenuItem(value: '', child: Tx('Default')), for (final x in voices) DropdownMenuItem(value: x, child: Text(x))],
               onChanged: (x) => saveSettings(context, {'voice': {'liveVoice': x ?? ''}}),
             ),
             const SizedBox(height: 12),
-            FilledButton.tonalIcon(onPressed: () => openPath(context, '/live'), icon: const Icon(Icons.graphic_eq), label: const Text('Start a live conversation')),
+            FilledButton.tonalIcon(onPressed: () => openPath(context, '/live'), icon: const Icon(Icons.graphic_eq), label: const Tx('Start a live conversation')),
           ]);
         },
       ),
@@ -458,14 +466,14 @@ class PrivacySettings extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final app = AppState.of(context);
-    return SettingsPage(title: 'Privacy, data & backup', children: [
-      const Text('Everything — to-dos, reminders, memories, files and chats — is stored on this phone only. Nothing is sold or shared. When you chat, the conversation, relevant memories and attached text go to the AI service you chose so it can reply.'),
+    return SettingsPage(title: tr('Privacy, data & backup'), children: [
+      const Tx('Everything — to-dos, reminders, memories, files and chats — is stored on this phone only. Nothing is sold or shared. When you chat, the conversation, relevant memories and attached text go to the AI service you chose so it can reply.'),
       const SizedBox(height: 12),
       ListTile(
         contentPadding: EdgeInsets.zero,
         leading: const Icon(Icons.download_outlined),
-        title: const Text('Export all data'),
-        subtitle: const Text('A JSON file with your to-dos, reminders, memories, chats and settings, saved to Downloads.'),
+        title: const Tx('Export all data'),
+        subtitle: const Tx('A JSON file with your to-dos, reminders, memories, chats and settings, saved to Downloads.'),
         onTap: () async {
           try {
             final m = await saveApiFile(app.engine, '/export', fallbackName: 'carino-export.json');
@@ -476,17 +484,17 @@ class PrivacySettings extends StatelessWidget {
         },
       ),
       const SizedBox(height: 8),
-      const Section(title: 'Backup & restore', subtitle: 'Your data isn’t in Android’s own phone backup (it would include the key to your sign-ins). Make your own encrypted backups here.', child: BackupPanel()),
+      Section(title: tr('Backup & restore'), subtitle: tr('Your data isn’t in Android’s own phone backup (it would include the key to your sign-ins). Make your own encrypted backups here.'), child: BackupPanel()),
       const SizedBox(height: 12),
       Section(
-        title: 'Erase everything',
-        subtitle: 'Deletes every to-do, reminder, memory, file, chat, setting and your AI key from this phone. This cannot be undone.',
+        title: tr('Erase everything'),
+        subtitle: tr('Deletes every to-do, reminder, memory, file, chat, setting and your AI key from this phone. This cannot be undone.'),
         child: Align(
           alignment: Alignment.centerLeft,
           child: FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () async {
-              if (!await confirmDialog(context, title: 'Erase everything on this phone?', body: 'Carino starts again from the beginning.', confirm: 'Erase everything', danger: true)) return;
+              if (!await confirmDialog(context, title: tr('Erase everything on this phone?'), body: tr('Carino starts again from the beginning.'), confirm: tr('Erase everything'), danger: true)) return;
               await app.api.post('/device/reset');
               await app.engine.restart();
               await app.loadMe();
@@ -496,7 +504,7 @@ class PrivacySettings extends StatelessWidget {
                 openPath(context, '/');
               }
             },
-            child: const Text('Erase everything…'),
+            child: const Tx('Erase everything…'),
           ),
         ),
       ),
@@ -531,9 +539,9 @@ class _BackupPanelState extends State<BackupPanel> {
         final backups = (data['backups'] as List? ?? const []).cast<Map>();
         final cloud = (data['cloud'] as List? ?? const []).cast<Map>();
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('A backup is locked with a passphrase you choose; without it nobody can open it. Each backup is checked by restoring it in a test before it’s kept. Sign-ins aren’t included.', style: Theme.of(context).textTheme.bodySmall),
+          Tx('A backup is locked with a passphrase you choose; without it nobody can open it. Each backup is checked by restoring it in a test before it’s kept. Sign-ins aren’t included.', style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 10),
-          TextField(controller: _pass, obscureText: true, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Passphrase (10+ characters)')),
+          TextField(controller: _pass, obscureText: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Passphrase (10+ characters)'))),
           const SizedBox(height: 8),
           FilledButton.icon(
             onPressed: _busy.isNotEmpty || _pass.text.length < 10
@@ -542,7 +550,7 @@ class _BackupPanelState extends State<BackupPanel> {
                     setState(() => _busy = 'make');
                     try {
                       final r = await app.api.post('/backup', {'passphrase': _pass.text}) as Map;
-                      if (context.mounted) toast(context, 'Backup made and checked: ${r['records']} records, ${r['files']} files. Keep your passphrase safe.');
+                      if (context.mounted) toast(context, tr('Backup made and checked: {0} records, {1} files. Keep your passphrase safe.', [r['records'], r['files']]));
                       _pass.clear();
                     } catch (e) {
                       if (context.mounted) toast(context, errorText(e), error: true);
@@ -557,7 +565,7 @@ class _BackupPanelState extends State<BackupPanel> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text('${b['kind'] == 'safety' ? 'Before restore · ' : ''}${_when('${b['name']}')}'),
-              subtitle: Text('${((b['size'] as num? ?? 0) / 1024).round()} KB · encrypted'),
+              subtitle: Tx('{0} KB · encrypted', args: [((b['size'] as num? ?? 0) / 1024).round()]),
               trailing: PopupMenuButton<String>(
                 onSelected: (v) async {
                   if (v == 'save') {
@@ -566,23 +574,23 @@ class _BackupPanelState extends State<BackupPanel> {
                   } else if (v == 'restore') {
                     await _restore(context, name: '${b['name']}');
                   } else if (v == 'delete') {
-                    if (!await confirmDialog(context, title: 'Delete this backup?', confirm: 'Delete', danger: true)) return;
+                    if (!await confirmDialog(context, title: tr('Delete this backup?'), confirm: tr('Delete'), danger: true)) return;
                     await app.api.delete('/backup/files/${b['name']}');
                     setState(() => _bump++);
                   } else if (v.startsWith('cloud:')) {
                     try {
                       final r = await app.api.post('/backup/cloud', {'name': b['name'], 'account_id': v.substring(6)}) as Map;
-                      if (context.mounted) toast(context, 'Saved to ${r['where']}');
+                      if (context.mounted) toast(context, tr('Saved to {0}', [r['where']]));
                     } catch (e) {
                       if (context.mounted) toast(context, errorText(e), error: true);
                     }
                   }
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'save', child: Text('Save to Downloads')),
-                  for (final a in cloud) PopupMenuItem(value: 'cloud:${a['id']}', child: Text('Copy to ${a['provider'] == 'google' ? 'Google Drive' : 'OneDrive'} · ${a['label']}')),
-                  const PopupMenuItem(value: 'restore', child: Text('Restore')),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  const PopupMenuItem(value: 'save', child: Tx('Save to Downloads')),
+                  for (final a in cloud) PopupMenuItem(value: 'cloud:${a['id']}', child: Tx('Copy to {0} · {1}', args: [a['provider'] == 'google' ? 'Google Drive' : 'OneDrive', a['label']])),
+                  const PopupMenuItem(value: 'restore', child: Tx('Restore')),
+                  const PopupMenuItem(value: 'delete', child: Tx('Delete')),
                 ],
               ),
             ),
@@ -593,9 +601,9 @@ class _BackupPanelState extends State<BackupPanel> {
               if (files.isNotEmpty && context.mounted) await _restore(context, file: files.first);
             },
             icon: const Icon(Icons.upload_file),
-            label: const Text('Restore from a file…'),
+            label: const Tx('Restore from a file…'),
           ),
-          if (cloud.isEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('To keep a copy in Google Drive or OneDrive, connect it in My apps (optional). The copy stays encrypted.', style: Theme.of(context).textTheme.bodySmall)),
+          if (cloud.isEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Tx('To keep a copy in Google Drive or OneDrive, connect it in My apps (optional). The copy stays encrypted.', style: Theme.of(context).textTheme.bodySmall)),
         ]);
       },
     );
@@ -646,10 +654,10 @@ class _RestoreSheetState extends State<_RestoreSheet> {
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('Restore a backup', style: t.titleLarge),
+        Tx('Restore a backup', style: t.titleLarge),
         const SizedBox(height: 10),
         if (p == null) ...[
-          TextField(controller: _pass, obscureText: true, autofocus: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: 'Passphrase for ${widget.name ?? widget.file?.name}', helperText: 'Opening it only checks and previews: nothing changes yet.')),
+          TextField(controller: _pass, obscureText: true, autofocus: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Passphrase for {0}', [widget.name ?? widget.file?.name]), helperText: tr('Opening it only checks and previews: nothing changes yet.'))),
           const SizedBox(height: 10),
           FilledButton(
             onPressed: _busy || _pass.text.isEmpty
@@ -668,11 +676,11 @@ class _RestoreSheetState extends State<_RestoreSheet> {
             child: Text(_busy ? 'Opening…' : 'Open and preview'),
           ),
         ] else ...[
-          Text('Backup from ${fmtDateTime(p['created_at'] as String?)} — opened and checked.'),
+          Tx('Backup from {0} — opened and checked.', args: [fmtDateTime(p['created_at'] as String?)]),
           const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: DataTable(columnSpacing: 14, columns: const [DataColumn(label: Text('What')), DataColumn(label: Text('In backup')), DataColumn(label: Text('Here now')), DataColumn(label: Text('New')), DataColumn(label: Text('Different'))], rows: [
+            child: DataTable(columnSpacing: 14, columns: const [DataColumn(label: Tx('What')), DataColumn(label: Tx('In backup')), DataColumn(label: Tx('Here now')), DataColumn(label: Tx('New')), DataColumn(label: Tx('Different'))], rows: [
               for (final r in (p['tables'] as List).cast<Map>().where((r) => (r['in_backup'] as num) > 0 || (r['on_device'] as num) > 0))
                 DataRow(cells: [DataCell(Text('${r['table']}'.replaceAll('_', ' '))), DataCell(Text('${r['in_backup']}')), DataCell(Text('${r['on_device']}')), DataCell(Text('${r['new']}')), DataCell(Text('${r['different']}'))]),
             ]),
@@ -681,11 +689,11 @@ class _RestoreSheetState extends State<_RestoreSheet> {
             groupValue: _mode,
             onChanged: (v) => setState(() => _mode = v ?? 'merge'),
             child: const Column(children: [
-              RadioListTile<String>(contentPadding: EdgeInsets.zero, value: 'merge', title: Text('Add what’s missing'), subtitle: Text('Keeps everything here; where a record differs, the one here is kept.')),
-              RadioListTile<String>(contentPadding: EdgeInsets.zero, value: 'replace', title: Text('Replace everything'), subtitle: Text('This account becomes exactly the backup. Anything added since is removed.')),
+              RadioListTile<String>(contentPadding: EdgeInsets.zero, value: 'merge', title: Tx('Add what’s missing'), subtitle: Tx('Keeps everything here; where a record differs, the one here is kept.')),
+              RadioListTile<String>(contentPadding: EdgeInsets.zero, value: 'replace', title: Tx('Replace everything'), subtitle: Tx('This account becomes exactly the backup. Anything added since is removed.')),
             ]),
           ),
-          Text('Before restoring, what’s here now is saved as an encrypted “Before restore” backup with the same passphrase, so you can undo it.', style: t.bodySmall),
+          Tx('Before restoring, what’s here now is saved as an encrypted “Before restore” backup with the same passphrase, so you can undo it.', style: t.bodySmall),
           const SizedBox(height: 10),
           FilledButton(
             style: _mode == 'replace' ? FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error) : null,
@@ -696,7 +704,7 @@ class _RestoreSheetState extends State<_RestoreSheet> {
                     try {
                       final r = await _send('/backup/restore', {'mode': _mode, 'confirm': 'true'});
                       if (context.mounted) {
-                        toast(context, 'Restored. ${r['note'] ?? ''}');
+                        toast(context, tr('Restored. {0}', [r['note'] ?? '']));
                         Navigator.pop(context, true);
                       }
                     } catch (e) {

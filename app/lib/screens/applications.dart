@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../widgets/common.dart';
@@ -56,19 +57,19 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
         String label(String s) => '${statuses.firstWhere((x) => x['id'] == s, orElse: () => {'label': s})['label']}';
         final list = (data['applications'] as List).cast<Map>().where((a) => _showClosed || !_closed.contains(a['status'])).toList();
         return Scaffold(
-          appBar: AppBar(title: const Text('Applications')),
-          floatingActionButton: FloatingActionButton.extended(onPressed: () => _add(statuses), icon: const Icon(Icons.add), label: const Text('Add')),
+          appBar: AppBar(title: const Tx('Applications')),
+          floatingActionButton: FloatingActionButton.extended(onPressed: () => _add(statuses), icon: const Icon(Icons.add), label: const Tx('Add')),
           body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 96), children: [
-            Text('Jobs and scholarships: deadlines, whether you qualify, documents and referees, and when to follow up. Or tell Carino “track this job…” and paste the advert.',
+            Tx('Jobs and scholarships: deadlines, whether you qualify, documents and referees, and when to follow up. Or tell Carino “track this job…” and paste the advert.',
                 style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 10),
             Wrap(spacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
               for (final (id, l) in const [('', 'All'), ('job', 'Jobs'), ('scholarship', 'Scholarships')]) ChoiceChip(label: Text(l), selected: _k == id, onSelected: (_) => setState(() => _k = id)),
-              FilterChip(label: const Text('Show finished'), selected: _showClosed, onSelected: (v) => setState(() => _showClosed = v)),
+              FilterChip(label: const Tx('Show finished'), selected: _showClosed, onSelected: (v) => setState(() => _showClosed = v)),
             ]),
             const SizedBox(height: 10),
             if (list.isEmpty)
-              EmptyView(icon: Icons.work_outline, title: 'Nothing tracked yet', body: 'Add a job or scholarship, and Carino reminds you before the deadline and to follow up after you apply.', action: FilledButton(onPressed: () => _add(statuses), child: const Text('Add one')))
+              EmptyView(icon: Icons.work_outline, title: tr('Nothing tracked yet'), body: tr('Add a job or scholarship, and Carino reminds you before the deadline and to follow up after you apply.'), action: FilledButton(onPressed: () => _add(statuses), child: const Tx('Add one')))
             else
               Card(
                 child: Column(children: [
@@ -97,11 +98,11 @@ class _ApplicationsScreenState extends State<ApplicationsScreen> {
           Pill(label('${a['status']}'), color: open ? cs.primary : cs.outline),
           if (a['deadline'] != null)
             Text('${left! < 0 ? 'Closed' : 'Closes'} ${_day('${a['deadline']}')}${urgent ? ' · ${left == 0 ? 'today' : '$left day${left == 1 ? '' : 's'} left'}' : ''}', style: TextStyle(fontSize: 12, color: urgent ? cs.error : null)),
-          if (a['follow_up_on'] != null && open) Text('follow up ${_day('${a['follow_up_on']}')}', style: const TextStyle(fontSize: 12)),
-          if (a['eligible'] == 'no') Text('may not qualify', style: TextStyle(fontSize: 12, color: cs.error)),
+          if (a['follow_up_on'] != null && open) Tx('follow up {0}', args: [_day('${a['follow_up_on']}')], style: const TextStyle(fontSize: 12)),
+          if (a['eligible'] == 'no') Tx('may not qualify', style: TextStyle(fontSize: 12, color: cs.error)),
         ]),
         if ((p['total'] as num? ?? 0) > 0)
-          Text('${p['ready']} of ${p['total']} ready${missing.isEmpty ? '' : ' · still need ${missing.take(3).join(', ')}${missing.length > 3 ? '…' : ''}'}', style: const TextStyle(fontSize: 12)),
+          Tx('{0} of {1} ready{2}', args: [p['ready'], p['total'], missing.isEmpty ? '' : ' · ${tr('still need {0}', ['${missing.take(3).join(', ')}${missing.length > 3 ? '…' : ''}'])}'], style: const TextStyle(fontSize: 12)),
       ]),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => _open('${a['id']}', const []),
@@ -127,18 +128,18 @@ class _AddApplicationState extends State<_AddApplication> {
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('Track an application', style: Theme.of(context).textTheme.titleLarge),
+        Tx('Track an application', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
-        SegmentedButton<String>(segments: const [ButtonSegment(value: 'job', label: Text('Job')), ButtonSegment(value: 'scholarship', label: Text('Scholarship')), ButtonSegment(value: 'other', label: Text('Other'))], selected: {_kind}, onSelectionChanged: (s) => setState(() => _kind = s.first)),
+        SegmentedButton<String>(segments: const [ButtonSegment(value: 'job', label: Tx('Job')), ButtonSegment(value: 'scholarship', label: Tx('Scholarship')), ButtonSegment(value: 'other', label: Tx('Other'))], selected: {_kind}, onSelectionChanged: (s) => setState(() => _kind = s.first)),
         const SizedBox(height: 10),
         TextField(controller: _title, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: _kind == 'scholarship' ? 'Scholarship' : 'Role')),
         const SizedBox(height: 10),
-        TextField(controller: _org, decoration: const InputDecoration(labelText: 'Organisation')),
+        TextField(controller: _org, decoration: InputDecoration(labelText: tr('Organisation'))),
         const SizedBox(height: 10),
-        TextField(controller: _url, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Link (optional)')),
+        TextField(controller: _url, keyboardType: TextInputType.url, decoration: InputDecoration(labelText: tr('Link (optional)'))),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Deadline'),
+          title: const Tx('Deadline'),
           trailing: Text(_deadline == null ? 'Choose' : _day(_deadline)),
           onTap: () async {
             final p = await showDatePicker(context: context, firstDate: DateTime.now().subtract(const Duration(days: 30)), lastDate: DateTime.now().add(const Duration(days: 3650)), initialDate: DateTime.now().add(const Duration(days: 14)));
@@ -163,7 +164,7 @@ class _AddApplicationState extends State<_AddApplication> {
                     if (context.mounted) toast(context, errorText(e), error: true);
                   }
                 },
-          child: const Text('Add'),
+          child: const Tx('Add'),
         ),
       ]),
     );
@@ -239,7 +240,7 @@ class _ApplicationDetailState extends State<ApplicationDetail> {
       contentPadding: EdgeInsets.zero,
       title: Text(label),
       subtitle: Text(v == null ? 'Not set' : _day('$v')),
-      trailing: v == null ? const Icon(Icons.event) : IconButton(icon: const Icon(Icons.close), tooltip: 'Clear', onPressed: () => setState(() => _draft[key] = null)),
+      trailing: v == null ? const Icon(Icons.event) : IconButton(icon: const Icon(Icons.close), tooltip: tr('Clear'), onPressed: () => setState(() => _draft[key] = null)),
       onTap: () async {
         final p = await showDatePicker(context: context, firstDate: DateTime(2000), lastDate: DateTime(2100), initialDate: DateTime.tryParse('${v ?? ''}') ?? DateTime.now());
         if (p != null) setState(() => _draft[key] = _ymd(p));
@@ -258,29 +259,29 @@ class _ApplicationDetailState extends State<ApplicationDetail> {
     return Scaffold(
       appBar: AppBar(title: Text('${a['title']}'), actions: [
         IconButton(
-          tooltip: 'Delete',
+          tooltip: tr('Delete'),
           icon: const Icon(Icons.delete_outline),
           onPressed: () async {
-            if (!await confirmDialog(context, title: 'Delete this application?', body: 'Its checklist, history and reminders go too. Attached files stay in Carino.', confirm: 'Delete', danger: true)) return;
+            if (!await confirmDialog(context, title: tr('Delete this application?'), body: tr('Its checklist, history and reminders go too. Attached files stay in Carino.'), confirm: tr('Delete'), danger: true)) return;
             await api.delete('/applications/${widget.id}');
             if (context.mounted) Navigator.pop(context);
           },
         ),
       ]),
-      bottomNavigationBar: _draft.isEmpty ? null : SafeArea(child: Padding(padding: const EdgeInsets.all(12), child: FilledButton(onPressed: _save, child: const Text('Save changes')))),
+      bottomNavigationBar: _draft.isEmpty ? null : SafeArea(child: Padding(padding: const EdgeInsets.all(12), child: FilledButton(onPressed: _save, child: const Tx('Save changes')))),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
         DropdownButtonFormField<String>(
           initialValue: '${a['status']}',
-          decoration: const InputDecoration(labelText: 'Status'),
+          decoration: InputDecoration(labelText: tr('Status')),
           items: [for (final s in _statuses) DropdownMenuItem(value: '${s['id']}', child: Text('${s['label']}'))],
           onChanged: (v) => _save({'status': v}),
         ),
-        if (a['status'] == 'applied' && a['follow_up_on'] != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text('Carino reminds you to follow up on ${_day('${a['follow_up_on']}')}.', style: Theme.of(context).textTheme.bodySmall)),
+        if (a['status'] == 'applied' && a['follow_up_on'] != null) Padding(padding: const EdgeInsets.only(top: 4), child: Tx('Carino reminds you to follow up on {0}.', args: [_day('${a['follow_up_on']}')], style: Theme.of(context).textTheme.bodySmall)),
         _date('deadline', 'Deadline'),
         _date('follow_up_on', 'Follow up on'),
         _field('organisation', 'Organisation'),
         const SizedBox(height: 14),
-        Text('Eligibility — the requirements, and how you meet them', style: Theme.of(context).textTheme.titleSmall),
+        Tx('Eligibility — the requirements, and how you meet them', style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 6),
         Wrap(spacing: 6, children: [
           for (final (v, l) in const [('yes', 'I qualify'), ('unsure', 'Not sure'), ('no', 'I don’t qualify')]) ChoiceChip(label: Text(l), selected: eligible == v, onSelected: (_) => setState(() => _draft['eligible'] = v)),
@@ -291,9 +292,9 @@ class _ApplicationDetailState extends State<ApplicationDetail> {
         _field('next_step', 'Next step'),
         const SizedBox(height: 10),
         _field('value', 'Salary or award'),
-        if (a['url'] != null) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => launchUrl(Uri.parse('${a['url']}'), mode: LaunchMode.externalApplication), icon: const Icon(Icons.open_in_new), label: const Text('Open the advert'))),
+        if (a['url'] != null) Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => launchUrl(Uri.parse('${a['url']}'), mode: LaunchMode.externalApplication), icon: const Icon(Icons.open_in_new), label: const Tx('Open the advert'))),
         const SizedBox(height: 14),
-        Row(children: [Text('Checklist', style: Theme.of(context).textTheme.titleMedium), const SizedBox(width: 8), Text('${p['ready'] ?? 0} of ${p['total'] ?? 0} ready', style: Theme.of(context).textTheme.bodySmall)]),
+        Row(children: [Tx('Checklist', style: Theme.of(context).textTheme.titleMedium), const SizedBox(width: 8), Tx('{0} of {1} ready', args: [p['ready'] ?? 0, p['total'] ?? 0], style: Theme.of(context).textTheme.bodySmall)]),
         for (final it in (a['items'] as List).cast<Map>())
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
@@ -303,10 +304,10 @@ class _ApplicationDetailState extends State<ApplicationDetail> {
             title: Text('${it['label']}'),
             subtitle: Text('${it['kind'] == 'referee' ? 'Referee${it['contact'] != null ? ' · ${it['contact']}' : ''}' : it['kind'] == 'document' ? 'Document' : 'Requirement'}${it['status'] == 'requested' ? ' · asked' : ''}${it['document_id'] != null ? ' · 📎 ${it['document_name'] ?? 'file'}' : ''}'),
             secondary: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (it['kind'] == 'referee' && it['status'] == 'needed') TextButton(onPressed: () => _run(() => api.patch('/application-items/${it['id']}', {'status': 'requested'}), 'Marked as asked'), child: const Text('Asked')),
+              if (it['kind'] == 'referee' && it['status'] == 'needed') TextButton(onPressed: () => _run(() => api.patch('/application-items/${it['id']}', {'status': 'requested'}), 'Marked as asked'), child: const Tx('Asked')),
               if (it['kind'] == 'document' && it['document_id'] == null)
                 IconButton(
-                  tooltip: 'Attach a file',
+                  tooltip: tr('Attach a file'),
                   icon: const Icon(Icons.attach_file),
                   onPressed: () async {
                     final files = await pickUploads(fields: const {'tags': 'application'});
@@ -317,15 +318,15 @@ class _ApplicationDetailState extends State<ApplicationDetail> {
                     }, 'File attached');
                   },
                 ),
-              IconButton(tooltip: 'Remove ${it['label']}', icon: const Icon(Icons.close), onPressed: () => _run(() => api.delete('/application-items/${it['id']}'))),
+              IconButton(tooltip: tr('Remove {0}', [it['label']]), icon: const Icon(Icons.close), onPressed: () => _run(() => api.delete('/application-items/${it['id']}'))),
             ]),
           ),
         Row(children: [
-          DropdownButton<String>(value: _newKind, items: const [DropdownMenuItem(value: 'document', child: Text('Document')), DropdownMenuItem(value: 'referee', child: Text('Referee')), DropdownMenuItem(value: 'requirement', child: Text('Requirement'))], onChanged: (v) => setState(() => _newKind = v ?? 'document')),
+          DropdownButton<String>(value: _newKind, items: const [DropdownMenuItem(value: 'document', child: Tx('Document')), DropdownMenuItem(value: 'referee', child: Tx('Referee')), DropdownMenuItem(value: 'requirement', child: Tx('Requirement'))], onChanged: (v) => setState(() => _newKind = v ?? 'document')),
           const SizedBox(width: 8),
           Expanded(child: TextField(controller: _newLabel, onChanged: (_) => setState(() {}), decoration: InputDecoration(isDense: true, hintText: _newKind == 'referee' ? 'Referee’s name' : _newKind == 'document' ? 'CV, transcript…' : 'e.g. Practising licence'))),
           IconButton(
-            tooltip: 'Add',
+            tooltip: tr('Add'),
             icon: const Icon(Icons.add_circle_outline),
             onPressed: _newLabel.text.trim().isEmpty
                 ? null
@@ -336,13 +337,13 @@ class _ApplicationDetailState extends State<ApplicationDetail> {
                     }),
           ),
         ]),
-        if (_newKind == 'referee') TextField(controller: _newContact, decoration: const InputDecoration(isDense: true, hintText: 'Referee’s email or phone')),
+        if (_newKind == 'referee') TextField(controller: _newContact, decoration: InputDecoration(isDense: true, hintText: tr('Referee’s email or phone'))),
         const SizedBox(height: 14),
         _field('notes', 'Notes', lines: 3),
         if ((a['events'] as List? ?? const []).isNotEmpty)
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
-            title: Text('History', style: TextStyle(color: cs.onSurfaceVariant)),
+            title: Tx('History', style: TextStyle(color: cs.onSurfaceVariant)),
             children: [for (final e in (a['events'] as List).cast<Map>()) ListTile(dense: true, title: Text('${e['text']}'), subtitle: Text(_day('${e['created_at']}'.substring(0, 10))))],
           ),
       ]),

@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
 import { ErrorBox, Loading, useToast } from '../components/ui';
@@ -44,17 +45,17 @@ export default function Stuff() {
   ] : [];
 
   return (
-    <Shell title="Your stuff">
+    <Shell title={t('Your stuff')}>
       <div className="page">
         <div className="page-head"><div>
-          <h1>Your stuff</h1>
-          <p className="sub">Everything {name} is holding for you — to-dos, reminders, money, routines, memories and the apps it can use.</p>
+          <h1>{t('Your stuff')}</h1>
+          <p className="sub">{t('Everything')}{' '}{name} {t('is holding for you — to-dos, reminders, money, routines, memories and the apps it can use.')}</p>
         </div></div>
         {d?.approvals > 0 && (
-          <Link to="/actions" className="callout warning stuff-alert"><Icon name="shield" size={18} /><span className="grow"><b>{plural(d.approvals, 'action')}</b> waiting for your approval</span><Icon name="send" size={16} /></Link>
+          <Link to="/actions" className="callout warning stuff-alert"><Icon name="shield" size={18} /><span className="grow"><b>{plural(d.approvals, 'action')}</b> {t('waiting for your approval')}</span><Icon name="send" size={16} /></Link>
         )}
         {d?.reminders.next && (
-          <p className="small muted" style={{ marginBottom: 14 }}><Icon name="bell" size={14} /> Next reminder: <b>{d.reminders.next.title}</b> · {fmtDateTime(d.reminders.next.remind_at)}</p>
+          <p className="small muted" style={{ marginBottom: 14 }}><Icon name="bell" size={14} /> {t('Next reminder:')}{' '}<b>{d.reminders.next.title}</b> · {fmtDateTime(d.reminders.next.remind_at)}</p>
         )}
         {loading && !d ? <Loading rows={4} /> : error && !d ? <ErrorBox error={error} retry={reload} /> : (
           <div className="stuff-grid">
@@ -70,13 +71,13 @@ export default function Stuff() {
         )}
         {learned.length > 0 && (
           <section className="card pad" style={{ marginTop: 16 }}>
-            <div className="row"><h2 className="grow">New things {name} learned</h2><Link to="/memory" className="small">All memories</Link></div>
-            <p className="small muted" style={{ marginBottom: 10 }}>From this week. Keep what’s right, forget what isn’t.</p>
+            <div className="row"><h2 className="grow">{t('New things')}{' '}{name} learned</h2><Link to="/memory" className="small">{t('All memories')}</Link></div>
+            <p className="small muted" style={{ marginBottom: 10 }}>{t('From this week. Keep what’s right, forget what isn’t.')}</p>
             <ul className="list learned">
               {learned.map((m: any) => (
                 <li key={m.id} className="list-item">
                   <Icon name="brain" size={16} /><span className="grow small">{m.content}</span>
-                  <button className="btn ghost sm" onClick={async () => { await del(`/memories/${m.id}`).catch((e) => toast(e.message, 'error')); mem.reload(); }}>Forget</button>
+                  <button className="btn ghost sm" onClick={async () => { await del(`/memories/${m.id}`).catch((e) => toast(e.message, 'error')); mem.reload(); }}>{t('Forget')}</button>
                 </li>
               ))}
             </ul>

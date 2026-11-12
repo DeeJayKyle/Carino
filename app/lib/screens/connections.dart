@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../engine/device.dart';
@@ -142,7 +143,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
         if (mounted) setState(() => _busy = '');
         final est = data['estimate_usd'] as num?;
         if (!mounted) return;
-        final ok = await confirmDialog(context, title: 'Test ${m['model']}?', body: 'This model costs money. A test uses about ${est != null ? '\$${est.toStringAsFixed(4)}' : 'a few thousand tokens (price unknown)'} of your ${m['connection']} credit.', confirm: 'Test it');
+        final ok = await confirmDialog(context, title: tr('Test {0}?', [m['model']]), body: tr('This model costs money. A test uses about {0} of your {1} credit.', [est != null ? '\$${est.toStringAsFixed(4)}' : 'a few thousand tokens (price unknown)', m['connection']]), confirm: tr('Test it'));
         if (ok) return _test(m, confirmCost: true);
         return;
       }
@@ -155,7 +156,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
   Future<void> _savePrice() async {
     final i = double.tryParse(_pIn.text.trim());
     final o = double.tryParse(_pOut.text.trim());
-    if (i == null || o == null || i < 0 || o < 0) return toast(context, 'Enter two prices, like 0.25 and 2', error: true);
+    if (i == null || o == null || i < 0 || o < 0) return toast(context, tr('Enter two prices, like 0.25 and 2'), error: true);
     try {
       await _api.post('/models/price', {'ref': _pricing, 'input': i, 'output': o});
       setState(() => _pricing = null);
@@ -170,7 +171,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     AppState.of(context); // rebuild when settings change
     final m = _models, c = _conns;
     return Scaffold(
-      appBar: AppBar(title: const Text('AI & connections'), actions: [
+      appBar: AppBar(title: const Tx('AI & connections'), actions: [
         TextButton.icon(onPressed: _checking ? null : _checkAll, icon: const Icon(Icons.refresh, size: 18), label: Text(_checking ? 'Checking…' : 'Check all')),
       ]),
       body: m == null || c == null
@@ -178,7 +179,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
-                Text('The AI services, local AI and accounts Carino may use. Carino only uses what you set up here, keeps sign-ins fresh by itself, and never sends private content to an online AI.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                Tx('The AI services, local AI and accounts Carino may use. Carino only uses what you set up here, keeps sign-ins fresh by itself, and never sends private content to an online AI.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 _services(m),
                 if (!_noDiscover) _foundHere(),
                 _choices(m),
@@ -217,7 +218,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     final extras = _added.map((x) => x['id']).toSet();
     final conns = ((data['connections'] as List?) ?? const []).cast<Map>();
     return _section('AI services', 'Where Carino’s answers come from. Your main service is set in Settings → AI service; add more here so Carino can pick the best one for each message.', [
-      if (conns.isEmpty) ListTile(contentPadding: EdgeInsets.zero, title: const Text('No AI service yet'), trailing: TextButton(onPressed: () => openPath(context, '/settings#ai'), child: const Text('Set one up'))),
+      if (conns.isEmpty) ListTile(contentPadding: EdgeInsets.zero, title: const Tx('No AI service yet'), trailing: TextButton(onPressed: () => openPath(context, '/settings#ai'), child: const Tx('Set one up'))),
       for (final s in conns)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -228,16 +229,16 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
               const SizedBox(width: 6),
               _chip('${s['status']}'),
             ]),
-            Text('${s['local'] == true ? 'On your devices — content stays with you' : 'Online'} · ${s['billing'] == 'free' ? 'Free' : s['billing'] == 'paid' ? 'Paid' : 'May cost money'} · ${s['models']} model${s['models'] == 1 ? '' : 's'}${s['api'] == 'responses' ? ' · Responses API' : ''}', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+            Tx('{0} · {1} · {2} model{3}{4}', args: [s['local'] == true ? tr('On your devices — content stays with you') : tr('Online'), s['billing'] == 'free' ? tr('Free') : s['billing'] == 'paid' ? tr('Paid') : tr('May cost money'), s['models'], s['models'] == 1 ? '' : 's', s['api'] == 'responses' ? ' · Responses API' : ''], style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
             if (s['detail'] != null && s['status'] != 'ok') Text('${s['detail']}', style: const TextStyle(fontSize: 12, color: Colors.orange)),
             Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 4, children: [
               if (s['billing'] != 'free' && s['main'] != true)
                 Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Text('Allow paid use', style: TextStyle(fontSize: 13)),
+                  const Tx('Allow paid use', style: TextStyle(fontSize: 13)),
                   Switch(
                     value: approved.contains(s['id']),
                     onChanged: (on) async {
-                      if (on && !await confirmDialog(context, title: 'Allow paid use of ${s['label']}?', body: 'Carino may then pick ${s['label']}’s models when they suit a message best, and each use costs money on your ${s['label']} account. You can set a spending limit below; at the limit, Carino stops using paid models.', confirm: 'Allow')) return;
+                      if (on && !await confirmDialog(context, title: tr('Allow paid use of {0}?', [s['label']]), body: tr('Carino may then pick {0}’s models when they suit a message best, and each use costs money on your {1} account. You can set a spending limit below; at the limit, Carino stops using paid models.', [s['label'], s['label']]), confirm: tr('Allow'))) return;
                       await _saveAi({'approvedPaid': on ? {...approved, '${s['id']}'}.toList() : approved.where((x) => x != s['id']).toList()});
                     },
                   ),
@@ -246,23 +247,23 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
               if (extras.contains(s['id']))
                 TextButton.icon(
                   onPressed: () async {
-                    if (!await confirmDialog(context, title: 'Remove ${s['label']}?', body: 'Carino stops using it and deletes its saved key from this device.', confirm: 'Remove')) return;
+                    if (!await confirmDialog(context, title: tr('Remove {0}?', [s['label']]), body: tr('Carino stops using it and deletes its saved key from this device.'), confirm: tr('Remove'))) return;
                     try {
                       await _api.delete('/device/connections/${s['id']}');
-                      if (mounted) toast(context, 'Removed ${s['label']}');
+                      if (mounted) toast(context, tr('Removed {0}', [s['label']]));
                       await _load();
                     } catch (e) {
                       if (mounted) toast(context, errorText(e), error: true);
                     }
                   },
                   icon: const Icon(Icons.close, size: 16),
-                  label: const Text('Remove'),
+                  label: const Tx('Remove'),
                 ),
             ]),
           ]),
         ),
       if (_adding) _AddService(onDone: (added) async { setState(() => _adding = false); if (added) await _load(); }),
-    ], action: _onDevice && !_adding ? FilledButton.tonalIcon(onPressed: () => setState(() => _adding = true), icon: const Icon(Icons.add, size: 16), label: const Text('Add a service')) : null);
+    ], action: _onDevice && !_adding ? FilledButton.tonalIcon(onPressed: () => setState(() => _adding = true), icon: const Icon(Icons.add, size: 16), label: const Tx('Add a service')) : null);
   }
 
   Widget _foundHere() {
@@ -272,7 +273,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
       if (found == null)
         const LinearProgressIndicator()
       else if (found.isEmpty)
-        const Text('None found. If you use Ollama or LM Studio, start it and look again.', style: TextStyle(fontSize: 13))
+        const Tx('None found. If you use Ollama or LM Studio, start it and look again.', style: TextStyle(fontSize: 13))
       else
         for (final f in found)
           ListTile(
@@ -299,7 +300,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                         if (mounted) toast(context, errorText(e), error: true);
                       }
                     },
-                    child: const Text('Add'),
+                    child: const Tx('Add'),
                   ),
           ),
     ], action: TextButton.icon(onPressed: _looking ? null : _look, icon: const Icon(Icons.search, size: 16), label: Text(_looking ? 'Looking…' : 'Look again')));
@@ -310,17 +311,17 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     final roles = Map<String, dynamic>.from((_ai['roles'] as Map?) ?? const {});
     final recs = (data['recommendations'] as Map?) ?? const {};
     return _section('How Carino picks a model', 'For each message Carino picks among the models you allow, by what the message needs, privacy, speed and your budget. Private chats and local-only content only ever go to models on your devices.', [
-      SwitchListTile(contentPadding: EdgeInsets.zero, value: _ai['autoSelect'] != false, onChanged: (v) => _saveAi({'autoSelect': v}), title: const Text('Pick the model for each message automatically')),
+      SwitchListTile(contentPadding: EdgeInsets.zero, value: _ai['autoSelect'] != false, onChanged: (v) => _saveAi({'autoSelect': v}), title: const Tx('Pick the model for each message automatically')),
       Row(children: [
-        const Expanded(child: Text('Prefer')),
+        const Expanded(child: Tx('Prefer')),
         SegmentedButton<String>(
-          segments: const [ButtonSegment(value: 'privacy', label: Text('Privacy')), ButtonSegment(value: 'balanced', label: Text('Balanced')), ButtonSegment(value: 'speed', label: Text('Speed'))],
+          segments: const [ButtonSegment(value: 'privacy', label: Tx('Privacy')), ButtonSegment(value: 'balanced', label: Tx('Balanced')), ButtonSegment(value: 'speed', label: Tx('Speed'))],
           selected: {'${_ai['prefer'] ?? 'balanced'}'},
           showSelectedIcon: false,
           onSelectionChanged: (v) => _saveAi({'prefer': v.first}),
         ),
       ]),
-      SwitchListTile(contentPadding: EdgeInsets.zero, value: _ai['localOnly'] == true, onChanged: (v) => _saveAi({'localOnly': v}), title: const Text('Keep everything on my devices (local models only)')),
+      SwitchListTile(contentPadding: EdgeInsets.zero, value: _ai['localOnly'] == true, onChanged: (v) => _saveAi({'localOnly': v}), title: const Tx('Keep everything on my devices (local models only)')),
       for (final (role, label, hint) in _roles)
         () {
           final rec = recs[role] as Map?;
@@ -335,7 +336,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                 initialValue: value,
                 decoration: InputDecoration(labelText: '$label — $hint'),
                 items: [
-                  DropdownMenuItem(value: null, child: Text('Automatic${rec != null ? ' (now: ${rec['label']})' : ''}')),
+                  DropdownMenuItem(value: null, child: Tx('Automatic{0}', args: [rec != null ? ' (now: ${rec['label']})' : ''])),
                   for (final x in list) DropdownMenuItem(value: '${x['ref']}', child: Text('${x['label'] ?? x['model']} · ${x['connection']}${x['paid'] == false ? ' · free' : ''}${x['local'] == true ? ' · on device' : ''}', overflow: TextOverflow.ellipsis)),
                 ],
                 onChanged: (v) => _saveAi({'roles': {...roles, role: v}..removeWhere((_, x) => x == null)}),
@@ -356,7 +357,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     final all = ((data['models'] as List?) ?? const []).cast<Map>().where((x) => _showAll || x['status'] != 'unavailable').toList();
     final shown = _showAll ? all : all.take(30).toList();
     return _section('Models', 'Tested for real: a reply, using tools, pulling out details, a small reasoning step and reading a photo. Free and local models can be tested any time; paid ones show the cost first.', [
-      if (all.isEmpty) const Text('No models yet.'),
+      if (all.isEmpty) const Tx('No models yet.'),
       for (final x in shown)
         () {
           final off = disabled.contains(x['ref']);
@@ -385,7 +386,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                   if (x['status'] == 'unavailable') Pill('Unavailable', color: cs.error),
                   if (x['status'] == 'limited') const Pill('Rate-limited', color: Colors.orange),
                 ]),
-                if (x['blocked'] != null && !off) Text('Not used: ${x['blocked']}', style: const TextStyle(fontSize: 12)),
+                if (x['blocked'] != null && !off) Tx('Not used: {0}', args: [x['blocked']], style: const TextStyle(fontSize: 12)),
                 if (x['last_error'] != null && x['status'] != 'ok') Text(x['last_error'] == 'gone' ? 'No longer offered by the service.' : '${x['last_error']}', style: const TextStyle(fontSize: 12, color: Colors.orange)),
                 Wrap(spacing: 4, children: [
                   TextButton(onPressed: _busy.isNotEmpty ? null : () => _test(x), child: Text(_busy == x['ref'] ? 'Testing…' : x['tested_at'] != null ? 'Test again' : 'Test')),
@@ -396,22 +397,22 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                         _pIn.text = x['price_in'] == null ? '' : '${x['price_in']}';
                         _pOut.text = x['price_out'] == null ? '' : '${x['price_out']}';
                       }),
-                      child: const Text('Price'),
+                      child: const Tx('Price'),
                     ),
                 ]),
                 if (_pricing == x['ref'])
                   Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Expanded(child: TextField(controller: _pIn, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Input, USD per M tokens'))),
+                    Expanded(child: TextField(controller: _pIn, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: tr('Input, USD per M tokens')))),
                     const SizedBox(width: 8),
-                    Expanded(child: TextField(controller: _pOut, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Output'))),
-                    IconButton(tooltip: 'Save price', onPressed: _savePrice, icon: const Icon(Icons.check)),
-                    IconButton(tooltip: 'Cancel', onPressed: () => setState(() => _pricing = null), icon: const Icon(Icons.close)),
+                    Expanded(child: TextField(controller: _pOut, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: tr('Output')))),
+                    IconButton(tooltip: tr('Save price'), onPressed: _savePrice, icon: const Icon(Icons.check)),
+                    IconButton(tooltip: tr('Cancel'), onPressed: () => setState(() => _pricing = null), icon: const Icon(Icons.close)),
                   ]),
               ]),
             ),
           );
         }(),
-      if (all.length > 30 && !_showAll) TextButton(onPressed: () => setState(() => _showAll = true), child: Text('Show all ${all.length} models')),
+      if (all.length > 30 && !_showAll) TextButton(onPressed: () => setState(() => _showAll = true), child: Tx('Show all {0} models', args: [all.length])),
     ]);
   }
 
@@ -433,13 +434,13 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
       else ...[
         Row(children: [
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Last 24 hours', style: TextStyle(fontSize: 12)),
+            const Tx('Last 24 hours', style: TextStyle(fontSize: 12)),
             Text('${usd(d['today'] as num?)}${limits['dailyUsd'] != null ? ' of \$${limits['dailyUsd']}' : ''}', style: Theme.of(context).textTheme.titleLarge),
             bar((d['today'] as num?) ?? 0, limits['dailyUsd'] as num?),
           ])),
           const SizedBox(width: 16),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Last 30 days', style: TextStyle(fontSize: 12)),
+            const Tx('Last 30 days', style: TextStyle(fontSize: 12)),
             Text('${usd(d['month'] as num?)}${limits['monthlyUsd'] != null ? ' of \$${limits['monthlyUsd']}' : ''}', style: Theme.of(context).textTheme.titleLarge),
             bar((d['month'] as num?) ?? 0, limits['monthlyUsd'] as num?),
           ])),
@@ -450,16 +451,16 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             child: Text(warning['today'] == 'reached' || warning['month'] == 'reached' ? 'A spending limit is reached: paid models are paused.' : 'You’ve used over 80% of a spending limit.', style: const TextStyle(color: Colors.orange)),
           ),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Expanded(child: TextField(controller: _daily, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Daily limit (USD)', hintText: 'No limit'))),
+          Expanded(child: TextField(controller: _daily, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: tr('Daily limit (USD)'), hintText: tr('No limit')))),
           const SizedBox(width: 8),
-          Expanded(child: TextField(controller: _monthly, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Monthly limit (USD)', hintText: 'No limit'))),
+          Expanded(child: TextField(controller: _monthly, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: tr('Monthly limit (USD)'), hintText: tr('No limit')))),
           const SizedBox(width: 8),
           OutlinedButton(
             onPressed: () {
               num? n(String v) => v.trim().isEmpty ? null : ((num.tryParse(v.trim()) ?? 0) < 0 ? 0 : num.tryParse(v.trim()));
               _saveAi({'spend': {'dailyUsd': n(_daily.text), 'monthlyUsd': n(_monthly.text)}});
             },
-            child: const Text('Save limits'),
+            child: const Tx('Save limits'),
           ),
         ]),
         if (byModel.isNotEmpty) ...[
@@ -467,7 +468,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
           Table(
             columnWidths: const {0: FlexColumnWidth(3), 1: FlexColumnWidth(1), 2: FlexColumnWidth(2), 3: FlexColumnWidth(1.5)},
             children: [
-              const TableRow(children: [Text('Model', style: TextStyle(fontWeight: FontWeight.w700)), Text('Uses', style: TextStyle(fontWeight: FontWeight.w700)), Text('Tokens', style: TextStyle(fontWeight: FontWeight.w700)), Text('Cost', style: TextStyle(fontWeight: FontWeight.w700))]),
+              const TableRow(children: [Tx('Model', style: TextStyle(fontWeight: FontWeight.w700)), Tx('Uses', style: TextStyle(fontWeight: FontWeight.w700)), Tx('Tokens', style: TextStyle(fontWeight: FontWeight.w700)), Tx('Cost', style: TextStyle(fontWeight: FontWeight.w700))]),
               for (final r in byModel)
                 TableRow(children: [
                   Text('${r['model']}', maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -486,7 +487,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
     final accounts = ((data['accounts'] as List?) ?? const []).cast<Map>();
     final connectors = ((data['connectors'] as List?) ?? const []).cast<Map>();
     return _section('Accounts and connected tools', 'Signed in once; Carino refreshes these by itself. If one needs you, it shows here.', [
-      if (accounts.isEmpty && connectors.isEmpty) ListTile(contentPadding: EdgeInsets.zero, title: const Text('None yet.'), trailing: TextButton(onPressed: () => openPath(context, '/apps'), child: const Text('Connect an app'))),
+      if (accounts.isEmpty && connectors.isEmpty) ListTile(contentPadding: EdgeInsets.zero, title: const Tx('None yet.'), trailing: TextButton(onPressed: () => openPath(context, '/apps'), child: const Tx('Connect an app'))),
       for (final a in accounts)
         ListTile(
           contentPadding: EdgeInsets.zero,
@@ -496,10 +497,10 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             if (a['detail'] != null && a['status'] != 'ok') Text('${a['detail']}', style: const TextStyle(fontSize: 12, color: Colors.orange)),
           ]),
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (a['status'] == 'needs_sign_in') TextButton(onPressed: () => openPath(context, '/apps'), child: const Text('Sign in')),
+            if (a['status'] == 'needs_sign_in') TextButton(onPressed: () => openPath(context, '/apps'), child: const Tx('Sign in')),
             TextButton(
               onPressed: () async {
-                if (!await confirmDialog(context, title: 'Disconnect ${a['provider_label']} (${a['label']})?', body: 'Carino signs out, asks the provider to cancel its access where it can, and deletes the saved sign-in.', confirm: 'Disconnect')) return;
+                if (!await confirmDialog(context, title: tr('Disconnect {0} ({1})?', [a['provider_label'], a['label']]), body: tr('Carino signs out, asks the provider to cancel its access where it can, and deletes the saved sign-in.'), confirm: tr('Disconnect'))) return;
                 try {
                   final r = await _api.delete('/apps/accounts/${a['id']}') as Map?;
                   if (mounted) toast(context, r?['revoked'] == true ? 'Disconnected — ${a['provider_label']} cancelled Carino’s access' : 'Disconnected. To remove Carino’s access at ${a['provider_label']} too, open its connected-apps page.');
@@ -509,7 +510,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
                   if (mounted) toast(context, errorText(e), error: true);
                 }
               },
-              child: const Text('Disconnect'),
+              child: const Tx('Disconnect'),
             ),
           ]),
         ),
@@ -522,7 +523,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen> {
             Align(alignment: Alignment.centerLeft, child: _chip('${k['status']}')),
             if (k['detail'] != null && k['status'] != 'ok') Text('${k['detail']}', style: const TextStyle(fontSize: 12, color: Colors.orange)),
           ]),
-          trailing: TextButton(onPressed: () => openPath(context, '/connectors'), child: const Text('Manage')),
+          trailing: TextButton(onPressed: () => openPath(context, '/connectors'), child: const Tx('Manage')),
         ),
     ]);
   }
@@ -583,17 +584,17 @@ class _AddServiceState extends State<_AddService> {
           DropdownButtonFormField<String>(
             isExpanded: true,
             initialValue: _preset.isEmpty ? null : _preset,
-            decoration: const InputDecoration(labelText: 'Service'),
+            decoration: InputDecoration(labelText: tr('Service')),
             items: [for (final x in presets) DropdownMenuItem(value: '${x['id']}', child: Text('${x['label']}${x['paid'] == true ? ' (paid)' : x['onDevice'] == true || x['ownAddress'] == true ? ' (on your devices)' : ' (free)'}'))],
             onChanged: (v) => setState(() => _preset = v ?? ''),
           ),
           if (p?['free'] != null) Text('${p!['free']}', style: const TextStyle(fontSize: 12)),
-          if (own) TextField(controller: _url, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Address', hintText: 'http://localhost:11434/v1')),
-          if (needsKey) TextField(controller: _key, obscureText: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: 'Key', helperText: 'Get one at ${'${p!['keyUrl']}'.replaceFirst('https://', '')}. It’s checked, then stored encrypted on this device.', helperMaxLines: 3)),
-          if (p?['paid'] == true) const Padding(padding: EdgeInsets.only(top: 8), child: Text('Paid service: Carino won’t use it until you allow paid use, and you can set a spending limit.', style: TextStyle(fontSize: 12))),
+          if (own) TextField(controller: _url, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Address'), hintText: 'http://localhost:11434/v1')),
+          if (needsKey) TextField(controller: _key, obscureText: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Key'), helperText: tr('Get one at {0}. It’s checked, then stored encrypted on this device.', ['${p!['keyUrl']}'.replaceFirst('https://', '')]), helperMaxLines: 3)),
+          if (p?['paid'] == true) const Padding(padding: EdgeInsets.only(top: 8), child: Tx('Paid service: Carino won’t use it until you allow paid use, and you can set a spending limit.', style: TextStyle(fontSize: 12))),
           const SizedBox(height: 8),
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-            TextButton(onPressed: () => widget.onDone(false), child: const Text('Cancel')),
+            TextButton(onPressed: () => widget.onDone(false), child: const Tx('Cancel')),
             FilledButton(onPressed: _saving || _preset.isEmpty || (needsKey && _key.text.trim().isEmpty) || (own && _url.text.trim().isEmpty) ? null : _add, child: Text(_saving ? 'Checking…' : 'Add')),
           ]),
         ]),

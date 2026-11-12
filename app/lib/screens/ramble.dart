@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../engine/device.dart';
@@ -109,16 +110,16 @@ class _RambleScreenState extends State<RambleScreen> {
     final items = _items;
     final kept = items?.where((i) => i['keep'] == true).length ?? 0;
     return Scaffold(
-      appBar: AppBar(title: const Text('Ramble it out')),
+      appBar: AppBar(title: const Tx('Ramble it out')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
-        Text('Got a lot on your mind? Talk or type it all out, in any order. Carino sorts it into to-dos, reminders and things to remember, and you choose what to keep.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Tx('Got a lot on your mind? Talk or type it all out, in any order. Carino sorts it into to-dos, reminders and things to remember, and you choose what to keep.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
         if (_done != null)
           Card(
             child: ListTile(
               leading: const Icon(Icons.check_circle_outline),
               title: Text(_doneText(_done!)),
-              trailing: TextButton(onPressed: () => openPath(context, '/tasks'), child: const Text('Open to-dos')),
+              trailing: TextButton(onPressed: () => openPath(context, '/tasks'), child: const Tx('Open to-dos')),
             ),
           ),
         if (items == null) ...[
@@ -128,7 +129,7 @@ class _RambleScreenState extends State<RambleScreen> {
             maxLines: 16,
             maxLength: 20000,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(hintText: 'e.g. I need to order paracetamol by Friday, remind me to call Mama tomorrow at 5, the shop sign is broken, and I had an idea for a loyalty card…', border: OutlineInputBorder()),
+            decoration: InputDecoration(hintText: tr('e.g. I need to order paracetamol by Friday, remind me to call Mama tomorrow at 5, the shop sign is broken, and I had an idea for a loyalty card…'), border: OutlineInputBorder()),
           ),
           if (v.interim.isNotEmpty) Text(v.interim, style: const TextStyle(fontStyle: FontStyle.italic)),
           Row(children: [
@@ -145,13 +146,13 @@ class _RambleScreenState extends State<RambleScreen> {
               label: Text(_busy == 'sort' ? 'Sorting…' : 'Sort it out'),
             ),
           ]),
-          if (v.listening) const Padding(padding: EdgeInsets.only(top: 6), child: Text('Listening — take your time, pauses are fine.', style: TextStyle(fontSize: 12))),
+          if (v.listening) const Padding(padding: EdgeInsets.only(top: 6), child: Tx('Listening — take your time, pauses are fine.', style: TextStyle(fontSize: 12))),
           if (v.error != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(v.error!, style: TextStyle(color: Theme.of(context).colorScheme.error))),
         ] else ...[
           if (items.isEmpty)
-            EmptyView(icon: Icons.check, title: 'Nothing to add', body: 'Carino didn’t find any to-dos, reminders or things to remember in that.')
+            EmptyView(icon: Icons.check, title: tr('Nothing to add'), body: tr('Carino didn’t find any to-dos, reminders or things to remember in that.'))
           else ...[
-            const Text('Here’s what Carino picked out. Untick anything you don’t want, and check the dates before adding.'),
+            const Tx('Here’s what Carino picked out. Untick anything you don’t want, and check the dates before adding.'),
             const SizedBox(height: 8),
             for (final (n, i) in items.indexed)
               Card(
@@ -164,7 +165,7 @@ class _RambleScreenState extends State<RambleScreen> {
                       Checkbox(value: i['keep'] == true, onChanged: (x) => setState(() => i['keep'] = x == true)),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          TextFormField(initialValue: '${i['title'] ?? ''}', maxLength: 300, decoration: const InputDecoration(labelText: 'Title', counterText: ''), onChanged: (t) => i['title'] = t),
+                          TextFormField(initialValue: '${i['title'] ?? ''}', maxLength: 300, decoration: InputDecoration(labelText: tr('Title'), counterText: ''), onChanged: (t) => i['title'] = t),
                           if ((i['details'] as String?)?.isNotEmpty == true) Padding(padding: const EdgeInsets.only(top: 4), child: Text('${i['details']}', style: const TextStyle(fontSize: 13))),
                           const SizedBox(height: 6),
                           Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -179,7 +180,7 @@ class _RambleScreenState extends State<RambleScreen> {
                                 label: Text(i['when_iso'] != null ? fmtDateTime('${i['when_iso']}') : 'Set a time'),
                                 onPressed: () => _pickWhen(n),
                               ),
-                            if (i['type'] != 'memory' && i['when_text'] != null) Text('from “${i['when_text']}”', style: const TextStyle(fontSize: 12)),
+                            if (i['type'] != 'memory' && i['when_text'] != null) Tx('from “{0}”', args: [i['when_text']], style: const TextStyle(fontSize: 12)),
                             if (i['priority'] == 1) Pill('urgent', color: Theme.of(context).colorScheme.error),
                           ]),
                           if (i['warning'] != null && i['type'] != 'memory') Text('${i['warning']}', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.tertiary)),
@@ -192,7 +193,7 @@ class _RambleScreenState extends State<RambleScreen> {
           ],
           const SizedBox(height: 8),
           Row(children: [
-            OutlinedButton.icon(onPressed: () => setState(() => _items = null), icon: const Icon(Icons.edit_outlined), label: const Text('Back to my ramble')),
+            OutlinedButton.icon(onPressed: () => setState(() => _items = null), icon: const Icon(Icons.edit_outlined), label: const Tx('Back to my ramble')),
             const Spacer(),
             if (items.isNotEmpty)
               FilledButton.icon(onPressed: kept == 0 || _busy == 'add' ? null : _add, icon: const Icon(Icons.check), label: Text(_busy == 'add' ? 'Adding…' : 'Add $kept item${kept == 1 ? '' : 's'}')),

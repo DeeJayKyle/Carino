@@ -24,6 +24,15 @@ Flutter screens  ──request──▶  window.__carinoFlutter (mobile/flutter-
 - `android/` — the same Java code as `../android` (alarms, widgets, folders, Keystore, background
   listening), with `MainActivity` hosting both Flutter and the engine.
 
+## Languages
+
+Carino speaks English, Português (Brasil), Deutsch, Français, Español, Nederlands, Italiano and
+Polski (Settings → Language & region; "Automatic" follows the phone). Text is written in English
+in the code — `Tx('…')` for text widgets and `tr('…')` for strings — and looked up in
+`assets/i18n/<code>.json`, which the web screens (`src/lib/i18n.ts`, `t('…')`) share. To change or
+add a translation, edit `l10n/<code>.txt` and run `python3 l10n/build.py`; anything not translated
+shows in English. The assistant's replies follow the language you write in.
+
 ## Build
 
 ```

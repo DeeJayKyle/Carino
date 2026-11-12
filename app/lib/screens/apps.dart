@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -214,13 +215,13 @@ class _AppsScreenState extends State<AppsScreen> with _AppsChanged {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('My apps')),
+      appBar: AppBar(title: const Tx('My apps')),
       body: list == null
           ? (_error != null ? ErrorPanel(error: _error!, retry: _load) : const Center(child: CircularProgressIndicator()))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
-                Text('Connect your accounts so Carino can read and act for you. Sending email and posting always waits for your OK.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                Tx('Connect your accounts so Carino can read and act for you. Sending email and posting always waits for your OK.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
                 const SizedBox(height: 12),
                 item(logo: 'whatsapp', name: 'WhatsApp', beta: true, to: '/messaging#whatsapp',
                     ok: (wa?['config'] as Map?)?['relay_url'] != null && wa?['enabled'] == true,
@@ -238,7 +239,7 @@ class _AppsScreenState extends State<AppsScreen> with _AppsChanged {
                         status: n > 0 ? (warn ? 'Needs you to sign in again' : n == 1 ? '${accts.first['label']}' : 'Connected') : 'Tap to connect',
                       );
                     }(),
-                Padding(padding: const EdgeInsets.fromLTRB(4, 14, 4, 6), child: Text('Work & life', style: Theme.of(context).textTheme.titleSmall)),
+                Padding(padding: const EdgeInsets.fromLTRB(4, 14, 4, 6), child: Tx('Work & life', style: Theme.of(context).textTheme.titleSmall)),
                 for (final pid in _workApps)
                   if (list.where((x) => x['id'] == pid).firstOrNull case final a?)
                     () {
@@ -287,7 +288,7 @@ class _AppDetailState extends State<AppDetail> {
     try {
       final r = await api.post('/apps/${app['id']}/key', {'token': _token.text.trim()}) as Map;
       _token.clear();
-      if (mounted) toast(context, 'Connected ${(r['account'] as Map?)?['label'] ?? about.name}');
+      if (mounted) toast(context, tr('Connected {0}', [(r['account'] as Map?)?['label'] ?? about.name]));
       await widget.reload();
     } catch (e) {
       if (mounted) toast(context, errorText(e), error: true);
@@ -319,7 +320,7 @@ class _AppDetailState extends State<AppDetail> {
     try {
       final s = _secret.text.trim();
       await api.put('/apps/clients/${app['group']}', {'client_id': _clientId.text.trim(), if (s.isNotEmpty && !s.startsWith('••••')) 'client_secret': s});
-      if (mounted) toast(context, 'Saved. Now sign in.');
+      if (mounted) toast(context, tr('Saved. Now sign in.'));
       await widget.reload();
     } catch (e) {
       if (mounted) toast(context, errorText(e), error: true);
@@ -355,8 +356,8 @@ class _AppDetailState extends State<AppDetail> {
           ),
         ),
         const SizedBox(height: 12),
-        Text('Accounts', style: Theme.of(context).textTheme.titleMedium),
-        if (accounts.isEmpty) const Padding(padding: EdgeInsets.only(top: 4), child: Text('Not connected yet.')),
+        Tx('Accounts', style: Theme.of(context).textTheme.titleMedium),
+        if (accounts.isEmpty) const Padding(padding: EdgeInsets.only(top: 4), child: Tx('Not connected yet.')),
         for (final a in accounts)
           ListTile(
             contentPadding: EdgeInsets.zero,
@@ -364,12 +365,12 @@ class _AppDetailState extends State<AppDetail> {
             title: Text('${a['label']}'),
             subtitle: a['last_error'] != null ? Text('${a['last_error']}', style: TextStyle(color: cs.error)) : null,
             trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (a['last_error'] != null && key == null) TextButton(onPressed: _busy ? null : _signIn, child: const Text('Sign in again')),
+              if (a['last_error'] != null && key == null) TextButton(onPressed: _busy ? null : _signIn, child: const Tx('Sign in again')),
               IconButton(
-                tooltip: 'Disconnect ${a['label']}',
+                tooltip: tr('Disconnect {0}', [a['label']]),
                 icon: const Icon(Icons.close),
                 onPressed: () async {
-                  if (!await confirmDialog(context, title: 'Disconnect ${a['label']}?', body: 'Carino forgets this ${about.name} sign-in. Nothing in your account is changed.', confirm: 'Disconnect', danger: true)) return;
+                  if (!await confirmDialog(context, title: tr('Disconnect {0}?', [a['label']]), body: tr('Carino forgets this {0} sign-in. Nothing in your account is changed.', [about.name]), confirm: tr('Disconnect'), danger: true)) return;
                   try {
                     await api.delete('/apps/accounts/${a['id']}');
                   } catch (e) {
@@ -389,15 +390,15 @@ class _AppDetailState extends State<AppDetail> {
                 Text(accounts.isEmpty ? 'Connect with a personal token' : 'Add another account', style: Theme.of(context).textTheme.titleSmall),
                 const SizedBox(height: 6),
                 Text('${key['steps']}', style: const TextStyle(fontSize: 13)),
-                TextButton.icon(style: TextButton.styleFrom(padding: EdgeInsets.zero), onPressed: () => Device(api).openExternal('${key['url']}'), icon: const Icon(Icons.open_in_new, size: 14), label: Text('Open ${about.name}')),
-                TextField(controller: _token, obscureText: true, autocorrect: false, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: 'Token', hintText: '${key['placeholder']}')),
+                TextButton.icon(style: TextButton.styleFrom(padding: EdgeInsets.zero), onPressed: () => Device(api).openExternal('${key['url']}'), icon: const Icon(Icons.open_in_new, size: 14), label: Tx('Open {0}', args: [about.name])),
+                TextField(controller: _token, obscureText: true, autocorrect: false, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Token'), hintText: '${key['placeholder']}')),
                 const SizedBox(height: 10),
-                FilledButton(onPressed: _busy || _token.text.trim().length < 8 ? null : _connectKey, child: const Text('Connect')),
+                FilledButton(onPressed: _busy || _token.text.trim().length < 8 ? null : _connectKey, child: const Tx('Connect')),
               ]),
             ),
           ),
           const SizedBox(height: 10),
-          Text('The token is stored encrypted on this device and only sent to ${about.name}. Changes and messages wait for your OK unless you allow them in Settings → Permissions.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          Tx('The token is stored encrypted on this device and only sent to {0}. Changes and messages wait for your OK unless you allow them in Settings → Permissions.', args: [about.name], style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         ] else ...[
         const SizedBox(height: 8),
         FilledButton.icon(
@@ -405,18 +406,18 @@ class _AppDetailState extends State<AppDetail> {
           icon: const Icon(Icons.lock_outline, size: 18),
           label: Text(accounts.isNotEmpty ? 'Add another ${about.name} account' : 'Sign in with ${about.name}'),
         ),
-        if (client == null && !oneTap) const Padding(padding: EdgeInsets.only(top: 4), child: Text('First do the one-time setup below.', style: TextStyle(fontSize: 12))),
-        if (oneTap && client == null) Padding(padding: const EdgeInsets.only(top: 10), child: Text('You sign in on ${about.name}’s own page and choose what Carino may do. Your sign-in is kept on this phone.', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant))),
+        if (client == null && !oneTap) const Padding(padding: EdgeInsets.only(top: 4), child: Tx('First do the one-time setup below.', style: TextStyle(fontSize: 12))),
+        if (oneTap && client == null) Padding(padding: const EdgeInsets.only(top: 10), child: Tx('You sign in on {0}’s own page and choose what Carino may do. Your sign-in is kept on this phone.', args: [about.name], style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant))),
         const SizedBox(height: 12),
         Card(
           child: ExpansionTile(
             initiallyExpanded: client == null && !oneTap,
             title: Text(oneTap ? 'Advanced: use my own developer app' : 'One-time setup'),
-            subtitle: oneTap ? null : const Text('About 5 minutes, free'),
+            subtitle: oneTap ? null : const Tx('About 5 minutes, free'),
             childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             expandedCrossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Carino talks to ${about.name} directly from your phone, with your own free developer app — nothing goes through anyone else’s server.${shared != null ? ' This is the same Meta app as $shared: set it up once for both.' : ''}', style: const TextStyle(fontSize: 13)),
+              Tx('Carino talks to {0} directly from your phone, with your own free developer app — nothing goes through anyone else’s server.{1}', args: [about.name, shared != null ? ' This is the same Meta app as $shared: set it up once for both.' : ''], style: const TextStyle(fontSize: 13)),
               const SizedBox(height: 8),
               for (final (i, (text, url)) in g.steps.indexed)
                 Padding(
@@ -425,7 +426,7 @@ class _AppDetailState extends State<AppDetail> {
                     Text('${i + 1}. ', style: const TextStyle(fontWeight: FontWeight.w700)),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(text, style: const TextStyle(fontSize: 13)),
-                      if (url != null) TextButton.icon(style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact), onPressed: () => Device(api).openExternal(url), icon: const Icon(Icons.open_in_new, size: 14), label: const Text('Open')),
+                      if (url != null) TextButton.icon(style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact), onPressed: () => Device(api).openExternal(url), icon: const Icon(Icons.open_in_new, size: 14), label: const Tx('Open')),
                     ])),
                   ]),
                 ),
@@ -435,32 +436,32 @@ class _AppDetailState extends State<AppDetail> {
                 Expanded(child: SelectableText('${app['redirect_uri']}', style: const TextStyle(fontFamily: 'monospace', fontSize: 12))),
                 TextButton.icon(onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: '${app['redirect_uri']}'));
-                  if (context.mounted) toast(context, 'Copied');
-                }, icon: const Icon(Icons.copy, size: 16), label: const Text('Copy')),
+                  if (context.mounted) toast(context, tr('Copied'));
+                }, icon: const Icon(Icons.copy, size: 16), label: const Tx('Copy')),
               ]),
               TextField(controller: _clientId, autocorrect: false, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: g.idLabel)),
               if (g.secretLabel.isNotEmpty)
                 TextField(controller: _secret, obscureText: true, autocorrect: false, onTap: () { if (_secret.text.startsWith('••••')) _secret.clear(); }, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: g.secretLabel)),
               const SizedBox(height: 10),
               Row(children: [
-                OutlinedButton(onPressed: _busy || _clientId.text.trim().length < 4 || (app['needs_secret'] == true && _secret.text.trim().isEmpty) ? null : _save, child: const Text('Save')),
+                OutlinedButton(onPressed: _busy || _clientId.text.trim().length < 4 || (app['needs_secret'] == true && _secret.text.trim().isEmpty) ? null : _save, child: const Tx('Save')),
                 if (client != null)
                   TextButton(
                     onPressed: () async {
-                      if (!await confirmDialog(context, title: 'Remove the developer app?', body: 'Signed-in accounts keep working until their sign-in expires.', confirm: 'Remove', danger: true)) return;
+                      if (!await confirmDialog(context, title: tr('Remove the developer app?'), body: tr('Signed-in accounts keep working until their sign-in expires.'), confirm: tr('Remove'), danger: true)) return;
                       await api.delete('/apps/clients/${app['group']}');
                       _clientId.clear();
                       _secret.clear();
                       await widget.reload();
                     },
-                    child: const Text('Remove'),
+                    child: const Tx('Remove'),
                   ),
               ]),
             ],
           ),
         ),
         const SizedBox(height: 10),
-        Text('Your sign-ins are stored encrypted on this phone. Carino asks before sending email or posting anything. You can change what it may do on its own in Settings → Permissions.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+        Tx('Your sign-ins are stored encrypted on this phone. Carino asks before sending email or posting anything. You can change what it may do on its own in Settings → Permissions.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
         ],
       ]),
     );

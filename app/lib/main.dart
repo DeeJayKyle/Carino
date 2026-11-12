@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'l10n.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app_state.dart';
 import 'nav.dart';
@@ -35,7 +37,7 @@ class CarinoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppScope(
+    return L10nScope(child: AppScope(
       state: state,
       // Appearance settings (theme, palette, text size, motion) apply as soon as they change.
       child: ListenableBuilder(
@@ -44,6 +46,11 @@ class CarinoApp extends StatelessWidget {
           final a = (state.settings['appearance'] as Map?) ?? const {};
           final midnight = a['palette'] == 'midnight';
           return MaterialApp(
+            // A new language rebuilds every screen in it.
+            key: ValueKey(L10n.code),
+            locale: L10n.locale,
+            supportedLocales: const [Locale('en'), Locale('pt', 'BR'), Locale('de'), Locale('fr'), Locale('es'), Locale('nl'), Locale('it'), Locale('pl')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
             title: 'Carino',
             debugShowCheckedModeBanner: false,
             navigatorKey: navigatorKey,
@@ -70,7 +77,7 @@ class CarinoApp extends StatelessWidget {
           );
         },
       ),
-    );
+    ));
   }
 }
 
@@ -145,7 +152,7 @@ class _StartupState extends State<Startup> {
       return Scaffold(
         body: Center(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text('Carino', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary)),
+            Tx('Carino', style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary)),
             const SizedBox(height: 16),
             const SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.5)),
           ]),
@@ -196,11 +203,11 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _select,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Chats'),
-          NavigationDestination(icon: Icon(Icons.check_circle_outline), selectedIcon: Icon(Icons.check_circle), label: 'To-dos'),
-          NavigationDestination(icon: Icon(Icons.inventory_2_outlined), selectedIcon: Icon(Icons.inventory_2), label: 'Your stuff'),
+        destinations: [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: tr('Home')),
+          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: tr('Chats')),
+          NavigationDestination(icon: Icon(Icons.check_circle_outline), selectedIcon: Icon(Icons.check_circle), label: tr('To-dos')),
+          NavigationDestination(icon: Icon(Icons.inventory_2_outlined), selectedIcon: Icon(Icons.inventory_2), label: tr('Your stuff')),
         ],
       ),
     );

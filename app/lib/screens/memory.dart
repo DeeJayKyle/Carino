@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 
@@ -43,11 +44,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
   void _reload() => setState(() => _bump++);
 
   Future<void> _deletePicked() async {
-    if (!await confirmDialog(context, title: 'Delete ${_picked.length} ${_picked.length == 1 ? 'memory' : 'memories'}?', body: 'Carino will no longer know these things. This cannot be undone.', confirm: 'Delete', danger: true)) return;
+    if (!await confirmDialog(context, title: tr('Delete {0} {1}?', [_picked.length, _picked.length == 1 ? 'memory' : 'memories']), body: tr('Carino will no longer know these things. This cannot be undone.'), confirm: tr('Delete'), danger: true)) return;
     if (!mounted) return;
     try {
       final r = await AppState.read(context).api.post('/memories/delete', {'ids': _picked.toList()}) as Map;
-      if (mounted) toast(context, 'Deleted ${r['deleted']}');
+      if (mounted) toast(context, tr('Deleted {0}', [r['deleted']]));
       _picked.clear();
       _reload();
     } catch (e) {
@@ -57,11 +58,11 @@ class _MemoryScreenState extends State<MemoryScreen> {
 
   Future<void> _clearAll() async {
     final label = memoryCategories[_category];
-    if (!await confirmDialog(context, title: label != null ? 'Delete all “$label” memories?' : 'Delete ALL memories?', body: 'This permanently removes them. This cannot be undone.', confirm: 'Delete permanently', danger: true)) return;
+    if (!await confirmDialog(context, title: label != null ? 'Delete all “$label” memories?' : 'Delete ALL memories?', body: tr('This permanently removes them. This cannot be undone.'), confirm: tr('Delete permanently'), danger: true)) return;
     if (!mounted) return;
     try {
       final r = await AppState.read(context).api.post('/memories/clear', {if (_category.isNotEmpty) 'categories': [_category], 'confirm': true}) as Map;
-      if (mounted) toast(context, 'Deleted ${r['deleted']} memories');
+      if (mounted) toast(context, tr('Deleted {0} memories', [r['deleted']]));
       _reload();
     } catch (e) {
       if (mounted) toast(context, errorText(e), error: true);
@@ -73,31 +74,31 @@ class _MemoryScreenState extends State<MemoryScreen> {
     final app = AppState.of(context);
     final memOff = (app.settings['memory'] as Map?)?['enabled'] == false;
     return Scaffold(
-      appBar: AppBar(title: const Text('Memory'), actions: [
-        if (_picked.isNotEmpty) IconButton(tooltip: 'Delete ${_picked.length} selected', icon: const Icon(Icons.delete_outline), onPressed: _deletePicked),
+      appBar: AppBar(title: const Tx('Memory'), actions: [
+        if (_picked.isNotEmpty) IconButton(tooltip: tr('Delete {0} selected', [_picked.length]), icon: const Icon(Icons.delete_outline), onPressed: _deletePicked),
         PopupMenuButton<String>(
           onSelected: (v) => v == 'clear' ? _clearAll() : null,
           itemBuilder: (_) => [PopupMenuItem(value: 'clear', child: Text(_category.isEmpty ? 'Clear all' : 'Clear this category'))],
         ),
       ]),
-      floatingActionButton: FloatingActionButton.extended(onPressed: () => _edit(context, const {}), icon: const Icon(Icons.add), label: const Text('Add memory')),
+      floatingActionButton: FloatingActionButton.extended(onPressed: () => _edit(context, const {}), icon: const Icon(Icons.add), label: const Tx('Add memory')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 96), children: [
-        Text('Only approved memories are used. You can view, edit or delete any of them.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Tx('Only approved memories are used. You can view, edit or delete any of them.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         if (memOff)
           Card(
             margin: const EdgeInsets.only(top: 10),
             color: Colors.orange.withValues(alpha: 0.1),
-            child: ListTile(leading: const Icon(Icons.info_outline), title: const Text('Memory is turned off'), subtitle: const Text('Carino won’t use or save memories.'), onTap: () => openPath(context, '/settings#memory')),
+            child: ListTile(leading: const Icon(Icons.info_outline), title: const Tx('Memory is turned off'), subtitle: const Tx('Carino won’t use or save memories.'), onTap: () => openPath(context, '/settings#memory')),
           ),
         const SizedBox(height: 10),
         SegmentedButton<String>(
-          segments: const [ButtonSegment(value: 'active', label: Text('Saved')), ButtonSegment(value: 'proposed', label: Text('Waiting for OK'))],
+          segments: const [ButtonSegment(value: 'active', label: Tx('Saved')), ButtonSegment(value: 'proposed', label: Tx('Waiting for OK'))],
           selected: {_status},
           onSelectionChanged: (s) => setState(() { _status = s.first; _picked.clear(); }),
         ),
         const SizedBox(height: 10),
         TextField(
-          decoration: const InputDecoration(hintText: 'Search memories', prefixIcon: Icon(Icons.search), isDense: true),
+          decoration: InputDecoration(hintText: tr('Search memories'), prefixIcon: Icon(Icons.search), isDense: true),
           onChanged: (v) {
             _debounce?.cancel();
             _debounce = Timer(const Duration(milliseconds: 300), () => setState(() => _q = v.trim()));
@@ -106,22 +107,22 @@ class _MemoryScreenState extends State<MemoryScreen> {
         const SizedBox(height: 8),
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final (v, l) in const [('', 'Personal and work'), ('personal', 'Personal'), ('work', 'Work')])
-            ChoiceChip(label: Text(l), selected: _context == v, onSelected: (_) => setState(() { _context = v; _picked.clear(); })),
+            ChoiceChip(label: Tx(l), selected: _context == v, onSelected: (_) => setState(() { _context = v; _picked.clear(); })),
           DropdownButton<String>(
             value: _category,
             underline: const SizedBox(),
-            items: [const DropdownMenuItem(value: '', child: Text('All categories')), for (final e in memoryCategories.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
+            items: [const DropdownMenuItem(value: '', child: Tx('All categories')), for (final e in memoryCategories.entries) DropdownMenuItem(value: e.key, child: Tx(e.value))],
             onChanged: (v) => setState(() => _category = v ?? ''),
           ),
         ]),
         if (_status == 'proposed')
-          Padding(padding: const EdgeInsets.only(top: 8), child: Text('Carino suggested these but needs your OK — they may be sensitive or inferred.', style: Theme.of(context).textTheme.bodySmall)),
+          Padding(padding: const EdgeInsets.only(top: 8), child: Tx('Carino suggested these but needs your OK — they may be sensitive or inferred.', style: Theme.of(context).textTheme.bodySmall)),
         const SizedBox(height: 8),
         Loader<List>(
           reloadKey: '$_bump|$_query',
           load: () async => ((await app.api.get('/memories?$_query')) as Map)['memories'] as List,
           builder: (context, list, reload) {
-            if (list.isEmpty) return EmptyView(icon: Icons.psychology_outlined, title: _status == 'proposed' ? 'Nothing waiting for approval' : 'No memories yet', body: 'Tell Carino “remember that…” in a chat, or add one here.');
+            if (list.isEmpty) return EmptyView(icon: Icons.psychology_outlined, title: _status == 'proposed' ? 'Nothing waiting for approval' : 'No memories yet', body: tr('Tell Carino “remember that…” in a chat, or add one here.'));
             return Card(
               child: Column(children: [
                 for (final m in list.cast<Map>()) _MemoryTile(m: m, picked: _picked.contains(m['id']), onPick: (v) => setState(() => v ? _picked.add('${m['id']}') : _picked.remove(m['id'])), onEdit: () => _edit(context, m), changed: _reload),
@@ -168,20 +169,20 @@ class _MemoryTile extends StatelessWidget {
           ? FilledButton.tonal(
               onPressed: () async {
                 await AppState.read(context).api.post('/memories/${m['id']}/approve');
-                if (context.mounted) toast(context, 'Memory saved');
+                if (context.mounted) toast(context, tr('Memory saved'));
                 changed();
               },
-              child: const Text('Approve'),
+              child: const Tx('Approve'),
             )
           : PopupMenuButton<String>(
               onSelected: (v) async {
                 if (v == 'edit') return onEdit();
-                if (!await confirmDialog(context, title: 'Forget this?', body: '${m['content']}', confirm: 'Delete', danger: true)) return;
+                if (!await confirmDialog(context, title: tr('Forget this?'), body: '${m['content']}', confirm: tr('Delete'), danger: true)) return;
                 if (!context.mounted) return;
                 await AppState.read(context).api.delete('/memories/${m['id']}');
                 changed();
               },
-              itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Text('Edit')), PopupMenuItem(value: 'delete', child: Text('Delete'))],
+              itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Tx('Edit')), PopupMenuItem(value: 'delete', child: Tx('Delete'))],
             ),
       onTap: onEdit,
     );
@@ -221,7 +222,7 @@ class _MemoryFormState extends State<MemoryForm> {
         if (_localOnly && newId != null) await api.patch('/memories/$newId', {'local_only': true});
       }
       if (mounted) {
-        toast(context, 'Memory saved');
+        toast(context, tr('Memory saved'));
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -238,16 +239,16 @@ class _MemoryFormState extends State<MemoryForm> {
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(widget.memory['id'] == null ? 'Add a memory' : 'Edit memory', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
-        TextField(controller: _content, onChanged: (_) => setState(() {}), minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'What should Carino remember?', hintText: 'e.g. I prefer a morning briefing at 7:00')),
+        TextField(controller: _content, onChanged: (_) => setState(() {}), minLines: 2, maxLines: 5, decoration: InputDecoration(labelText: tr('What should Carino remember?'), hintText: tr('e.g. I prefer a morning briefing at 7:00'))),
         const SizedBox(height: 12),
         Row(children: [
-          Expanded(child: DropdownButtonFormField<String>(initialValue: _category, decoration: const InputDecoration(labelText: 'Category'), items: [for (final e in memoryCategories.entries) DropdownMenuItem(value: e.key, child: Text(e.value))], onChanged: (v) => setState(() => _category = v ?? 'fact'))),
+          Expanded(child: DropdownButtonFormField<String>(initialValue: _category, decoration: InputDecoration(labelText: tr('Category')), items: [for (final e in memoryCategories.entries) DropdownMenuItem(value: e.key, child: Text(e.value))], onChanged: (v) => setState(() => _category = v ?? 'fact'))),
           const SizedBox(width: 10),
-          Expanded(child: DropdownButtonFormField<String>(initialValue: _ctx, decoration: const InputDecoration(labelText: 'Part of'), items: const [DropdownMenuItem(value: 'personal', child: Text('Personal life')), DropdownMenuItem(value: 'work', child: Text('Work or business'))], onChanged: (v) => setState(() => _ctx = v ?? 'personal'))),
+          Expanded(child: DropdownButtonFormField<String>(initialValue: _ctx, decoration: InputDecoration(labelText: tr('Part of')), items: const [DropdownMenuItem(value: 'personal', child: Tx('Personal life')), DropdownMenuItem(value: 'work', child: Tx('Work or business'))], onChanged: (v) => setState(() => _ctx = v ?? 'personal'))),
         ]),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Forget after (optional)'),
+          title: const Tx('Forget after (optional)'),
           subtitle: Text(_expires == null ? 'Keep until deleted' : fmtDateTime(_expires!.toIso8601String(), time: false, year: true)),
           trailing: _expires == null ? const Icon(Icons.event) : IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => _expires = null)),
           onTap: () async {
@@ -255,7 +256,7 @@ class _MemoryFormState extends State<MemoryForm> {
             if (d != null) setState(() => _expires = d);
           },
         ),
-        SwitchListTile(contentPadding: EdgeInsets.zero, value: _localOnly, onChanged: (v) => setState(() => _localOnly = v), title: const Text('Keep on my devices only'), subtitle: const Text('Never shown to an online AI')),
+        SwitchListTile(contentPadding: EdgeInsets.zero, value: _localOnly, onChanged: (v) => setState(() => _localOnly = v), title: const Tx('Keep on my devices only'), subtitle: const Tx('Never shown to an online AI')),
         const SizedBox(height: 8),
         FilledButton(onPressed: _saving || _content.text.trim().length < 2 ? null : _save, child: Text(_saving ? 'Saving…' : 'Save')),
       ]),

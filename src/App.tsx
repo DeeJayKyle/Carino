@@ -1,3 +1,5 @@
+import { t } from './lib/i18n';
+import { useLanguage } from './lib/i18n';
 import { Component, lazy, Suspense, type ReactNode } from 'react';
 import { SessionProvider, useSession } from './lib/session';
 import { ToastProvider, ConfirmProvider, Spinner } from './components/ui';
@@ -30,6 +32,7 @@ const Applications = lazy(() => import('./pages/Applications'));
 const Files = lazy(() => import('./pages/Files'));
 
 function Router() {
+  const lang = useLanguage();
   const { pathname } = useLocation();
   const { me, loading } = useSession();
   useSwNavigation();
@@ -67,7 +70,7 @@ function Router() {
   ];
   for (const [pattern, render] of routes) {
     const params = match(pattern, pathname);
-    if (params) return <PageBoundary key={pathname}><Suspense fallback={<Centered><Spinner lg /></Centered>}>{render(params)}</Suspense></PageBoundary>;
+    if (params) return <PageBoundary key={`${lang}:${pathname}`}><Suspense fallback={<Centered><Spinner lg /></Centered>}>{render(params)}</Suspense></PageBoundary>;
   }
   return <Home />;
 }
@@ -104,9 +107,9 @@ class PageBoundary extends Component<{ children: ReactNode }, { failed: boolean 
     return (
       <Centered>
         <div className="empty" role="alert">
-          <h3>This screen couldn’t open</h3>
-          <p>Check your connection, then try again. Your data is safe.</p>
-          <button className="btn primary" onClick={() => location.reload()}>Try again</button>
+          <h3>{t('This screen couldn’t open')}</h3>
+          <p>{t('Check your connection, then try again. Your data is safe.')}</p>
+          <button className="btn primary" onClick={() => location.reload()}>{t('Try again')}</button>
         </div>
       </Centered>
     );

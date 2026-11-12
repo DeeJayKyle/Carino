@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useState } from 'react';
 import { Icon } from './Icon';
 import { Modal, useToast } from './ui';
@@ -29,11 +30,11 @@ export function HandoffButton({ kind, refId }: { kind: 'chat' | 'task' | 'applic
   };
   return (
     <>
-      <button className="btn ghost sm" onClick={() => setOpen(true)} title={`Continue on ${peer.name}`}><Icon name="send" size={16} /><span className="desktop-only">Continue on {peer.name}</span></button>
+      <button className="btn ghost sm" onClick={() => setOpen(true)} title={`Continue on ${peer.name}`}><Icon name="send" size={16} /><span className="desktop-only">{t('Continue on')}{' '}{peer.name}</span></button>
       {open && (
-        <Modal title={`Continue on ${peer.name}`} onClose={() => setOpen(false)} footer={<><button className="btn ghost" onClick={() => setOpen(false)}>Cancel</button><button className="btn primary" onClick={send}>Send</button></>}>
-          <div className="field"><label htmlFor="ho-note">A note for later (optional)</label><input id="ho-note" className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Finish the cover letter" autoFocus /></div>
-          <p className="tiny muted">It appears at the top of Home on {peer.name}, with this {kind === 'chat' ? 'chat' : kind === 'task' ? 'to-do' : 'application'} and its files.</p>
+        <Modal title={`Continue on ${peer.name}`} onClose={() => setOpen(false)} footer={<><button className="btn ghost" onClick={() => setOpen(false)}>{t('Cancel')}</button><button className="btn primary" onClick={send}>{t('Send')}</button></>}>
+          <div className="field"><label htmlFor="ho-note">{t('A note for later (optional)')}</label><input id="ho-note" className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('e.g. Finish the cover letter')} autoFocus /></div>
+          <p className="tiny muted">{t('It appears at the top of Home on')}{' '}{peer.name}{t(', with this')}{' '}{kind === 'chat' ? 'chat' : kind === 'task' ? 'to-do' : 'application'} {t('and its files.')}</p>
         </Modal>
       )}
     </>
@@ -51,12 +52,12 @@ export function HandoffBanner() {
         <div key={h.id} className="card pad handoff-banner">
           <Icon name="send" size={18} />
           <span className="grow" style={{ minWidth: 0 }}>
-            <span className="tiny muted" style={{ display: 'block' }}>From your other device</span>
+            <span className="tiny muted" style={{ display: 'block' }}>{t('From your other device')}</span>
             <b className="ellipsis" style={{ display: 'block' }}>{h.title}</b>
             {h.note && <span className="small">{h.note}</span>}
-            {h.files.length > 0 && <span className="tiny muted" style={{ display: 'block' }}>{h.files.length} file{h.files.length === 1 ? '' : 's'} with it</span>}
+            {h.files.length > 0 && <span className="tiny muted" style={{ display: 'block' }}>{h.files.length} file{h.files.length === 1 ? '' : 's'} {t('with it')}</span>}
           </span>
-          <Link className="btn sm primary" to={pathFor(h)} onClick={() => void post(`/handoffs/${h.id}/done`, {}).then(reload, () => undefined)}>Continue</Link>
+          <Link className="btn sm primary" to={pathFor(h)} onClick={() => void post(`/handoffs/${h.id}/done`, {}).then(reload, () => undefined)}>{t('Continue')}</Link>
         </div>
       ))}
     </>

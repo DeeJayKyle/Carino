@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../engine/device.dart';
@@ -50,10 +51,10 @@ class _AccessScreenState extends State<AccessScreen> {
   }
 
   Future<void> _revoke(String what, String body, Future<void> Function() fn) async {
-    if (!await confirmDialog(context, title: 'Remove $what?', body: body, confirm: 'Remove', danger: true)) return;
+    if (!await confirmDialog(context, title: tr('Remove {0}?', [what]), body: body, confirm: tr('Remove'), danger: true)) return;
     try {
       await fn();
-      if (mounted) toast(context, 'Removed $what');
+      if (mounted) toast(context, tr('Removed {0}', [what]));
       await _load();
     } catch (e) {
       if (mounted) toast(context, errorText(e), error: true);
@@ -79,15 +80,15 @@ class _AccessScreenState extends State<AccessScreen> {
         : RefreshIndicator(
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
-              _Group(icon: local ? Icons.lock_outline : Icons.public, title: 'Who answers your chats', empty: 'No AI service set up yet.', items: [
+              _Group(icon: local ? Icons.lock_outline : Icons.public, title: tr('Who answers your chats'), empty: 'No AI service set up yet.', items: [
                 if (ai != null)
                   _Item(
                     name: '${ai['label']}',
                     detail: local ? 'Runs on this device: your messages stay here.' : 'Online: your messages, plus the memories and file text needed to answer, are sent to it.',
-                    action: TextButton(onPressed: () => openPath(context, '/settings#ai'), child: const Text('Change')),
+                    action: TextButton(onPressed: () => openPath(context, '/settings#ai'), child: const Tx('Change')),
                   ),
               ]),
-              _Group(icon: Icons.folder_outlined, title: 'Folders', more: () => openPath(context, '/files'), moreLabel: 'Files', empty: 'No folders shared.', items: [
+              _Group(icon: Icons.folder_outlined, title: tr('Folders'), more: () => openPath(context, '/files'), moreLabel: 'Files', empty: 'No folders shared.', items: [
                 for (final f in ((_d['files']?['folders'] as List?) ?? const []).cast<Map>())
                   _Item(
                     name: '${f['label']}',
@@ -101,11 +102,11 @@ class _AccessScreenState extends State<AccessScreen> {
               if (_isPc)
                 _Group(
                   icon: Icons.apps,
-                  title: 'Apps on this PC',
+                  title: tr('Apps on this PC'),
                   more: () async {
                     try {
                       final a = await Device(api).pickApp();
-                      if (a != null && context.mounted) toast(context, '${a['name']} can now be opened by Carino');
+                      if (a != null && context.mounted) toast(context, tr('{0} can now be opened by Carino', [a['name']]));
                       await _load();
                     } catch (e) {
                       if (context.mounted) toast(context, errorText(e), error: true);
@@ -118,7 +119,7 @@ class _AccessScreenState extends State<AccessScreen> {
                       _Item(name: '${a['name']}', detail: 'Can be opened by Carino', action: _RemoveBtn(() => _revoke('${a['name']}', 'Carino can no longer open it.', () => Device(api).forgetApp('${a['id']}')))),
                   ],
                 ),
-              _Group(icon: Icons.person_outline, title: 'Signed-in accounts', more: () => openPath(context, '/apps'), moreLabel: 'Apps', empty: 'No accounts connected.', items: [
+              _Group(icon: Icons.person_outline, title: tr('Signed-in accounts'), more: () => openPath(context, '/apps'), moreLabel: 'Apps', empty: 'No accounts connected.', items: [
                 for (final a in accounts)
                   _Item(
                     name: '${a['provider']}: ${a['label']}',
@@ -126,7 +127,7 @@ class _AccessScreenState extends State<AccessScreen> {
                     action: _RemoveBtn(() => _revoke('${a['provider']} (${a['label']})', 'Carino signs out of this account and deletes its saved sign-in.', () => api.delete('/apps/accounts/${a['id']}'))),
                   ),
               ]),
-              _Group(icon: Icons.link, title: 'Connected tools', more: () => openPath(context, '/connectors'), moreLabel: 'Connectors', empty: 'No connected tools.', items: [
+              _Group(icon: Icons.link, title: tr('Connected tools'), more: () => openPath(context, '/connectors'), moreLabel: 'Connectors', empty: 'No connected tools.', items: [
                 for (final c in ((_d['connectors']?['connectors'] as List?) ?? const []).cast<Map>())
                   _Item(
                     name: '${c['name']}',
@@ -134,7 +135,7 @@ class _AccessScreenState extends State<AccessScreen> {
                     action: _RemoveBtn(() => _revoke('${c['name']}', 'Carino disconnects it and forgets its saved sign-in.', () => api.delete('/connectors/${c['id']}'))),
                   ),
               ]),
-              _Group(icon: Icons.devices, title: 'Paired devices', more: () => openPath(context, '/settings#devices'), moreLabel: 'Devices', empty: 'No paired devices.', items: [
+              _Group(icon: Icons.devices, title: tr('Paired devices'), more: () => openPath(context, '/settings#devices'), moreLabel: 'Devices', empty: 'No paired devices.', items: [
                 for (final p in ((_d['sync']?['peers'] as List?) ?? const []).cast<Map>())
                   _Item(
                     name: '${p['name']}',
@@ -142,7 +143,7 @@ class _AccessScreenState extends State<AccessScreen> {
                     action: _RemoveBtn(() => _revoke('${p['name']}', 'They stop syncing. Nothing already on either device is deleted.', () => api.delete('/sync/peers/${p['device_id']}'))),
                   ),
               ]),
-              _Group(icon: Icons.chat_outlined, title: 'Messaging', more: () => openPath(context, '/messaging'), moreLabel: 'Messaging', empty: 'No messaging channels.', items: [
+              _Group(icon: Icons.chat_outlined, title: tr('Messaging'), more: () => openPath(context, '/messaging'), moreLabel: 'Messaging', empty: 'No messaging channels.', items: [
                 for (final ch in ((_d['channels']?['channels'] as List?) ?? const []).cast<Map>())
                   _Item(
                     name: channelName(ch['kind']),
@@ -153,7 +154,7 @@ class _AccessScreenState extends State<AccessScreen> {
             ]),
           );
     if (widget.embedded) return body;
-    return Scaffold(appBar: AppBar(title: const Text('What Carino can reach')), body: body);
+    return Scaffold(appBar: AppBar(title: const Tx('What Carino can reach')), body: body);
   }
 }
 
@@ -203,5 +204,5 @@ class _RemoveBtn extends StatelessWidget {
   final VoidCallback onPressed;
   const _RemoveBtn(this.onPressed);
   @override
-  Widget build(BuildContext context) => TextButton.icon(onPressed: onPressed, icon: const Icon(Icons.close, size: 16), label: const Text('Remove'));
+  Widget build(BuildContext context) => TextButton.icon(onPressed: onPressed, icon: const Icon(Icons.close, size: 16), label: const Tx('Remove'));
 }

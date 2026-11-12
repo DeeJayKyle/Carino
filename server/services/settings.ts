@@ -75,7 +75,9 @@ export const settingsSchema = z.object({
     timeZone: z.string().max(64).default('UTC'),
     locale: z.string().max(20).default('en-GB'),
     hour12: z.boolean().default(false),
-  }).default({ timeZone: 'UTC', locale: 'en-GB', hour12: false }),
+    /** The app's own language; empty = the device's language when Carino has it. */
+    language: z.enum(['', 'en', 'pt-BR', 'de', 'fr', 'es', 'nl', 'it', 'pl']).default(''),
+  }).default({ timeZone: 'UTC', locale: 'en-GB', hour12: false, language: '' }),
   appearance: z.object({
     theme: z.enum(['system', 'light', 'dark']).default('system'),
     textSize: z.enum(['normal', 'large']).default('normal'),

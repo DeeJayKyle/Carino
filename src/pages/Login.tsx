@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '../lib/api';
 import { useSession } from '../lib/session';
@@ -55,18 +56,18 @@ export function Login() {
         <form onSubmit={submit} className="stack" noValidate>
           {mode === 'signup' && (
             <div className="field">
-              <label htmlFor="name">Your name</label>
+              <label htmlFor="name">{t('Your name')}</label>
               <input id="name" className="input" autoComplete="name" required value={form.name} onChange={set('name')} />
             </div>
           )}
           <div className="field">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">{t('Email')}</label>
             <input id="email" className="input" type="email" autoComplete="email" required value={form.email} onChange={set('email')} />
           </div>
           <div className="field">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">{t('Password')}</label>
             <input id="password" className="input" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} required minLength={mode === 'signup' ? 10 : undefined} value={form.password} onChange={set('password')} />
-            {mode === 'signup' && <span className="hint">At least 10 characters. A passphrase of a few words works well.</span>}
+            {mode === 'signup' && <span className="hint">{t('At least 10 characters. A passphrase of a few words works well.')}</span>}
           </div>
           {error && <div className="callout danger small" role="alert"><Icon name="alert" size={16} />{error}</div>}
           <button className="btn primary block" disabled={busy} style={{ height: 44 }}>
@@ -82,7 +83,7 @@ export function Login() {
           </p>
         )}
         {status && !status.signupOpen && mode === 'login' && !status.hasUsers && (
-          <p className="small muted" style={{ marginTop: 18 }}>Sign-ups are closed on this server.</p>
+          <p className="small muted" style={{ marginTop: 18 }}>{t('Sign-ups are closed on this server.')}</p>
         )}
       </div>
     </main>

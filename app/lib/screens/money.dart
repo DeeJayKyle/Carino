@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../engine/engine.dart';
@@ -55,7 +56,7 @@ class _MoneyScreenState extends State<MoneyScreen> {
       final res = await fn();
       if (!mounted) return;
       if (ok != null) toast(context, ok);
-      if (res is Map && res['possible_duplicate'] != null) toast(context, 'The same amount was logged a few minutes ago — delete one if it was logged twice.', error: true);
+      if (res is Map && res['possible_duplicate'] != null) toast(context, tr('The same amount was logged a few minutes ago — delete one if it was logged twice.'), error: true);
       for (final a in (res is Map ? (res['alerts'] as List?) ?? const [] : const [])) {
         toast(context, '${(a as Map)['title']}', error: a['level'] == 100);
       }
@@ -72,7 +73,7 @@ class _MoneyScreenState extends State<MoneyScreen> {
     return DefaultTabController(
       length: 5,
       child: Scaffold(
-        appBar: AppBar(title: const Text('Money')),
+        appBar: AppBar(title: const Tx('Money')),
         body: Loader<Map>(
           reloadKey: '$_bump|$_query',
           load: () async => await app.api.get('/money${_query.isEmpty ? '' : '?$_query'}') as Map,
@@ -120,22 +121,22 @@ class _MoneyScreenState extends State<MoneyScreen> {
                 onSelected: (_) => setState(() => _book = b['id'] as String?),
               ),
             ),
-          ActionChip(avatar: const Icon(Icons.add, size: 16), label: const Text('New book'), onPressed: () => _newBook(context)),
+          ActionChip(avatar: const Icon(Icons.add, size: 16), label: const Tx('New book'), onPressed: () => _newBook(context)),
         ]),
       ),
       if (d['book'] != null)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
           child: Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
-            Text('Kept apart from your personal money. ', style: Theme.of(context).textTheme.bodySmall),
+            Tx('Kept apart from your personal money. ', style: Theme.of(context).textTheme.bodySmall),
             InkWell(
               onTap: () async {
                 final name = books.firstWhere((b) => b['id'] == d['book'], orElse: () => {'name': 'this'})['name'];
-                if (!await confirmDialog(context, title: 'Delete the “$name” book?', body: 'Everything recorded in it is deleted. Personal money isn’t touched.', confirm: 'Delete book', danger: true)) return;
+                if (!await confirmDialog(context, title: tr('Delete the “{0}” book?', [name]), body: tr('Everything recorded in it is deleted. Personal money isn’t touched.'), confirm: tr('Delete book'), danger: true)) return;
                 await act(() => AppState.read(context).api.delete('/money/books/${d['book']}'), 'Book deleted');
                 setState(() => _book = null);
               },
-              child: Text('Delete this book', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.error, decoration: TextDecoration.underline)),
+              child: Tx('Delete this book', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.error, decoration: TextDecoration.underline)),
             ),
           ]),
         ),
@@ -143,12 +144,12 @@ class _MoneyScreenState extends State<MoneyScreen> {
   }
 
   Future<void> _newBook(BuildContext context) async {
-    final name = await _askText(context, title: 'New money book', label: 'Name', hint: 'e.g. Pharmacy', help: 'A separate book for a business or project: its money is kept apart from your personal money.');
+    final name = await _askText(context, title: tr('New money book'), label: tr('Name'), hint: 'e.g. Pharmacy', help: 'A separate book for a business or project: its money is kept apart from your personal money.');
     if (name == null || name.trim().isEmpty || !context.mounted) return;
     try {
       final b = await AppState.read(context).api.post('/money/books', {'name': name.trim()}) as Map;
       setState(() => _book = b['id'] as String?);
-      if (context.mounted) toast(context, 'Book created');
+      if (context.mounted) toast(context, tr('Book created'));
     } catch (e) {
       if (context.mounted) toast(context, errorText(e), error: true);
     }
@@ -160,12 +161,12 @@ Future<String?> _askText(BuildContext context, {required String title, required 
   return showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(title),
+      title: Tx(title),
       content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        TextField(controller: c, autofocus: true, keyboardType: keyboard, decoration: InputDecoration(labelText: label, hintText: hint)),
+        TextField(controller: c, autofocus: true, keyboardType: keyboard, decoration: InputDecoration(labelText: tr(label), hintText: hint == null ? null : tr(hint))),
         if (help != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(help, style: Theme.of(ctx).textTheme.bodySmall)),
       ]),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Save'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Tx('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Tx('Save'))],
     ),
   );
 }
@@ -234,9 +235,9 @@ class _Spending extends StatelessWidget {
     final other = (d['other'] as List? ?? const []).cast<Map>();
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
       Row(children: [
-        IconButton(tooltip: 'Previous month', onPressed: () => onMonth(_shift(shown, -1)), icon: const Icon(Icons.chevron_left)),
+        IconButton(tooltip: tr('Previous month'), onPressed: () => onMonth(_shift(shown, -1)), icon: const Icon(Icons.chevron_left)),
         Expanded(child: Text(_monthLabel(shown), textAlign: TextAlign.center, style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
-        IconButton(tooltip: 'Next month', onPressed: isCurrent ? null : () => onMonth(_shift(shown, 1)), icon: const Icon(Icons.chevron_right)),
+        IconButton(tooltip: tr('Next month'), onPressed: isCurrent ? null : () => onMonth(_shift(shown, 1)), icon: const Icon(Icons.chevron_right)),
       ]),
       _Summary(
         caption: isCurrent ? 'Spent this month' : 'Spent', value: moneyText(d['total'], cur),
@@ -250,10 +251,10 @@ class _Spending extends StatelessWidget {
       if (isCurrent) ...[const SizedBox(height: 10), _AddExpense(cats: cats, cur: cur, today: '${d['today']}', onAdd: (body) => money.act(() => api.post('/expenses', money.withBook(body)), 'Logged'))],
       const SizedBox(height: 10),
       Section(
-        title: 'Monthly budgets',
-        action: TextButton.icon(onPressed: () => _editBudget(context, cats, null), icon: const Icon(Icons.add, size: 18), label: const Text('Add')),
+        title: tr('Monthly budgets'),
+        action: TextButton.icon(onPressed: () => _editBudget(context, cats, null), icon: const Icon(Icons.add, size: 18), label: const Tx('Add')),
         child: budgets.isEmpty
-            ? Text('Set a limit for a month — for everything, or just eating out — and Carino warns you at 80% and if you go over.', style: t.bodySmall)
+            ? Tx('Set a limit for a month — for everything, or just eating out — and Carino warns you at 80% and if you go over.', style: t.bodySmall)
             : Column(children: [
                 for (final b in budgets)
                   InkWell(
@@ -282,7 +283,7 @@ class _Spending extends StatelessWidget {
       if (byCat.isNotEmpty) ...[
         const SizedBox(height: 10),
         Section(
-          title: 'Where it went',
+          title: tr('Where it went'),
           child: Column(children: [
             for (final c in byCat)
               Padding(
@@ -298,10 +299,10 @@ class _Spending extends StatelessWidget {
       ],
       const SizedBox(height: 10),
       Section(
-        title: 'Spending',
-        action: TextButton.icon(onPressed: () => openPath(context, '/chat/new?q=${Uri.encodeQueryComponent('Please log this receipt')}'), icon: const Icon(Icons.receipt_long, size: 18), label: const Text('Receipt')),
+        title: tr('Spending'),
+        action: TextButton.icon(onPressed: () => openPath(context, '/chat/new?q=${Uri.encodeQueryComponent('Please log this receipt')}'), icon: const Icon(Icons.receipt_long, size: 18), label: const Tx('Receipt')),
         child: groups.isEmpty
-            ? EmptyView(icon: Icons.account_balance_wallet_outlined, title: isCurrent ? 'Nothing logged this month' : 'Nothing logged that month', body: 'Add one above, or tell Carino what you spent.')
+            ? EmptyView(icon: Icons.account_balance_wallet_outlined, title: isCurrent ? 'Nothing logged this month' : 'Nothing logged that month', body: tr('Add one above, or tell Carino what you spent.'))
             : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 for (final g in groups.entries) ...[
                   Padding(padding: const EdgeInsets.only(top: 8, bottom: 2), child: Text(g.key == d['today'] ? 'Today' : _day(g.key), style: t.labelMedium?.copyWith(color: cs.onSurfaceVariant))),
@@ -314,13 +315,13 @@ class _Spending extends StatelessWidget {
                       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                         Text(moneyText(e['amount'], '${e['currency']}'), style: const TextStyle(fontWeight: FontWeight.w700)),
                         PopupMenuButton<String>(
-                          tooltip: 'Edit or delete',
+                          tooltip: tr('Edit or delete'),
                           onSelected: (v) async {
                             if (v == 'edit') return _editExpense(context, e, cats, '${d['today']}');
-                            if (!await confirmDialog(context, title: 'Delete this expense?', body: '${moneyText(e['amount'], '${e['currency']}')}${e['note'] != null ? ' · ${e['note']}' : ''}', confirm: 'Delete', danger: true)) return;
+                            if (!await confirmDialog(context, title: tr('Delete this expense?'), body: '${moneyText(e['amount'], '${e['currency']}')}${e['note'] != null ? ' · ${e['note']}' : ''}', confirm: tr('Delete'), danger: true)) return;
                             await money.act(() => api.delete('/expenses/${e['id']}'), 'Deleted');
                           },
-                          itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Text('Edit')), PopupMenuItem(value: 'delete', child: Text('Delete'))],
+                          itemBuilder: (_) => const [PopupMenuItem(value: 'edit', child: Tx('Edit')), PopupMenuItem(value: 'delete', child: Tx('Delete'))],
                         ),
                       ]),
                       onTap: () => _editExpense(context, e, cats, '${d['today']}'),
@@ -330,19 +331,19 @@ class _Spending extends StatelessWidget {
       ),
       const SizedBox(height: 10),
       Row(children: [
-        Text('Amounts are in $cur. ', style: t.bodySmall),
+        Tx('Amounts are in {0}. ', args: [cur], style: t.bodySmall),
         TextButton(
           onPressed: () async {
-            final c = await _askText(context, title: 'Your currency', label: '3-letter code', hint: 'UGX', initial: cur, help: 'Empty uses your region. Spending already logged keeps its currency.');
+            final c = await _askText(context, title: tr('Your currency'), label: tr('3-letter code'), hint: 'UGX', initial: cur, help: 'Empty uses your region. Spending already logged keeps its currency.');
             if (c == null) return;
             final code = c.trim().toUpperCase();
             if (code.isNotEmpty && !RegExp(r'^[A-Z]{3}$').hasMatch(code)) {
-              if (context.mounted) toast(context, 'Use a 3-letter code like UGX, KES or USD', error: true);
+              if (context.mounted) toast(context, tr('Use a 3-letter code like UGX, KES or USD'), error: true);
               return;
             }
             await money.act(() => api.patch('/settings', {'money': {'currency': code}}), 'Currency saved');
           },
-          child: const Text('Change currency'),
+          child: const Tx('Change currency'),
         ),
       ]),
     ]);
@@ -356,24 +357,24 @@ class _Spending extends StatelessWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Monthly budget'),
+          title: const Tx('Monthly budget'),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             DropdownButtonFormField<String>(
               initialValue: category,
-              decoration: const InputDecoration(labelText: 'For'),
-              items: [const DropdownMenuItem(value: 'total', child: Text('Everything')), for (final c in cats) DropdownMenuItem(value: '${c['id']}', child: Text('${c['label']}'))],
+              decoration: InputDecoration(labelText: tr('For')),
+              items: [const DropdownMenuItem(value: 'total', child: Tx('Everything')), for (final c in cats) DropdownMenuItem(value: '${c['id']}', child: Text('${c['label']}'))],
               onChanged: (v) => set(() => category = v ?? 'total'),
             ),
             const SizedBox(height: 10),
-            TextField(controller: amount, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Per month ($cur)', hintText: 'e.g. 300k', helperText: 'Leave empty to remove this budget.')),
+            TextField(controller: amount, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: tr('Per month ({0})', [cur]), hintText: tr('e.g. 300k'), helperText: tr('Leave empty to remove this budget.'))),
           ]),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Tx('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Tx('Save'))],
         ),
       ),
     );
     if (ok != true || !context.mounted) return;
     final n = amount.text.trim().isEmpty ? 0 : parseAmount(amount.text);
-    if (n == null) return toast(context, 'Enter an amount, e.g. 300000 or 300k', error: true);
+    if (n == null) return toast(context, tr('Enter an amount, e.g. 300000 or 300k'), error: true);
     await money.act(() => api.put('/budgets', money.withBook({'category': category, 'amount': n})), n == 0 ? 'Budget removed' : 'Budget saved');
   }
 
@@ -415,13 +416,13 @@ class _AddExpenseState extends State<_AddExpense> {
         padding: const EdgeInsets.all(14),
         child: Column(children: [
           Row(children: [
-            Expanded(child: TextField(controller: _amount, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: 'Amount (${widget.cur})', hintText: '15k', isDense: true))),
+            Expanded(child: TextField(controller: _amount, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Amount ({0})', [widget.cur]), hintText: '15k', isDense: true))),
             const SizedBox(width: 10),
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: _cat,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'For', isDense: true),
+                decoration: InputDecoration(labelText: tr('For'), isDense: true),
                 items: [for (final c in cats) DropdownMenuItem(value: '${c['id']}', child: Text('${c['label']}', overflow: TextOverflow.ellipsis))],
                 onChanged: (v) => setState(() => _cat = v ?? _cat),
               ),
@@ -429,7 +430,7 @@ class _AddExpenseState extends State<_AddExpense> {
           ]),
           const SizedBox(height: 10),
           Row(children: [
-            Expanded(child: TextField(controller: _note, decoration: const InputDecoration(labelText: 'Note', hintText: 'Lunch with Sam', isDense: true))),
+            Expanded(child: TextField(controller: _note, decoration: InputDecoration(labelText: tr('Note'), hintText: tr('Lunch with Sam'), isDense: true))),
             const SizedBox(width: 8),
             ActionChip(
               avatar: const Icon(Icons.event, size: 16),
@@ -449,14 +450,14 @@ class _AddExpenseState extends State<_AddExpense> {
                   ? null
                   : () async {
                       final n = parseAmount(_amount.text);
-                      if (n == null) return toast(context, 'Enter an amount, e.g. 15000 or 15k', error: true);
+                      if (n == null) return toast(context, tr('Enter an amount, e.g. 15000 or 15k'), error: true);
                       setState(() => _busy = true);
                       await widget.onAdd({'amount': n, 'category': _cat, if (_note.text.trim().isNotEmpty) 'note': _note.text.trim(), 'spent_on': _day});
                       if (!mounted) return;
                       setState(() { _busy = false; _amount.clear(); _note.clear(); _day = widget.today; });
                     },
               icon: const Icon(Icons.add),
-              label: const Text('Add'),
+              label: const Tx('Add'),
             ),
           ),
         ]),
@@ -487,18 +488,18 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text('Edit spending', style: Theme.of(context).textTheme.titleLarge),
+        Tx('Edit spending', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
-        TextField(controller: _amount, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: 'Amount (${e['currency']})')),
+        TextField(controller: _amount, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: tr('Amount ({0})', [e['currency']]))),
         const SizedBox(height: 10),
-        DropdownButtonFormField<String>(initialValue: widget.cats.any((c) => c['id'] == _cat) ? _cat : null, decoration: const InputDecoration(labelText: 'For'), items: [for (final c in widget.cats) DropdownMenuItem(value: '${c['id']}', child: Text('${c['label']}'))], onChanged: (v) => setState(() => _cat = v ?? _cat)),
+        DropdownButtonFormField<String>(initialValue: widget.cats.any((c) => c['id'] == _cat) ? _cat : null, decoration: InputDecoration(labelText: tr('For')), items: [for (final c in widget.cats) DropdownMenuItem(value: '${c['id']}', child: Text('${c['label']}'))], onChanged: (v) => setState(() => _cat = v ?? _cat)),
         const SizedBox(height: 10),
-        TextField(controller: _note, decoration: const InputDecoration(labelText: 'Note')),
+        TextField(controller: _note, decoration: InputDecoration(labelText: tr('Note'))),
         const SizedBox(height: 10),
-        TextField(controller: _merchant, decoration: const InputDecoration(labelText: 'Shop or person')),
+        TextField(controller: _merchant, decoration: InputDecoration(labelText: tr('Shop or person'))),
         ListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Day'),
+          title: const Tx('Day'),
           trailing: Text(_day),
           onTap: () async {
             final t = DateTime.parse(widget.today);
@@ -506,12 +507,12 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             if (p != null) setState(() => _day = '${p.year}-${p.month.toString().padLeft(2, '0')}-${p.day.toString().padLeft(2, '0')}');
           },
         ),
-        if (e['source'] == 'receipt') Text('Logged from a receipt photo. That stays recorded when you edit it.', style: Theme.of(context).textTheme.bodySmall),
+        if (e['source'] == 'receipt') Tx('Logged from a receipt photo. That stays recorded when you edit it.', style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 10),
         FilledButton(
           onPressed: () {
             final n = parseAmount(_amount.text);
-            if (n == null) return toast(context, 'Enter an amount, e.g. 15000 or 15k', error: true);
+            if (n == null) return toast(context, tr('Enter an amount, e.g. 15000 or 15k'), error: true);
             final changes = <String, dynamic>{
               if (n != e['amount']) 'amount': n,
               if (_cat != e['category']) 'category': _cat,
@@ -521,7 +522,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
             };
             Navigator.pop(context, changes);
           },
-          child: const Text('Save'),
+          child: const Tx('Save'),
         ),
       ]),
     );
@@ -590,7 +591,7 @@ class _QuickFormState extends State<_QuickForm> {
                       });
                     },
               icon: const Icon(Icons.add),
-              label: Text(widget.label),
+              label: Tx(widget.label),
             ),
           ),
         ]),
@@ -613,12 +614,12 @@ class _Income extends StatelessWidget {
       _Summary(caption: 'Came in this month', value: moneyText(d['income'], cur), sub: 'Spent ${moneyText(d['total'], cur)} · ${moneyText(d['net'], cur)} ${(d['net'] as num) < 0 ? 'more out than in' : 'left over'}'),
       const SizedBox(height: 10),
       _QuickForm(
-        label: 'Add income',
+        label: tr('Add income'),
         fields: [('amount', 'Amount ($cur)', 'amount', '200k', null, true), ('source', 'From', 'text', 'Salary, sales…', null, false), ('received_on', 'Day', 'date', null, null, false)],
         onSubmit: (v) async {
           final n = parseAmount(v['amount']!);
           if (n == null) {
-            toast(context, 'Enter an amount, e.g. 15000 or 15k', error: true);
+            toast(context, tr('Enter an amount, e.g. 15000 or 15k'), error: true);
             return false;
           }
           await money.act(() => api.post('/income', money.withBook({'amount': n, if (v['source']!.isNotEmpty) 'source': v['source'], if (v['received_on']!.isNotEmpty) 'received_on': v['received_on']})), 'Income recorded');
@@ -627,9 +628,9 @@ class _Income extends StatelessWidget {
       ),
       const SizedBox(height: 10),
       Section(
-        title: 'This month',
+        title: tr('This month'),
         child: list.isEmpty
-            ? const EmptyView(icon: Icons.account_balance_wallet_outlined, title: 'Nothing recorded yet', body: 'Add it above, or tell Carino: “got paid 1.2m salary”.')
+            ? EmptyView(icon: Icons.account_balance_wallet_outlined, title: tr('Nothing recorded yet'), body: tr('Add it above, or tell Carino: “got paid 1.2m salary”.'))
             : Column(children: [
                 for (final i in list)
                   ListTile(
@@ -638,7 +639,7 @@ class _Income extends StatelessWidget {
                     subtitle: Text(_day('${i['received_on']}')),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                       Text(moneyText(i['amount'], '${i['currency']}'), style: const TextStyle(fontWeight: FontWeight.w700)),
-                      IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete_outline), onPressed: () => money.act(() => api.delete('/income/${i['id']}'), 'Deleted')),
+                      IconButton(tooltip: tr('Delete'), icon: const Icon(Icons.delete_outline), onPressed: () => money.act(() => api.delete('/income/${i['id']}'), 'Deleted')),
                     ]),
                   ),
               ]),
@@ -659,7 +660,7 @@ class _Bills extends StatelessWidget {
     final bills = (d['bills'] as List).cast<Map>();
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
       _QuickForm(
-        label: 'Add bill',
+        label: tr('Add bill'),
         fields: [
           ('name', 'Bill', 'text', 'Rent, school fees…', null, true),
           ('amount', 'Amount ($cur)', 'amount', '600k', null, true),
@@ -678,9 +679,9 @@ class _Bills extends StatelessWidget {
       ),
       const SizedBox(height: 10),
       Section(
-        title: 'Coming up',
+        title: tr('Coming up'),
         child: bills.isEmpty
-            ? const EmptyView(icon: Icons.event_outlined, title: 'No bills yet', body: 'Add rent, school fees or subscriptions and Carino reminds you when they’re due.')
+            ? EmptyView(icon: Icons.event_outlined, title: tr('No bills yet'), body: tr('Add rent, school fees or subscriptions and Carino reminds you when they’re due.'))
             : Column(children: [
                 for (final b in bills)
                   ListTile(
@@ -693,12 +694,12 @@ class _Bills extends StatelessWidget {
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                       Text(moneyText(b['amount'], '${b['currency']}'), style: const TextStyle(fontWeight: FontWeight.w700)),
                       const SizedBox(width: 6),
-                      FilledButton.tonal(onPressed: () => money.act(() => api.post('/bills/${b['id']}/pay', {}), 'Paid'), child: const Text('Paid')),
+                      FilledButton.tonal(onPressed: () => money.act(() => api.post('/bills/${b['id']}/pay', {}), 'Paid'), child: const Tx('Paid')),
                       IconButton(
-                        tooltip: 'Stop ${b['name']}',
+                        tooltip: tr('Stop {0}', [b['name']]),
                         icon: const Icon(Icons.close),
                         onPressed: () async {
-                          if (await confirmDialog(context, title: 'Stop the “${b['name']}” bill?', body: 'Its reminder stops too. Past payments stay in your spending.', confirm: 'Stop')) {
+                          if (await confirmDialog(context, title: tr('Stop the “{0}” bill?', [b['name']]), body: tr('Its reminder stops too. Past payments stay in your spending.'), confirm: tr('Stop'))) {
                             await money.act(() => api.delete('/bills/${b['id']}'), 'Bill stopped');
                           }
                         },
@@ -726,7 +727,7 @@ class _Debts extends StatelessWidget {
       _Summary(caption: 'You owe', value: moneyText(sum('i_owe'), cur), side: 'Owed to you', sideValue: moneyText(sum('owed_to_me'), cur)),
       const SizedBox(height: 10),
       _QuickForm(
-        label: 'Add',
+        label: tr('Add'),
         fields: [
           ('direction', 'Which way', 'text', null, const [('i_owe', 'I owe'), ('owed_to_me', 'Owes me')], false),
           ('person', 'Person', 'text', 'Name', null, true),
@@ -736,7 +737,7 @@ class _Debts extends StatelessWidget {
         onSubmit: (v) async {
           final n = parseAmount(v['amount']!);
           if (n == null) {
-            toast(context, 'Enter an amount, e.g. 15000 or 15k', error: true);
+            toast(context, tr('Enter an amount, e.g. 15000 or 15k'), error: true);
             return false;
           }
           await money.act(() => api.post('/debts', money.withBook({'direction': v['direction'], 'person': v['person']!.trim(), 'amount': n, if (v['due_on']!.isNotEmpty) 'due_on': v['due_on']})), 'Recorded');
@@ -745,9 +746,9 @@ class _Debts extends StatelessWidget {
       ),
       const SizedBox(height: 10),
       Section(
-        title: 'Open',
+        title: tr('Open'),
         child: debts.isEmpty
-            ? const EmptyView(icon: Icons.person_outline, title: 'Nothing owed', body: 'Record money lent or borrowed, and payments as they come.')
+            ? EmptyView(icon: Icons.person_outline, title: tr('Nothing owed'), body: tr('Record money lent or borrowed, and payments as they come.'))
             : Column(children: [
                 for (final x in debts)
                   ListTile(
@@ -759,16 +760,16 @@ class _Debts extends StatelessWidget {
                       const SizedBox(width: 6),
                       FilledButton.tonal(
                         onPressed: () async {
-                          final a = await _askText(context, title: 'Payment', label: 'Amount paid', initial: '${x['left']}', keyboard: TextInputType.number);
+                          final a = await _askText(context, title: tr('Payment'), label: tr('Amount paid'), initial: '${x['left']}', keyboard: TextInputType.number);
                           if (a == null) return;
                           final n = parseAmount(a);
                           if (n == null) {
-                            if (context.mounted) toast(context, 'Enter an amount, e.g. 15000 or 15k', error: true);
+                            if (context.mounted) toast(context, tr('Enter an amount, e.g. 15000 or 15k'), error: true);
                             return;
                           }
                           await money.act(() => api.post('/debts/${x['id']}/pay', {'amount': n}), 'Payment recorded');
                         },
-                        child: const Text('Payment'),
+                        child: const Tx('Payment'),
                       ),
                     ]),
                   ),
@@ -790,12 +791,12 @@ class _Savings extends StatelessWidget {
     final goals = (d['goals'] as List? ?? const []).cast<Map>();
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
       _QuickForm(
-        label: 'Add goal',
+        label: tr('Add goal'),
         fields: [('name', 'Saving for', 'text', 'Laptop, school fees…', null, true), ('target', 'Target ($cur)', 'amount', '2m', null, true), ('deadline', 'By (optional)', 'date', null, null, false)],
         onSubmit: (v) async {
           final n = parseAmount(v['target']!);
           if (n == null) {
-            toast(context, 'Enter an amount, e.g. 15000 or 15k', error: true);
+            toast(context, tr('Enter an amount, e.g. 15000 or 15k'), error: true);
             return false;
           }
           await money.act(() => api.post('/savings', money.withBook({'name': v['name']!.trim(), 'target': n, if (v['deadline']!.isNotEmpty) 'deadline': v['deadline']})), 'Goal added');
@@ -804,9 +805,9 @@ class _Savings extends StatelessWidget {
       ),
       const SizedBox(height: 10),
       Section(
-        title: 'Goals',
+        title: tr('Goals'),
         child: goals.isEmpty
-            ? const EmptyView(icon: Icons.track_changes, title: 'No goals yet', body: 'Set something to save for, and add to it as you go.')
+            ? EmptyView(icon: Icons.track_changes, title: tr('No goals yet'), body: tr('Set something to save for, and add to it as you go.'))
             : Column(children: [
                 for (final g in goals)
                   Padding(
@@ -822,17 +823,17 @@ class _Savings extends StatelessWidget {
                         Expanded(child: Text(g['deadline'] != null ? 'By ${_day('${g['deadline']}')}' : '', style: Theme.of(context).textTheme.bodySmall)),
                         TextButton(
                           onPressed: () async {
-                            final a = await _askText(context, title: 'Add or take out', label: 'Amount', hint: '+50k or -10k', help: 'Start with - to take money out.');
+                            final a = await _askText(context, title: tr('Add or take out'), label: tr('Amount'), hint: '+50k or -10k', help: 'Start with - to take money out.');
                             if (a == null) return;
                             final neg = a.trim().startsWith('-');
                             final n = parseAmount(a.trim().replaceFirst(RegExp(r'^[+-]'), ''));
                             if (n == null) {
-                              if (context.mounted) toast(context, 'Enter an amount, e.g. 15000 or 15k', error: true);
+                              if (context.mounted) toast(context, tr('Enter an amount, e.g. 15000 or 15k'), error: true);
                               return;
                             }
                             await money.act(() => api.post('/savings/${g['id']}/move', {'amount': neg ? -n : n}), neg ? 'Taken out' : 'Added');
                           },
-                          child: const Text('Add money'),
+                          child: const Tx('Add money'),
                         ),
                       ]),
                     ]),

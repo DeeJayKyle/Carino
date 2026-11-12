@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../widgets/common.dart';
@@ -47,8 +48,8 @@ class _PhoneSettingsState extends State<PhoneSettings> {
     final api = AppState.of(context).api;
     final cs = Theme.of(context).colorScheme;
     return SettingsPage(
-      title: 'Phone calls',
-      intro: 'Optional. Ask Carino in chat to call a business, for example to check opening hours or book a table. Each call waits for your approval, starts by saying it’s an AI calling for you, and is recorded so the answers can be written up. Calls use your own Twilio account and are charged by Twilio.',
+      title: tr('Phone calls'),
+      intro: tr('Optional. Ask Carino in chat to call a business, for example to check opening hours or book a table. Each call waits for your approval, starts by saying it’s an AI calling for you, and is recorded so the answers can be written up. Calls use your own Twilio account and are charged by Twilio.'),
       children: [
         Loader<List>(
           reloadKey: _rev,
@@ -59,30 +60,30 @@ class _PhoneSettingsState extends State<PhoneSettings> {
             return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (s['configured'] == true)
                 Section(
-                  title: 'Twilio account',
+                  title: tr('Twilio account'),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.phone_forwarded_outlined), title: Text('Calling from ${s['from_number']}'), subtitle: Text('Account ${s['account_sid']}')),
-                    Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: _busy ? null : () => _run(() => api.delete('/phone'), 'Phone calls turned off'), child: Text('Forget these details', style: TextStyle(color: cs.error)))),
+                    ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.phone_forwarded_outlined), title: Tx('Calling from {0}', args: [s['from_number']]), subtitle: Tx('Account {0}', args: [s['account_sid']])),
+                    Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: _busy ? null : () => _run(() => api.delete('/phone'), 'Phone calls turned off'), child: Tx('Forget these details', style: TextStyle(color: cs.error)))),
                   ]),
                 )
               else
                 Section(
-                  title: 'Connect Twilio',
-                  subtitle: 'Find these in your Twilio console. The auth token is kept encrypted on this device.',
+                  title: tr('Connect Twilio'),
+                  subtitle: tr('Find these in your Twilio console. The auth token is kept encrypted on this device.'),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    TextField(controller: _sid, decoration: const InputDecoration(labelText: 'Account SID', hintText: 'AC…')),
-                    TextField(controller: _token, obscureText: true, decoration: const InputDecoration(labelText: 'Auth token')),
-                    TextField(controller: _from, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Your Twilio number', hintText: '+256700000000')),
+                    TextField(controller: _sid, decoration: InputDecoration(labelText: tr('Account SID'), hintText: tr('AC…'))),
+                    TextField(controller: _token, obscureText: true, decoration: InputDecoration(labelText: tr('Auth token'))),
+                    TextField(controller: _from, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: tr('Your Twilio number'), hintText: '+256700000000')),
                     const SizedBox(height: 12),
                     FilledButton(
                       onPressed: _busy ? null : () => _run(() => api.put('/phone', {'account_sid': _sid.text.trim(), 'auth_token': _token.text.trim(), 'from_number': _from.text.trim()}), 'Phone calls are ready'),
-                      child: const Text('Save'),
+                      child: const Tx('Save'),
                     ),
                   ]),
                 ),
               if (calls.isNotEmpty)
                 Section(
-                  title: 'Recent calls',
+                  title: tr('Recent calls'),
                   child: Column(children: [
                     for (final c in calls.cast<Map>())
                       ListTile(

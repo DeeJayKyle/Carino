@@ -8,7 +8,7 @@ import { helperConfig, helperGet, helperPost } from './helper.ts';
 import { processWhatsAppPayload, type WaConfig } from './whatsapp.ts';
 
 /**
- * WhatsApp on Carino's shared number (like Toqi's): the user sends a 6-digit code to Carino's
+ * WhatsApp on Carino's shared number: the user sends a 6-digit code to Carino's
  * number from their WhatsApp, and that number is linked to this phone. The sign-in helper
  * (auth/worker.js) holds the number; it keeps each linked person's messages for their own phone,
  * which collects them with its key, and passes replies back only to that person.

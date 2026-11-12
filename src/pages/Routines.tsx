@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -77,15 +78,15 @@ export default function Routines() {
   };
 
   return (
-    <Shell title="Routines" actions={<button className="btn primary sm" onClick={() => setDraft({ title: '', prompt: '', time_local: '08:00', days: [1, 2, 3, 4, 5] })}><Icon name="plus" size={16} />New routine</button>}>
+    <Shell title={t('Routines')} actions={<button className="btn primary sm" onClick={() => setDraft({ title: '', prompt: '', time_local: '08:00', days: [1, 2, 3, 4, 5] })}><Icon name="plus" size={16} />{t('New routine')}</button>}>
       <div className="page">
         <div className="page-head"><div>
-          <h1>Routines</h1>
-          <p className="sub">Things Carino does for you on a schedule — on the server, even when the app is closed. Results arrive as a notification and in the routine’s own chat. Anything that needs your approval waits for you.</p>
+          <h1>{t('Routines')}</h1>
+          <p className="sub">{t('Things Carino does for you on a schedule — on the server, even when the app is closed. Results arrive as a notification and in the routine’s own chat. Anything that needs your approval waits for you.')}</p>
         </div></div>
 
         <section className="stack" style={{ marginBottom: 28 }}>
-          <h2>Your routines</h2>
+          <h2>{t('Your routines')}</h2>
           {loading ? <Loading /> : error ? <ErrorBox error={error} retry={reload} /> : list.map((r) => (
             <div key={r.id} className="card pad">
               <div className="row" style={{ alignItems: 'flex-start' }}>
@@ -100,29 +101,29 @@ export default function Routines() {
               </div>
               {r.last_run_at && (
                 <div className="small" style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
-                  <div className="faint">Last run {fmtDateTime(r.last_run_at)} · {r.last_status === 'failed' ? <span className="badge danger">failed</span> : <span className="badge">ok</span>}</div>
+                  <div className="faint">{t('Last run')}{' '}{fmtDateTime(r.last_run_at)} · {r.last_status === 'failed' ? <span className="badge danger">failed</span> : <span className="badge">ok</span>}</div>
                   {r.last_status === 'failed' && r.last_error && <p className="small" style={{ color: 'var(--danger)', marginTop: 4 }}>{r.last_error}</p>}
                   {r.last_status !== 'failed' && r.last_result && <div className="routine-result"><Markdown text={r.last_result} /></div>}
                 </div>
               )}
               <div className="row wrap" style={{ marginTop: 10 }}>
                 {r.custom && <button className="btn sm" disabled={running === r.id} onClick={() => runNow(r)}><Icon name="refresh" size={14} />{running === r.id ? 'Running…' : 'Run now'}</button>}
-                <button className="btn ghost sm" onClick={() => setDraft({ id: r.id, title: r.title, prompt: r.prompt ?? '', time_local: r.time_local, days: r.days, steps: r.steps ?? [], access: r.access ?? null })}><Icon name="edit" size={14} />Edit</button>
-                {r.conversation_id && <Link className="btn ghost sm" to={`/chat/${r.conversation_id}`}><Icon name="chat" size={14} />Open chat</Link>}
-                {r.custom && <button className="btn ghost sm" onClick={() => remove(r)}><Icon name="trash" size={14} />Delete</button>}
+                <button className="btn ghost sm" onClick={() => setDraft({ id: r.id, title: r.title, prompt: r.prompt ?? '', time_local: r.time_local, days: r.days, steps: r.steps ?? [], access: r.access ?? null })}><Icon name="edit" size={14} />{t('Edit')}</button>
+                {r.conversation_id && <Link className="btn ghost sm" to={`/chat/${r.conversation_id}`}><Icon name="chat" size={14} />{t('Open chat')}</Link>}
+                {r.custom && <button className="btn ghost sm" onClick={() => remove(r)}><Icon name="trash" size={14} />{t('Delete')}</button>}
               </div>
             </div>
           ))}
           {!loading && !error && !list.some((r) => r.custom) && (
-            <Empty icon="sparkle" title="No routines of your own yet">Pick an idea below, or create one from scratch. You can also just ask Carino in chat: “every Friday at 4:30, log my wins”.</Empty>
+            <Empty icon="sparkle" title={t('No routines of your own yet')}>{t('Pick an idea below, or create one from scratch. You can also just ask Carino in chat: “every Friday at 4:30, log my wins”.')}</Empty>
           )}
         </section>
 
         <section>
           <div className="row wrap" style={{ marginBottom: 10 }}>
-            <h2 className="grow">Ideas to get started</h2>
+            <h2 className="grow">{t('Ideas to get started')}</h2>
           </div>
-          <div className="tabs" role="tablist" aria-label="Idea categories">
+          <div className="tabs" role="tablist" aria-label={t('Idea categories')}>
             {categories.map((c) => <button key={c} role="tab" aria-selected={category === c} className={category === c ? 'on' : ''} onClick={() => setCategory(c)}>{c}</button>)}
           </div>
           {ideas.loading ? <Loading /> : ideas.error ? <ErrorBox error={ideas.error} retry={ideas.reload} /> : (
@@ -134,9 +135,9 @@ export default function Routines() {
                   <p className="small muted grow">{i.blurb}</p>
                   <div className="small faint">{scheduleText(i.days, i.time)}</div>
                   {i.needs?.includes('web_search') && <div className={`tiny ${ideas.data.webSearch ? 'faint' : 'warn-text'}`}>{ideas.data.webSearch ? 'Uses web search' : 'Needs web search set up on the server'}</div>}
-                  {i.needs?.includes('connector') && <div className="tiny faint">Needs a <Link to="/connectors">connected app</Link></div>}
+                  {i.needs?.includes('connector') && <div className="tiny faint">{t('Needs a')}{' '}<Link to="/connectors">{t('connected app')}</Link></div>}
                   <button className="btn sm" style={{ marginTop: 10 }} onClick={() => setDraft({ title: i.title, prompt: i.prompt, time_local: i.time, days: i.days, catalog_id: i.id, needs: i.needs })}>
-                    {used.has(i.id) ? <><Icon name="check" size={14} />Added · add again</> : <><Icon name="plus" size={14} />Use this</>}
+                    {used.has(i.id) ? <><Icon name="check" size={14} />{t('Added · add again')}</> : <><Icon name="plus" size={14} />{t('Use this')}</>}
                   </button>
                 </article>
               ))}
@@ -173,28 +174,28 @@ function RoutineEditor({ draft, onClose, onSaved, builtIn }: { draft: Draft; onC
 
   return (
     <Modal title={d.id ? 'Edit routine' : 'New routine'} onClose={onClose} footer={<>
-      <button className="btn" onClick={onClose}>Cancel</button>
+      <button className="btn" onClick={onClose}>{t('Cancel')}</button>
       <button className="btn primary" disabled={saving || !d.days.length || (!builtIn && (!d.title.trim() || d.prompt.trim().length < 5 || blanks.length > 0))} onClick={save}>{saving ? 'Saving…' : d.id ? 'Save' : 'Add routine'}</button>
     </>}>
       <div className="stack">
         {!builtIn && (
           <>
-            <div className="field"><label htmlFor="rt-title">Name</label><input id="rt-title" className="input" maxLength={80} value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} /></div>
+            <div className="field"><label htmlFor="rt-title">{t('Name')}</label><input id="rt-title" className="input" maxLength={80} value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} /></div>
             <div className="field">
-              <label htmlFor="rt-prompt">What should Carino do each time?</label>
-              <textarea id="rt-prompt" className="textarea" rows={6} maxLength={2000} value={d.prompt} onChange={(e) => setD({ ...d, prompt: e.target.value })} placeholder="e.g. Look at what I finished this week and save a short wins note." />
-              {blanks.length > 0 && <div className="hint warn-text">Replace {blanks.map((b, n) => <span key={n}>{n > 0 && ', '}<code>{b}</code></span>)} with your own details.</div>}
-              {d.needs?.includes('connector') && <div className="hint">This idea uses a <Link to="/connectors">connected app</Link> (e.g. your email or calendar). Without one, Carino will tell you it can’t reach it.</div>}
+              <label htmlFor="rt-prompt">{t('What should Carino do each time?')}</label>
+              <textarea id="rt-prompt" className="textarea" rows={6} maxLength={2000} value={d.prompt} onChange={(e) => setD({ ...d, prompt: e.target.value })} placeholder={t('e.g. Look at what I finished this week and save a short wins note.')} />
+              {blanks.length > 0 && <div className="hint warn-text">{t('Replace')}{' '}{blanks.map((b, n) => <span key={n}>{n > 0 && ', '}<code>{b}</code></span>)} {t('with your own details.')}</div>}
+              {d.needs?.includes('connector') && <div className="hint">{t('This idea uses a')}{' '}<Link to="/connectors">{t('connected app')}</Link> {t('(e.g. your email or calendar). Without one, Carino will tell you it can’t reach it.')}</div>}
             </div>
             <StepsEditor steps={d.steps ?? []} onChange={(steps) => setD({ ...d, steps })} />
             <AccessEditor access={d.access ?? null} onChange={(access) => setD({ ...d, access })} />
           </>
         )}
         <div className="row wrap">
-          <div className="field"><label htmlFor="rt-time">Time</label><input id="rt-time" type="time" className="input" style={{ width: 130 }} value={d.time_local} onChange={(e) => setD({ ...d, time_local: e.target.value })} /></div>
+          <div className="field"><label htmlFor="rt-time">{t('Time')}</label><input id="rt-time" type="time" className="input" style={{ width: 130 }} value={d.time_local} onChange={(e) => setD({ ...d, time_local: e.target.value })} /></div>
           <div className="field">
-            <span className="label">Days</span>
-            <div className="row" role="group" aria-label="Days">
+            <span className="label">{t('Days')}</span>
+            <div className="row" role="group" aria-label={t('Days')}>
               {ORDER.map((day) => {
                 const on = d.days.includes(day);
                 return <button key={day} type="button" className={`btn sm day-pick ${on ? 'primary' : ''}`} aria-pressed={on} aria-label={DAY_NAMES[day]} onClick={() => setD({ ...d, days: on ? d.days.filter((x) => x !== day) : [...d.days, day] })}>{DAY_LETTERS[day]}</button>;
@@ -202,7 +203,7 @@ function RoutineEditor({ draft, onClose, onSaved, builtIn }: { draft: Draft; onC
             </div>
           </div>
         </div>
-        <p className="small faint">Times are in your time zone (Settings → Regional). A routine missed by more than three hours — for example because the server was off — is skipped until its next day.</p>
+        <p className="small faint">{t('Times are in your time zone (Settings → Regional). A routine missed by more than three hours — for example because the server was off — is skipped until its next day.')}</p>
       </div>
     </Modal>
   );
@@ -218,8 +219,8 @@ function StepsEditor({ steps, onChange }: { steps: string[]; onChange: (s: strin
   };
   return (
     <fieldset className="field">
-      <legend className="label">Steps (optional)</legend>
-      <p className="hint" style={{ marginTop: 0 }}>Break it into steps Carino follows in order, e.g. “Check bills due this week”, then “Add a to-do for each”.</p>
+      <legend className="label">{t('Steps (optional)')}</legend>
+      <p className="hint" style={{ marginTop: 0 }}>{t('Break it into steps Carino follows in order, e.g. “Check bills due this week”, then “Add a to-do for each”.')}</p>
       {steps.map((st, n) => (
         <div key={n} className="row" style={{ gap: 6, marginTop: 6 }}>
           <span className="small faint" style={{ width: 18 }}>{n + 1}.</span>
@@ -228,7 +229,7 @@ function StepsEditor({ steps, onChange }: { steps: string[]; onChange: (s: strin
           <button type="button" className="btn ghost sm" aria-label={`Remove step ${n + 1}`} onClick={() => onChange(steps.filter((_, i) => i !== n))}><Icon name="x" size={14} /></button>
         </div>
       ))}
-      {steps.length < 12 && <button type="button" className="btn ghost sm" style={{ marginTop: 6 }} onClick={() => onChange([...steps, ''])}><Icon name="plus" size={14} />Add a step</button>}
+      {steps.length < 12 && <button type="button" className="btn ghost sm" style={{ marginTop: 6 }} onClick={() => onChange([...steps, ''])}><Icon name="plus" size={14} />{t('Add a step')}</button>}
     </fieldset>
   );
 }
@@ -241,10 +242,10 @@ function AccessEditor({ access, onChange }: { access: string[] | null; onChange:
   const limited = access !== null;
   return (
     <fieldset className="field">
-      <legend className="label">What it can use</legend>
-      <div className="row wrap" role="radiogroup" aria-label="What it can use" style={{ gap: 12 }}>
-        <label className="row" style={{ gap: 6 }}><input type="radio" name="rt-access" checked={!limited} onChange={() => onChange(null)} />Everything Carino can use</label>
-        <label className="row" style={{ gap: 6 }}><input type="radio" name="rt-access" checked={limited} onChange={() => onChange(access ?? [])} />Only what I pick</label>
+      <legend className="label">{t('What it can use')}</legend>
+      <div className="row wrap" role="radiogroup" aria-label={t('What it can use')} style={{ gap: 12 }}>
+        <label className="row" style={{ gap: 6 }}><input type="radio" name="rt-access" checked={!limited} onChange={() => onChange(null)} />{t('Everything Carino can use')}</label>
+        <label className="row" style={{ gap: 6 }}><input type="radio" name="rt-access" checked={limited} onChange={() => onChange(access ?? [])} />{t('Only what I pick')}</label>
       </div>
       {limited && (
         <ul className="access-pick">
@@ -258,7 +259,7 @@ function AccessEditor({ access, onChange }: { access: string[] | null; onChange:
           ))}
         </ul>
       )}
-      <p className="hint">It can always look at your to-dos, notes and saved knowledge. Sending, deleting, posting and other big actions always wait for your OK in Approvals.</p>
+      <p className="hint">{t('It can always look at your to-dos, notes and saved knowledge. Sending, deleting, posting and other big actions always wait for your OK in Approvals.')}</p>
     </fieldset>
   );
 }
@@ -272,9 +273,9 @@ function AccessSummary({ s }: { s: { everything: boolean; reads: string[]; does:
       </button>
       {open && (
         <ul className="access-summary">
-          <li><b>Reads:</b> {s.reads.join('; ')}</li>
-          {s.does.length > 0 && <li><b>Can:</b> {s.does.join('; ')}</li>}
-          {s.asks.length > 0 && <li><b>Asks you first before:</b> {s.asks.join('; ')}</li>}
+          <li><b>{t('Reads:')}</b> {s.reads.join('; ')}</li>
+          {s.does.length > 0 && <li><b>{t('Can:')}</b> {s.does.join('; ')}</li>}
+          {s.asks.length > 0 && <li><b>{t('Asks you first before:')}</b> {s.asks.join('; ')}</li>}
         </ul>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useMemo, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { Avatar } from '../components/Avatar';
@@ -70,29 +71,29 @@ export default function Onboarding() {
 
   const steps = [
     <div key="you" className="stack">
-      <h1>Hi! Let’s get you set up.</h1>
-      <p className="muted">I’m your personal assistant. I remember what matters, keep your to-dos and reminders, and do the small stuff you’d rather not.</p>
-      <div className="field"><label htmlFor="ob-you">What should I call you?</label><input id="ob-you" className="input" maxLength={80} value={you} onChange={(e) => setYou(e.target.value)} autoFocus /></div>
+      <h1>{t('Hi! Let’s get you set up.')}</h1>
+      <p className="muted">{t('I’m your personal assistant. I remember what matters, keep your to-dos and reminders, and do the small stuff you’d rather not.')}</p>
+      <div className="field"><label htmlFor="ob-you">{t('What should I call you?')}</label><input id="ob-you" className="input" maxLength={80} value={you} onChange={(e) => setYou(e.target.value)} autoFocus /></div>
     </div>,
     <div key="me" className="stack">
-      <h1>What will you call me?</h1>
-      <p className="muted">Pick a name, or type your own. You can change it any time in Settings.</p>
-      <input className="input" maxLength={40} value={assistant} onChange={(e) => setAssistant(e.target.value)} aria-label="Assistant name" />
+      <h1>{t('What will you call me?')}</h1>
+      <p className="muted">{t('Pick a name, or type your own. You can change it any time in Settings.')}</p>
+      <input className="input" maxLength={40} value={assistant} onChange={(e) => setAssistant(e.target.value)} aria-label={t('Assistant name')} />
       <div className="row wrap">
         {suggestions.map((n) => <button key={n} className={`btn sm ${assistant === n ? 'primary' : ''}`} onClick={() => setAssistant(n)}>{n}</button>)}
-        <button className="btn ghost sm" onClick={() => setSuggestions([...NAMES].sort(() => Math.random() - 0.5).slice(0, 6))}><Icon name="refresh" size={14} />More names</button>
+        <button className="btn ghost sm" onClick={() => setSuggestions([...NAMES].sort(() => Math.random() - 0.5).slice(0, 6))}><Icon name="refresh" size={14} />{t('More names')}</button>
       </div>
     </div>,
     ...(MOBILE ? [
       <div key="ai" className="stack">
-        <h1>Give {assistant.trim() || 'me'} a brain</h1>
-        <p className="muted">I live on your phone, and I use an AI service to think. Groq and Google Gemini are free — pick one, get a key in a minute, and paste it here. You can do this later in Settings.</p>
+        <h1>{t('Give')}{' '}{assistant.trim() || 'me'} {t('a brain')}</h1>
+        <p className="muted">{t('I live on your phone, and I use an AI service to think. Groq and Google Gemini are free — pick one, get a key in a minute, and paste it here. You can do this later in Settings.')}</p>
         <DeviceAI compact onSaved={() => setStep((x) => x + 1)} />
       </div>,
     ] : []),
     <div key="help" className="stack">
-      <h1>What would you like help with, {you.split(' ')[0] || 'friend'}?</h1>
-      <p className="muted">Choose a few. I’ll suggest the right ideas first.</p>
+      <h1>{t('What would you like help with,')}{' '}{you.split(' ')[0] || 'friend'}?</h1>
+      <p className="muted">{t('Choose a few. I’ll suggest the right ideas first.')}</p>
       <div className="ob-chips">
         {INTERESTS.map(([id, label, icon]) => (
           <button key={id} className={`ob-chip ${interests.includes(id) ? 'on' : ''}`} aria-pressed={interests.includes(id)} onClick={() => setInterests(interests.includes(id) ? interests.filter((x) => x !== id) : [...interests, id])}>
@@ -102,8 +103,8 @@ export default function Onboarding() {
       </div>
     </div>,
     <div key="routines" className="stack">
-      <h1>Let’s set up your first routines</h1>
-      <p className="muted">Routines run on their own and send you a notification. Tick the ones you want — you can change or add more on the Routines page.</p>
+      <h1>{t('Let’s set up your first routines')}</h1>
+      <p className="muted">{t('Routines run on their own and send you a notification. Tick the ones you want — you can change or add more on the Routines page.')}</p>
       <ul className="list divided">
         {[{ id: 'morning_briefing', title: 'Morning briefing', blurb: 'Your day at 07:00: tasks, deadlines and reminders.' }, { id: 'evening_review', title: 'Evening review', blurb: 'At 19:00: what you finished and tomorrow’s priorities.' },
           ...starterIdeas.map((i: any) => ({ id: i.id, title: i.title, blurb: i.blurb }))].map((r) => (
@@ -121,14 +122,14 @@ export default function Onboarding() {
       <div className="ob-card card pad">
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <Avatar size={64} state={step === steps.length - 1 ? 'speaking' : 'idle'} />
-          <button className="btn ghost sm" disabled={busy} onClick={() => finish(true)}>Skip</button>
+          <button className="btn ghost sm" disabled={busy} onClick={() => finish(true)}>{t('Skip')}</button>
         </div>
         <div style={{ marginTop: 18 }}>{steps[step]}</div>
         <div className="row" style={{ marginTop: 22 }}>
           <div className="ob-dots grow" role="img" aria-label={`Step ${step + 1} of ${steps.length}`}>{steps.map((_, i) => <span key={i} className={i === step ? 'on' : ''} />)}</div>
-          {step > 0 && <button className="btn" disabled={busy} onClick={() => setStep(step - 1)}>Back</button>}
+          {step > 0 && <button className="btn" disabled={busy} onClick={() => setStep(step - 1)}>{t('Back')}</button>}
           {step < steps.length - 1
-            ? <button className="btn primary" disabled={(step === 0 && !you.trim()) || (step === 1 && !assistant.trim())} onClick={() => setStep(step + 1)}>Next</button>
+            ? <button className="btn primary" disabled={(step === 0 && !you.trim()) || (step === 1 && !assistant.trim())} onClick={() => setStep(step + 1)}>{t('Next')}</button>
             : <button className="btn primary" disabled={busy} onClick={() => finish()}>{busy ? 'Setting up…' : 'Let’s go'}</button>}
         </div>
       </div>

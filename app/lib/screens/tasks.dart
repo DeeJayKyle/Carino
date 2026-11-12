@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n.dart';
 
 import '../app_state.dart';
 import '../widgets/common.dart';
@@ -32,7 +33,7 @@ class _TasksScreenState extends State<TasksScreen> {
       await app.api.post('/tasks', {'title': title, if (_view == 'today') 'due_at': _endOfToday()});
       _add.clear();
       setState(() => _bump++);
-      if (mounted) toast(context, 'Added “$title”');
+      if (mounted) toast(context, tr('Added “{0}”', [title]));
     } catch (e) {
       if (mounted) toast(context, errorText(e), error: true);
     }
@@ -42,8 +43,8 @@ class _TasksScreenState extends State<TasksScreen> {
   Widget build(BuildContext context) {
     final app = AppState.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('To-dos'), actions: [
-        IconButton(tooltip: 'Projects and more', icon: const Icon(Icons.open_in_new), onPressed: () => WebScreen.open(context, '/tasks')),
+      appBar: AppBar(title: const Tx('To-dos'), actions: [
+        IconButton(tooltip: tr('Projects and more'), icon: const Icon(Icons.open_in_new), onPressed: () => WebScreen.open(context, '/tasks')),
       ]),
       body: Column(children: [
         SizedBox(
@@ -65,7 +66,7 @@ class _TasksScreenState extends State<TasksScreen> {
             decoration: InputDecoration(
               hintText: _view == 'today' ? 'Add a to-do for today' : 'Add a to-do',
               prefixIcon: const Icon(Icons.add),
-              suffixIcon: IconButton(icon: const Icon(Icons.check), tooltip: 'Add', onPressed: _create),
+              suffixIcon: IconButton(icon: const Icon(Icons.check), tooltip: tr('Add'), onPressed: _create),
             ),
           ),
         ),
@@ -122,8 +123,8 @@ class _TaskTile extends StatelessWidget {
           await AppState.read(context).api.delete('/tasks/${task['id']}');
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('Deleted “${task['title']}”'),
-              action: SnackBarAction(label: 'Undo', onPressed: () async {
+              content: Tx('Deleted “{0}”', args: [task['title']]),
+              action: SnackBarAction(label: tr('Undo'), onPressed: () async {
                 await AppState.read(context).api.post('/tasks', {'title': task['title'], 'due_at': task['due_at'], 'priority': task['priority'], 'description': task['description'] ?? ''});
                 await changed();
               }),

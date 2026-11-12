@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
 import { Avatar, type Accessory } from '../components/Avatar';
@@ -37,7 +38,7 @@ export default function Me() {
     { to: '/settings', icon: 'settings', label: 'Settings' },
   ];
   return (
-    <Shell title="Me">
+    <Shell title={t('Me')}>
       <div className="page narrow">
         <section className="card me-hero">
           <Avatar size={110} accessory={accessory} state={a?.legendary ? 'happy' : 'idle'} />
@@ -45,20 +46,20 @@ export default function Me() {
             <h1>{me!.settings.profile.displayName || me!.user.name}</h1>
             {a && (
               <div className="row wrap" style={{ marginTop: 8, gap: 8 }}>
-                <span className="badge">🔥 {a.streak} week{a.streak === 1 ? '' : 's'} in a row</span>
-                <span className="badge">✅ {a.tasksDone} to-dos done</span>
-                {a.legendary && <span className="badge brand">👑 Legendary</span>}
+                <span className="badge">🔥 {a.streak} week{a.streak === 1 ? '' : 's'} {t('in a row')}</span>
+                <span className="badge">✅ {a.tasksDone} {t('to-dos done')}</span>
+                {a.legendary && <span className="badge brand">{t('👑 Legendary')}</span>}
               </div>
             )}
             <button className="btn sm" style={{ marginTop: 10 }} onClick={() => shareSticker(accessory, name).then((m) => m && toast(m), (e) => toast(e.message, 'error'))}>
-              <Icon name="smile" size={15} />Share a {name} sticker
+              <Icon name="smile" size={15} />{t('Share a')}{' '}{name} sticker
             </button>
           </div>
         </section>
 
         {a?.weekly && (
           <section className="card pad" style={{ marginTop: 14 }}>
-            <h2>This week</h2>
+            <h2>{t('This week')}</h2>
             <ul className="list goals">
               {a.weekly.map((g: any) => (
                 <li key={g.id} className={`list-item ${g.done ? 'done' : ''}`}>
@@ -73,14 +74,14 @@ export default function Me() {
 
         {a?.challenges && (
           <section className="card pad" style={{ marginTop: 14 }}>
-            <h2>Challenges</h2>
-            <p className="small muted">Each one earns {name} something new to wear.</p>
+            <h2>{t('Challenges')}</h2>
+            <p className="small muted">{t('Each one earns')}{' '}{name} {t('something new to wear.')}</p>
             <ul className="list challenges">
               {a.challenges.map((c: any) => (
                 <li key={c.id} className={`challenge ${c.done ? 'done' : ''}`}>
                   <Avatar size={44} accessory={c.reward} />
                   <div className="grow">
-                    <div className="row"><b className="grow">{c.title}</b>{c.done ? <span className="badge success"><Icon name="trophy" size={12} />Done</span> : <span className="tiny faint">{c.progress}/{c.goal}</span>}</div>
+                    <div className="row"><b className="grow">{c.title}</b>{c.done ? <span className="badge success"><Icon name="trophy" size={12} />{t('Done')}</span> : <span className="tiny faint">{c.progress}/{c.goal}</span>}</div>
                     <div className="small muted">{c.blurb}</div>
                     {!c.done && <Bar value={c.progress} goal={c.goal} label={`${c.title} progress`} />}
                   </div>
@@ -91,8 +92,8 @@ export default function Me() {
         )}
 
         <section className="card pad" style={{ marginTop: 14 }}>
-          <h2>Dress up {name}</h2>
-          <div className="acc-picker" role="radiogroup" aria-label="Accessory">
+          <h2>{t('Dress up')}{' '}{name}</h2>
+          <div className="acc-picker" role="radiogroup" aria-label={t('Accessory')}>
             {ACCESSORIES.map((x) => {
               const ok = x.id === 'auto' || earned(x.id as Accessory);
               const ch = rewardFor(x.id);

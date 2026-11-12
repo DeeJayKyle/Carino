@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -26,14 +27,14 @@ export function Home() {
   const attention = (data?.notifications?.length ?? 0);
 
   return (
-    <Shell title="Home">
+    <Shell title={t('Home')}>
       <div className="page">
         <div className="home-hero">
-          <Link to="/chat/new?voice=1" className="home-mascot" aria-label={`Talk to ${mascot.name}`} title="Tap to talk hands-free"><Avatar size={112} accessory={mascot.accessory} /></Link>
+          <Link to="/chat/new?voice=1" className="home-mascot" aria-label={`Talk to ${mascot.name}`} title={t('Tap to talk hands-free')}><Avatar size={112} accessory={mascot.accessory} /></Link>
           <div className="greet">{greet}, {name.split(' ')[0]}</div>
           <div className="date">{now}</div>
           <AskBar />
-          <div className="starter-chips" role="list" aria-label="Quick starts">
+          <div className="starter-chips" role="list" aria-label={t('Quick starts')}>
             {[
               ['sun', 'My day', '/chat/new?q=' + encodeURIComponent('What does my day look like? Help me plan it.')],
               ['mic', 'Ramble it out', '/ramble'],
@@ -50,11 +51,11 @@ export function Home() {
         <HandoffBanner />
         {data && <FollowUps overview={data.overview} reload={reload} />}
         {attention > 0 && (
-          <Link to="/notifications" className="card attention"><Icon name="bell" size={18} /><span className="grow">{attention} thing{attention > 1 ? 's' : ''} need{attention > 1 ? '' : 's'} your attention</span><Icon name="chevron" size={16} /></Link>
+          <Link to="/notifications" className="card attention"><Icon name="bell" size={18} /><span className="grow">{attention} thing{attention > 1 ? 's' : ''} need{attention > 1 ? '' : 's'} {t('your attention')}</span><Icon name="chevron" size={16} /></Link>
         )}
         {data?.recentConversations?.length > 0 && (
           <section className="home-section">
-            <div className="row"><h2 className="grow">Recent chats</h2><Link to="/chat" className="small">All chats</Link></div>
+            <div className="row"><h2 className="grow">{t('Recent chats')}</h2><Link to="/chat" className="small">{t('All chats')}</Link></div>
             <div className="recent-chats">
               {data.recentConversations.slice(0, 6).map((c: any) => (
                 <Link key={c.id} to={`/chat/${c.id}`} className="card recent-chat"><Icon name="chat" size={16} /><span className="grow ellipsis">{c.title}</span><span className="tiny faint">{relative(c.updated_at)}</span></Link>
@@ -64,7 +65,7 @@ export function Home() {
         )}
         {discover.data?.cards?.length > 1 && (
           <section className="home-section">
-            <div className="row"><h2 className="grow">Ideas for you</h2><Link to="/discover" className="small">Discover</Link></div>
+            <div className="row"><h2 className="grow">{t('Ideas for you')}</h2><Link to="/discover" className="small">{t('Discover')}</Link></div>
             <div className="idea-row">
               {discover.data.cards.slice(1, 7).map((c: any) => (
                 <button key={c.id} className="card idea" onClick={() => openCard(c)}><span className="qi"><Icon name={c.icon} /></span><span className="idea-title">{c.title}</span></button>
@@ -107,7 +108,7 @@ function HighlightCards({ data, idea, streakName }: { data: any; idea?: any; str
   }
   if (idea) cards.push({ key: 'idea', tone: 'berry', icon: idea.icon, kicker: 'Try this', title: idea.title, body: idea.blurb, to: '/discover' });
   return (
-    <section className="highlights" aria-label="Your day at a glance">
+    <section className="highlights" aria-label={t('Your day at a glance')}>
       {cards.map((c) => (
         <Link key={c.key} to={c.to} className={`highlight hl-${c.tone}`}>
           <span className="hl-kicker"><Icon name={c.icon} size={14} />{c.kicker}</span>
@@ -160,7 +161,7 @@ function AskBar() {
     <>
       <form className="ask" onSubmit={submit} role="search">
         <Icon name="sparkle" style={{ color: 'var(--brand)' }} />
-        <label htmlFor="ask" className="sr-only">Ask {me!.settings.profile.assistantName || 'Carino'}</label>
+        <label htmlFor="ask" className="sr-only">{t('Ask')}{' '}{me!.settings.profile.assistantName || 'Carino'}</label>
         <input id="ask" data-composer enterKeyHint="send" placeholder={voice.listening ? 'Listening…' : 'What’s on your mind?'} value={voice.interim ? `${q} ${voice.interim}` : q} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
         {me!.settings.voice.enabled && voice.supported && (
           <button type="button" className={`btn ghost icon ${voice.listening ? 'recording' : ''}`} onClick={voice.listening ? voice.stop : voice.start} aria-label={voice.listening ? 'Stop recording' : 'Speak'} aria-pressed={voice.listening}>
@@ -168,10 +169,10 @@ function AskBar() {
           </button>
         )}
         {q.trim() || !voice.supported
-          ? <button className="btn primary icon" disabled={!q.trim()} aria-label="Ask"><Icon name="send" /></button>
-          : <Link to="/chat/new?voice=1" className="btn primary icon" aria-label="Talk hands-free" title="Talk hands-free"><Icon name="speaker" /></Link>}
+          ? <button className="btn primary icon" disabled={!q.trim()} aria-label={t('Ask')}><Icon name="send" /></button>
+          : <Link to="/chat/new?voice=1" className="btn primary icon" aria-label={t('Talk hands-free')} title={t('Talk hands-free')}><Icon name="speaker" /></Link>}
       </form>
-      {voice.listening && <p className="faint tiny" style={{ marginTop: 6 }}>Recording… speech is transcribed by your browser’s speech service.</p>}
+      {voice.listening && <p className="faint tiny" style={{ marginTop: 6 }}>{t('Recording… speech is transcribed by your browser’s speech service.')}</p>}
       {voice.error && <p className="small" style={{ color: 'var(--danger)', marginTop: 6 }}>{voice.error}</p>}
     </>
   );
@@ -203,17 +204,17 @@ function FollowUps({ overview, reload }: { overview: any; reload: () => void }) 
     }
   };
   return (
-    <section className="home-section" aria-label="Follow-ups">
-      <div className="row"><h2 className="grow">Follow-ups</h2></div>
+    <section className="home-section" aria-label={t('Follow-ups')}>
+      <div className="row"><h2 className="grow">{t('Follow-ups')}</h2></div>
       <div className="card"><ul className="list divided">
         {awaiting.map((m) => (
           <li key={m.id} className="list-item followup">
             <Icon name="send" size={16} />
-            <span className="grow" style={{ minWidth: 0 }}><span className="ellipsis" style={{ display: 'block' }}>Reply to <b>{m.from}</b>: “{m.subject}”</span><span className="tiny muted">No reply for 2+ days · {m.account}</span></span>
+            <span className="grow" style={{ minWidth: 0 }}><span className="ellipsis" style={{ display: 'block' }}>{t('Reply to')}{' '}<b>{m.from}</b>: “{m.subject}”</span><span className="tiny muted">{t('No reply for 2+ days ·')}{' '}{m.account}</span></span>
             <span className="row wrap" style={{ gap: 4 }}>
-              <Link className="btn sm" to={`/chat/new?q=${encodeURIComponent(`Read the ${m.provider === 'google' ? 'Gmail' : 'Outlook'} message ${m.id} from ${m.from} ("${m.subject}") and draft a reply for me to check. Save it as a draft; don't send it.`)}`}>Draft a reply</Link>
-              <button className="btn ghost sm" onClick={() => act(() => post('/reminders', { title: `Reply to ${m.from}: ${m.subject}`.slice(0, 300), remind_at: tomorrow9() }), 'I’ll remind you tomorrow at 9:00')}>Tomorrow</button>
-              <button className="btn ghost sm" onClick={() => act(() => post(`/followups/${encodeURIComponent(m.id)}/dismiss`, {}), 'Got it')}>No reply needed</button>
+              <Link className="btn sm" to={`/chat/new?q=${encodeURIComponent(`Read the ${m.provider === 'google' ? 'Gmail' : 'Outlook'} message ${m.id} from ${m.from} ("${m.subject}") and draft a reply for me to check. Save it as a draft; don't send it.`)}`}>{t('Draft a reply')}</Link>
+              <button className="btn ghost sm" onClick={() => act(() => post('/reminders', { title: `Reply to ${m.from}: ${m.subject}`.slice(0, 300), remind_at: tomorrow9() }), 'I’ll remind you tomorrow at 9:00')}>{t('Tomorrow')}</button>
+              <button className="btn ghost sm" onClick={() => act(() => post(`/followups/${encodeURIComponent(m.id)}/dismiss`, {}), 'Got it')}>{t('No reply needed')}</button>
             </span>
           </li>
         ))}
@@ -221,14 +222,14 @@ function FollowUps({ overview, reload }: { overview: any; reload: () => void }) 
           <li key={b.id} className="list-item followup">
             <Icon name="wallet" size={16} />
             <span className="grow"><span>{b.name} · {b.amount}</span><span className={`tiny ${b.overdue ? 'warn-text' : 'muted'}`} style={{ display: 'block' }}>{b.overdue ? 'Overdue since' : 'Due'} {b.due}{b.book ? ` · ${b.book}` : ''}</span></span>
-            <Link className="btn ghost sm" to="/money">Open</Link>
+            <Link className="btn ghost sm" to="/money">{t('Open')}</Link>
           </li>
         ))}
         {follow.map((a) => (
           <li key={a.id} className="list-item followup">
             <Icon name="briefcase" size={16} />
-            <span className="grow"><span>Follow up: {a.title}</span>{a.organisation && <span className="tiny muted" style={{ display: 'block' }}>{a.organisation}</span>}</span>
-            <Link className="btn ghost sm" to={`/chat/new?q=${encodeURIComponent(`Help me write a short, polite follow-up about my application for ${a.title}${a.organisation ? ` at ${a.organisation}` : ''}.`)}`}>Write it</Link>
+            <span className="grow"><span>{t('Follow up:')}{' '}{a.title}</span>{a.organisation && <span className="tiny muted" style={{ display: 'block' }}>{a.organisation}</span>}</span>
+            <Link className="btn ghost sm" to={`/chat/new?q=${encodeURIComponent(`Help me write a short, polite follow-up about my application for ${a.title}${a.organisation ? ` at ${a.organisation}` : ''}.`)}`}>{t('Write it')}</Link>
           </li>
         ))}
       </ul></div>

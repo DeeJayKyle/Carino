@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useState } from 'react';
 import { Icon } from './Icon';
 import { post } from '../lib/api';
@@ -20,7 +21,7 @@ export function ApprovalCard({ action, onDecided }: { action: any; onDecided?: (
       if (kind === 'approve') {
         if (out.status === 'executed') toast(`Done: ${action.summary}`);
         else toast(`Failed: ${out.error}`, 'error');
-      } else toast('Declined — nothing was changed.');
+      } else toast(t('Declined — nothing was changed.'));
       onDecided?.(action, out);
       refreshCounts();
     } catch (e: any) {
@@ -31,7 +32,7 @@ export function ApprovalCard({ action, onDecided }: { action: any; onDecided?: (
   };
 
   return (
-    <div className="approval" role="group" aria-label="Action awaiting approval">
+    <div className="approval" role="group" aria-label={t('Action awaiting approval')}>
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <Icon name="shield" size={18} style={{ color: 'var(--warning)', marginTop: 2, flex: 'none' }} />
         <div className="grow">
@@ -42,7 +43,7 @@ export function ApprovalCard({ action, onDecided }: { action: any; onDecided?: (
       </div>
       <div className="row wrap" style={{ marginTop: 10, justifyContent: 'flex-end' }}>
         <button className="btn ghost sm" onClick={() => setShowInput((s) => !s)}>{showInput ? 'Hide details' : 'Details'}</button>
-        <button className="btn sm" disabled={!!busy} onClick={() => decide('reject')}>Decline</button>
+        <button className="btn sm" disabled={!!busy} onClick={() => decide('reject')}>{t('Decline')}</button>
         <button className={`btn sm ${action.risk === 'consequential' && action.tool.startsWith('delete') ? 'danger solid' : 'primary'}`} disabled={!!busy} onClick={() => decide('approve')}>
           {busy === 'approve' ? 'Working…' : 'Approve'}
         </button>

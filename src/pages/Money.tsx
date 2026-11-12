@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useState, type FormEvent } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -54,10 +55,10 @@ export default function Money() {
   const act = async (fn: () => Promise<any>, ok?: string) => {
     try {
       const res = await fn();
-      if (isQueued(res)) toast('Saved on this device — it will sync when the connection is back.');
-      else if (isConflict(res)) toast('This was changed elsewhere since you opened it. Review it under “changes to check”.', 'error');
+      if (isQueued(res)) toast(t('Saved on this device — it will sync when the connection is back.'));
+      else if (isConflict(res)) toast(t('This was changed elsewhere since you opened it. Review it under “changes to check”.'), 'error');
       else if (ok) toast(ok);
-      if (res?.possible_duplicate) toast('The same amount was logged a few minutes ago — delete one if it was logged twice.', 'error');
+      if (res?.possible_duplicate) toast(t('The same amount was logged a few minutes ago — delete one if it was logged twice.'), 'error');
       for (const a of res?.alerts ?? []) toast(a.title, a.level === 100 ? 'error' : 'info');
     } catch (e: any) {
       toast(e?.message ?? 'That did not work', 'error');
@@ -73,14 +74,14 @@ export default function Money() {
   const saveBudget = async () => {
     if (!editBudget) return;
     const amount = editBudget.amount.trim() === '' ? 0 : parseAmount(editBudget.amount);
-    if (amount === null) return toast('Enter an amount, e.g. 300000 or 300k', 'error');
+    if (amount === null) return toast(t('Enter an amount, e.g. 300000 or 300k'), 'error');
     setEditBudget(null);
     act(() => put('/budgets', withBook({ category: editBudget.category, amount })), amount ? 'Budget saved' : 'Budget removed');
   };
 
   const saveCurrency = async () => {
     const c = (editCurrency ?? '').trim().toUpperCase();
-    if (c && !/^[A-Z]{3}$/.test(c)) return toast('Use a 3-letter code like UGX, KES or USD', 'error');
+    if (c && !/^[A-Z]{3}$/.test(c)) return toast(t('Use a 3-letter code like UGX, KES or USD'), 'error');
     setEditCurrency(null);
     act(() => patch('/settings', { money: { currency: c } }), 'Currency saved');
   };
@@ -95,52 +96,52 @@ export default function Money() {
   const maxCat = Math.max(1, ...(d?.byCategory ?? []).map((c: any) => c.total));
 
   return (
-    <Shell title="Money">
+    <Shell title={t('Money')}>
       <div className="page money-page">
         <div className="page-head"><div>
-          <h1>Money</h1>
-          <p className="sub">What you spend and your monthly budgets. Tell Carino in chat — “spent 15k on lunch” — or send a photo of a receipt.</p>
+          <h1>{t('Money')}</h1>
+          <p className="sub">{t('What you spend and your monthly budgets. Tell Carino in chat — “spent 15k on lunch” — or send a photo of a receipt.')}</p>
         </div></div>
 
         {loading && !d ? <Loading rows={4} /> : error && !d ? <ErrorBox error={error} retry={reload} /> : d && (
           <>
-            <div className="row wrap book-bar" role="group" aria-label="Money book">
+            <div className="row wrap book-bar" role="group" aria-label={t('Money book')}>
               {d.books.map((b: any) => (
                 <button key={b.id ?? 'personal'} className={`chip${(b.id ?? null) === (d.book ?? null) ? ' on' : ''}`} aria-pressed={(b.id ?? null) === (d.book ?? null)} onClick={() => pickBook(b.id)}>
                   <Icon name={b.id ? 'briefcase' : 'user'} size={14} />{b.name}
                 </button>
               ))}
-              <button className="chip" onClick={() => setNewBook('')}><Icon name="plus" size={14} />New book</button>
+              <button className="chip" onClick={() => setNewBook('')}><Icon name="plus" size={14} />{t('New book')}</button>
             </div>
-            {d.book && <p className="tiny muted" style={{ margin: '-4px 0 10px' }}>Kept apart from your personal money: it isn’t in your daily brief or budgets. <button className="linklike" onClick={async () => {
+            {d.book && <p className="tiny muted" style={{ margin: '-4px 0 10px' }}>{t('Kept apart from your personal money: it isn’t in your daily brief or budgets.')}{' '}<button className="linklike" onClick={async () => {
               if (!(await confirm({ title: `Delete the “${d.books.find((b: any) => b.id === d.book)?.name}” book?`, body: 'Everything recorded in it — spending, income, bills, debts and savings — is deleted. Personal money isn’t touched.', danger: true, confirm: 'Delete book' }))) return;
               await act(() => del(`/money/books/${d.book}`), 'Book deleted');
               pickBook(null);
-            }}>Delete this book</button></p>}
+            }}>{t('Delete this book')}</button></p>}
 
-            <div className="tabs" role="tablist" aria-label="Money">
+            <div className="tabs" role="tablist" aria-label={t('Money')}>
               {([['spending', 'Spending'], ['income', 'Income'], ['bills', `Bills${d.bills.length ? ` (${d.bills.length})` : ''}`], ['debts', `Debts${d.debts.length ? ` (${d.debts.length})` : ''}`], ['savings', 'Savings']] as const).map(([id, l]) => (
                 <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{l}</button>
               ))}
             </div>
 
             {tab !== 'spending' ? <MoneyMore tab={tab} d={d} cur={cur} withBook={withBook} act={act} /> : <>
-            <div className="month-nav" role="group" aria-label="Month">
-              <button className="btn ghost sm" onClick={() => setMonth(shiftMonth(shown, -1))} aria-label="Previous month"><Icon name="chevron" size={16} style={{ transform: 'rotate(180deg)' }} /></button>
+            <div className="month-nav" role="group" aria-label={t('Month')}>
+              <button className="btn ghost sm" onClick={() => setMonth(shiftMonth(shown, -1))} aria-label={t('Previous month')}><Icon name="chevron" size={16} style={{ transform: 'rotate(180deg)' }} /></button>
               <b className="grow">{monthLabel(shown)}</b>
-              <button className="btn ghost sm" onClick={() => setMonth(shiftMonth(shown, 1))} disabled={isCurrent} aria-label="Next month"><Icon name="chevron" size={16} /></button>
+              <button className="btn ghost sm" onClick={() => setMonth(shiftMonth(shown, 1))} disabled={isCurrent} aria-label={t('Next month')}><Icon name="chevron" size={16} /></button>
             </div>
 
-            <section className="card pad money-summary" aria-label="Summary">
+            <section className="card pad money-summary" aria-label={t('Summary')}>
               <div className="ms-main">
                 <span className="tiny muted">{isCurrent ? 'Spent this month' : 'Spent'}</span>
                 <span className="ms-total">{money(d.total, cur)}</span>
                 <span className="small muted">{d.count} purchase{d.count === 1 ? '' : 's'}{d.other.length ? ` · plus ${d.other.map((o: any) => money(o.total, o.currency)).join(', ')}` : ''}</span>
-                {d.income > 0 && <span className="small">{money(d.income, cur)} came in · <b className={d.net < 0 ? 'warn-text' : ''}>{money(d.net, cur)} {d.net < 0 ? 'more out than in' : 'left over'}</b></span>}
+                {d.income > 0 && <span className="small">{money(d.income, cur)} {t('came in ·')}{' '}<b className={d.net < 0 ? 'warn-text' : ''}>{money(d.net, cur)} {d.net < 0 ? 'more out than in' : 'left over'}</b></span>}
               </div>
               {isCurrent && (
                 <div className="ms-week">
-                  <span className="tiny muted">Last 7 days</span>
+                  <span className="tiny muted">{t('Last 7 days')}</span>
                   <b>{money(d.week.total, cur)}</b>
                   <span className="small muted">
                     {d.week.previous > 0 ? `${d.week.total > d.week.previous ? 'Up' : d.week.total < d.week.previous ? 'Down' : 'Same'} from ${money(d.week.previous, cur)}` : d.week.top ? `Most on ${d.week.top.label}` : 'Nothing logged'}
@@ -151,12 +152,12 @@ export default function Money() {
 
             {isCurrent && <AddExpense categories={categories} currency={cur} today={d.today} onAdd={(body) => act(() => writeOrQueue('POST', '/expenses', withBook(body), { label: `Spending: ${money(body.amount, cur)}` }), 'Logged')} />}
 
-            <section className="card pad" aria-label="Budgets">
-              <div className="row"><h2 className="grow">Monthly budgets</h2>
-                <button className="btn ghost sm" onClick={() => setEditBudget({ category: categories.find((c) => !budgetCats.has(c.id))?.id ?? 'total', amount: '' })}><Icon name="plus" size={14} />Add budget</button>
+            <section className="card pad" aria-label={t('Budgets')}>
+              <div className="row"><h2 className="grow">{t('Monthly budgets')}</h2>
+                <button className="btn ghost sm" onClick={() => setEditBudget({ category: categories.find((c) => !budgetCats.has(c.id))?.id ?? 'total', amount: '' })}><Icon name="plus" size={14} />{t('Add budget')}</button>
               </div>
               {!d.budgets.length ? (
-                <p className="small muted" style={{ marginTop: 6 }}>Set a limit for a month — for everything, or just eating out — and Carino warns you at 80% and if you go over.</p>
+                <p className="small muted" style={{ marginTop: 6 }}>{t('Set a limit for a month — for everything, or just eating out — and Carino warns you at 80% and if you go over.')}</p>
               ) : d.budgets.map((b: any) => {
                 const over = b.spent > b.amount;
                 return (
@@ -173,8 +174,8 @@ export default function Money() {
             </section>
 
             {d.byCategory.length > 0 && (
-              <section className="card pad" aria-label="By category">
-                <h2>Where it went</h2>
+              <section className="card pad" aria-label={t('By category')}>
+                <h2>{t('Where it went')}</h2>
                 <ul className="cat-bars">
                   {d.byCategory.map((c: any) => (
                     <li key={c.category}>
@@ -187,12 +188,12 @@ export default function Money() {
               </section>
             )}
 
-            <section className="card pad" aria-label="Expenses">
-              <div className="row"><h2 className="grow">Spending</h2>
-                <Link className="btn ghost sm" to={`/chat/new?q=${encodeURIComponent('Please log this receipt')}`}><Icon name="paperclip" size={14} />Receipt photo</Link>
+            <section className="card pad" aria-label={t('Expenses')}>
+              <div className="row"><h2 className="grow">{t('Spending')}</h2>
+                <Link className="btn ghost sm" to={`/chat/new?q=${encodeURIComponent('Please log this receipt')}`}><Icon name="paperclip" size={14} />{t('Receipt photo')}</Link>
               </div>
               {!groups.length ? (
-                <Empty icon="wallet" title={isCurrent ? 'Nothing logged this month' : 'Nothing logged that month'}>Add one above, or tell Carino what you spent.</Empty>
+                <Empty icon="wallet" title={isCurrent ? 'Nothing logged this month' : 'Nothing logged that month'}>{t('Add one above, or tell Carino what you spent.')}</Empty>
               ) : groups.map(([day, list]) => (
                 <div key={day} className="exp-day">
                   <div className="tiny muted exp-day-head">{dayLabel(day, d.today)}</div>
@@ -213,50 +214,50 @@ export default function Money() {
 
             </>}
             <p className="small muted">
-              Amounts are in <b>{cur}</b>. <button className="linklike" onClick={() => setEditCurrency(cur)}>Change currency</button>
+              {t('Amounts are in')}{' '}<b>{cur}</b>. <button className="linklike" onClick={() => setEditCurrency(cur)}>{t('Change currency')}</button>
             </p>
           </>
         )}
       </div>
 
       {editBudget && (
-        <Modal title="Monthly budget" onClose={() => setEditBudget(null)} footer={<>
-          <button className="btn ghost" onClick={() => setEditBudget(null)}>Cancel</button>
-          <button className="btn primary" onClick={saveBudget}>Save</button>
+        <Modal title={t('Monthly budget')} onClose={() => setEditBudget(null)} footer={<>
+          <button className="btn ghost" onClick={() => setEditBudget(null)}>{t('Cancel')}</button>
+          <button className="btn primary" onClick={saveBudget}>{t('Save')}</button>
         </>}>
           <div className="field">
-            <label htmlFor="b-cat">For</label>
+            <label htmlFor="b-cat">{t('For')}</label>
             <select id="b-cat" className="select" value={editBudget.category} onChange={(e) => setEditBudget({ ...editBudget, category: e.target.value })}>
-              <option value="total">Everything</option>
+              <option value="total">{t('Everything')}</option>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
           </div>
           <div className="field" style={{ marginTop: 12 }}>
-            <label htmlFor="b-amt">Per month ({cur})</label>
+            <label htmlFor="b-amt">{t('Per month (')}{cur})</label>
             <input id="b-amt" className="input" inputMode="decimal" placeholder="e.g. 300k" value={editBudget.amount} onChange={(e) => setEditBudget({ ...editBudget, amount: e.target.value })} autoFocus />
-            <span className="tiny muted">Leave empty to remove this budget.</span>
+            <span className="tiny muted">{t('Leave empty to remove this budget.')}</span>
           </div>
         </Modal>
       )}
 
       {newBook !== null && (
-        <Modal title="New money book" onClose={() => setNewBook(null)} footer={<>
-          <button className="btn ghost" onClick={() => setNewBook(null)}>Cancel</button>
+        <Modal title={t('New money book')} onClose={() => setNewBook(null)} footer={<>
+          <button className="btn ghost" onClick={() => setNewBook(null)}>{t('Cancel')}</button>
           <button className="btn primary" disabled={!newBook.trim()} onClick={async () => {
             try {
               const b = await post<any>('/money/books', { name: newBook.trim() });
               setNewBook(null);
               pickBook(b.id);
-              toast('Book created');
+              toast(t('Book created'));
             } catch (e: any) {
               toast(e.message, 'error');
             }
-          }}>Create</button>
+          }}>{t('Create')}</button>
         </>}>
           <div className="field">
-            <label htmlFor="nb">Name</label>
-            <input id="nb" className="input" maxLength={40} placeholder="e.g. Pharmacy" value={newBook} onChange={(e) => setNewBook(e.target.value)} autoFocus />
-            <span className="tiny muted">A separate book for a business or a project: its spending, income, bills, debts and savings are kept apart from your personal money.</span>
+            <label htmlFor="nb">{t('Name')}</label>
+            <input id="nb" className="input" maxLength={40} placeholder={t('e.g. Pharmacy')} value={newBook} onChange={(e) => setNewBook(e.target.value)} autoFocus />
+            <span className="tiny muted">{t('A separate book for a business or a project: its spending, income, bills, debts and savings are kept apart from your personal money.')}</span>
           </div>
         </Modal>
       )}
@@ -271,14 +272,14 @@ export default function Money() {
       )}
 
       {editCurrency !== null && (
-        <Modal title="Your currency" onClose={() => setEditCurrency(null)} footer={<>
-          <button className="btn ghost" onClick={() => setEditCurrency(null)}>Cancel</button>
-          <button className="btn primary" onClick={saveCurrency}>Save</button>
+        <Modal title={t('Your currency')} onClose={() => setEditCurrency(null)} footer={<>
+          <button className="btn ghost" onClick={() => setEditCurrency(null)}>{t('Cancel')}</button>
+          <button className="btn primary" onClick={saveCurrency}>{t('Save')}</button>
         </>}>
           <div className="field">
-            <label htmlFor="cur">3-letter code</label>
-            <input id="cur" className="input" maxLength={3} placeholder="UGX" value={editCurrency} onChange={(e) => setEditCurrency(e.target.value.toUpperCase())} autoFocus />
-            <span className="tiny muted">Empty uses your region. Spending already logged keeps its currency; totals and budgets count only this one.</span>
+            <label htmlFor="cur">{t('3-letter code')}</label>
+            <input id="cur" className="input" maxLength={3} placeholder={t('UGX')} value={editCurrency} onChange={(e) => setEditCurrency(e.target.value.toUpperCase())} autoFocus />
+            <span className="tiny muted">{t('Empty uses your region. Spending already logged keeps its currency; totals and budgets count only this one.')}</span>
           </div>
         </Modal>
       )}
@@ -296,7 +297,7 @@ function AddExpense({ categories, currency, today, onAdd }: { categories: Cat[];
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const n = parseAmount(amount);
-    if (n === null) return toast('Enter an amount, e.g. 15000 or 15k', 'error');
+    if (n === null) return toast(t('Enter an amount, e.g. 15000 or 15k'), 'error');
     setBusy(true);
     await onAdd({ amount: n, category, note: note.trim() || undefined, spent_on: day || today });
     setBusy(false);
@@ -305,16 +306,16 @@ function AddExpense({ categories, currency, today, onAdd }: { categories: Cat[];
     setDay(today);
   };
   return (
-    <form className="card pad add-expense" onSubmit={submit} aria-label="Add spending">
-      <div className="field ae-amount"><label htmlFor="e-amt">Amount ({currency})</label><input id="e-amt" className="input" inputMode="decimal" placeholder="15k" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
-      <div className="field ae-cat"><label htmlFor="e-cat">For</label>
+    <form className="card pad add-expense" onSubmit={submit} aria-label={t('Add spending')}>
+      <div className="field ae-amount"><label htmlFor="e-amt">{t('Amount (')}{currency})</label><input id="e-amt" className="input" inputMode="decimal" placeholder="15k" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+      <div className="field ae-cat"><label htmlFor="e-cat">{t('For')}</label>
         <select id="e-cat" className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
         </select>
       </div>
-      <div className="field ae-note"><label htmlFor="e-note">Note</label><input id="e-note" className="input" placeholder="Lunch with Sam" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} /></div>
-      <div className="field ae-day"><label htmlFor="e-day">Day</label><input id="e-day" type="date" className="input" max={today} value={day} onChange={(e) => setDay(e.target.value)} /></div>
-      <button className="btn primary ae-go" disabled={busy || !amount.trim()}><Icon name="plus" size={16} />Add</button>
+      <div className="field ae-note"><label htmlFor="e-note">{t('Note')}</label><input id="e-note" className="input" placeholder={t('Lunch with Sam')} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} /></div>
+      <div className="field ae-day"><label htmlFor="e-day">{t('Day')}</label><input id="e-day" type="date" className="input" max={today} value={day} onChange={(e) => setDay(e.target.value)} /></div>
+      <button className="btn primary ae-go" disabled={busy || !amount.trim()}><Icon name="plus" size={16} />{t('Add')}</button>
     </form>
   );
 }
@@ -328,7 +329,7 @@ function EditExpense({ expense, categories, today, onClose, onSave }: { expense:
   const [day, setDay] = useState(expense.spent_on);
   const save = () => {
     const n = parseAmount(amount);
-    if (n === null) return toast('Enter an amount, e.g. 15000 or 15k', 'error');
+    if (n === null) return toast(t('Enter an amount, e.g. 15000 or 15k'), 'error');
     const changes: Record<string, unknown> = {};
     if (n !== expense.amount) changes.amount = n;
     if (category !== expense.category) changes.category = category;
@@ -339,21 +340,21 @@ function EditExpense({ expense, categories, today, onClose, onSave }: { expense:
     onSave(changes);
   };
   return (
-    <Modal title="Edit spending" onClose={onClose} footer={<>
-      <button className="btn ghost" onClick={onClose}>Cancel</button>
-      <button className="btn primary" onClick={save}>Save</button>
+    <Modal title={t('Edit spending')} onClose={onClose} footer={<>
+      <button className="btn ghost" onClick={onClose}>{t('Cancel')}</button>
+      <button className="btn primary" onClick={save}>{t('Save')}</button>
     </>}>
       <div className="stack">
-        <div className="field"><label htmlFor="x-amt">Amount ({expense.currency})</label><input id="x-amt" className="input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus /></div>
-        <div className="field"><label htmlFor="x-cat">For</label>
+        <div className="field"><label htmlFor="x-amt">{t('Amount (')}{expense.currency})</label><input id="x-amt" className="input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus /></div>
+        <div className="field"><label htmlFor="x-cat">{t('For')}</label>
           <select id="x-cat" className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
         </div>
-        <div className="field"><label htmlFor="x-note">Note</label><input id="x-note" className="input" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} /></div>
-        <div className="field"><label htmlFor="x-merchant">Shop or person</label><input id="x-merchant" className="input" maxLength={120} value={merchant} onChange={(e) => setMerchant(e.target.value)} /></div>
-        <div className="field"><label htmlFor="x-day">Day</label><input id="x-day" type="date" className="input" max={today} value={day} onChange={(e) => setDay(e.target.value)} /></div>
-        {expense.source === 'receipt' && <p className="tiny muted">Logged from a receipt photo. That stays recorded when you edit it.</p>}
+        <div className="field"><label htmlFor="x-note">{t('Note')}</label><input id="x-note" className="input" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} /></div>
+        <div className="field"><label htmlFor="x-merchant">{t('Shop or person')}</label><input id="x-merchant" className="input" maxLength={120} value={merchant} onChange={(e) => setMerchant(e.target.value)} /></div>
+        <div className="field"><label htmlFor="x-day">{t('Day')}</label><input id="x-day" type="date" className="input" max={today} value={day} onChange={(e) => setDay(e.target.value)} /></div>
+        {expense.source === 'receipt' && <p className="tiny muted">{t('Logged from a receipt photo. That stays recorded when you edit it.')}</p>}
       </div>
     </Modal>
   );

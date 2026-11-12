@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useState } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -57,7 +58,7 @@ export default function Share() {
 
   if (err || data === null) {
     return (
-      <Shell title="Share to Carino"><div className="page">
+      <Shell title={t('Share to Carino')}><div className="page">
         <Empty icon="info" title={err === 'no-sw' ? 'Open Carino once, then share again' : 'Nothing to show'}>
           {err === 'no-sw'
             ? 'Sharing works after Carino has been opened at least once on this device (it sets itself up for offline use). It’s ready now — go back to the other app and share again.'
@@ -66,7 +67,7 @@ export default function Share() {
       </div></Shell>
     );
   }
-  if (data === undefined) return <Shell title="Share to Carino"><div className="page"><Loading /></div></Shell>;
+  if (data === undefined) return <Shell title={t('Share to Carino')}><div className="page"><Loading /></div></Shell>;
 
   const { title, text, url } = splitShare(data.meta);
   const files = data.files;
@@ -102,18 +103,18 @@ export default function Share() {
   const remember = () => run('memory', async () => {
     const content = [title, text, url && `(${url})`].filter(Boolean).join(' — ').replace(/\s+/g, ' ').slice(0, 1900);
     await post('/memories', { content });
-    toast('Carino will remember this');
+    toast(t('Carino will remember this'));
     navigate('/memory', { replace: true });
   });
   const addTask = () => run('task', async () => {
     await post('/tasks', { title: (title || text.split('\n')[0] || url).slice(0, 300), description: [text, url].filter(Boolean).join('\n\n') || undefined, tags: ['shared'] });
-    toast('Added to your to-dos');
+    toast(t('Added to your to-dos'));
     navigate('/tasks', { replace: true });
   });
   return (
-    <Shell title="Share to Carino">
+    <Shell title={t('Share to Carino')}>
       <div className="page" style={{ maxWidth: 720 }}>
-        <div className="page-head"><div><h1>Shared with Carino</h1><p className="sub">Choose what to do with it. Nothing has been sent to Carino’s server yet.</p></div></div>
+        <div className="page-head"><div><h1>{t('Shared with Carino')}</h1><p className="sub">{t('Choose what to do with it. Nothing has been sent to Carino’s server yet.')}</p></div></div>
         <section className="card pad stack">
           {title && <div style={{ fontWeight: 600 }}>{title}</div>}
           {text && <p style={{ whiteSpace: 'pre-wrap' }}>{text}</p>}
@@ -125,7 +126,7 @@ export default function Share() {
               ))}
             </ul>
           )}
-          {!title && !text && !url && !files.length && <p className="muted">The other app didn’t share any content.</p>}
+          {!title && !text && !url && !files.length && <p className="muted">{t('The other app didn’t share any content.')}</p>}
         </section>
         <div className="quick" style={{ marginTop: 16 }}>
           <button onClick={askCarino} disabled={!!busy || !ai} title={ai ? undefined : 'Connect an AI provider first'}><span className="qi"><Icon name="chat" /></span>{busy === 'ask' ? 'Opening…' : 'Ask Carino about it'}</button>

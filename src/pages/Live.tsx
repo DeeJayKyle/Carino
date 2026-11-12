@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -151,11 +152,11 @@ export default function Live() {
   const end = () => { stop.current?.(); stop.current = null; setState('idle'); };
 
   return (
-    <Shell title="Live voice">
+    <Shell title={t('Live voice')}>
       <div className="stack" style={{ maxWidth: 640, margin: '0 auto' }}>
         {opts && !opts.available.length && <p className="muted">{opts.reason}</p>}
         {opts && opts.available.length > 1 && state === 'idle' && (
-          <div className="row" role="radiogroup" aria-label="Service">
+          <div className="row" role="radiogroup" aria-label={t('Service')}>
             {opts.available.map((o) => (
               <button key={o.id} className={`chip${provider === o.id ? ' on' : ''}`} aria-pressed={provider === o.id} onClick={() => setProvider(o.id)}>{o.label}</button>
             ))}
@@ -174,7 +175,7 @@ export default function Live() {
             <p key={i} className={l.who === 'note' ? 'muted small' : undefined}><strong>{l.who === 'you' ? 'You: ' : ''}</strong>{l.text}</p>
           ))}
         </div>
-        <p className="muted small">Live voice sends your audio to the service you picked while the call is on. Changes it makes still wait for your approval.</p>
+        <p className="muted small">{t('Live voice sends your audio to the service you picked while the call is on. Changes it makes still wait for your approval.')}</p>
       </div>
     </Shell>
   );

@@ -1,0 +1,1098 @@
+0| Niet genoeg vrije ruimte
+1| Op deze telefoon
+2|0 bewaart ze tot je ze verwijdert.
+3|12-uursklok
+5|Code van 3 letters
+6|Een JSON-bestand met je taken, herinneringen, onthouden dingen, chats en instellingen, opgeslagen in Downloads.
+7|Een back-up wordt vergrendeld met een wachtzin die jij kiest; zonder die zin kan niemand hem openen. Elke back-up wordt eerst met een testherstel gecontroleerd. Aanmeldingen zitten er niet in.
+8|Een beetje brutaal
+9|Een gesproken gesprek in realtime via OpenAI of Google Gemini, als je er een hebt gekoppeld. Je geluid gaat tijdens het gesprek naar die dienst.
+12|AI en verbindingen
+13|AI-dienst
+14|API-sleutel{0}
+15|Ongeveer 5 minuten, gratis
+16|Toegangstoken
+17|Toegangstoken (optioneel)
+18|Toegangstoken voor {0}
+19|Account SID
+20|Account {0}
+21|Accounts
+22|Toevoegen
+23|Voeg een baan of beurs toe, en Carino herinnert je vóór de deadline en om na je sollicitatie op te volgen.
+24|Dienst toevoegen
+25|Stap toevoegen
+26|Rekening toevoegen
+27|Doel toevoegen
+28|Inkomsten toevoegen
+29|Voeg het hierboven toe of zeg tegen Carino: “1,2 mln salaris ontvangen”.
+30|Iets onthouden
+31|Geld toevoegen
+32|Voeg meer diensten of lokale AI toe, test modellen, kies er één per taak en stel uitgavenlimieten in.
+33|Toevoegen
+34|Voeg er hierboven een toe of vertel Carino wat je hebt uitgegeven.
+35|Storten of opnemen
+36|Voeg huur, schoolgeld of abonnementen toe, en Carino herinnert je als ze moeten worden betaald.
+37|Aanvullen wat ontbreekt
+38|“{0}” toegevoegd
+39|Adres
+40|Geavanceerd: mijn eigen WhatsApp Business-nummer gebruiken
+41|Alles
+42|Alle categorieën
+43|Alle doelen
+44|Alle gekoppelde chats worden ontkoppeld en het opgeslagen token wordt verwijderd.
+45|Alle routines
+46|Toestaan
+47|Wijzigingen toestaan (elke wijziging vraagt eerst)
+48|Betaald gebruik toestaan
+49|Betaald gebruik van {0} toestaan?
+50|Omkeerbare wijzigingen toestaan zonder te vragen
+51|Toegestaan
+52|Altijd eerst vragen
+53|Bedrag
+54|Bedrag ({0})
+55|Betaald bedrag
+56|Bedragen zijn in {0}. 
+57|Op de achtergrond antwoorden
+58|App-taal
+59|App-geheim
+60|Weergave en toegankelijkheid
+61|Sollicitaties
+62|Goedkeuringen
+63|Goedkeuren
+64|Apps op deze pc
+65|Vraag Carino om een pagina of een kleine app te maken — een uitnodiging, een menu, een checklist, een quiz — en die verschijnt hier.
+66|Eerst vragen
+67|Vraag het mij eerst
+68|Toestemming vragen ({0} wijziging(en))
+69|Vraag {0} alles.
+70|Vraag {0} alles…
+71|Gevraagd
+72|Naam van de assistent
+73|Assistent: {0}
+74|Naam van de assistent
+75|Om {0}
+76|Bestand bijvoegen
+77|Voeg een foto, pdf, Word-, tekst-, csv- of Excel-bestand toe
+78|Auth-token
+79|Automatisch (taal van de telefoon)
+80|Automatisch{0}
+81|Terug
+82|Terug naar mijn gedachten
+83|Back-up en herstel
+84|Back-up van {0} — geopend en gecontroleerd.
+85|Back-up gemaakt en gecontroleerd: {0} items, {1} bestanden. Bewaar je wachtzin goed.
+86|Gebalanceerd
+87|Vóór het herstellen wordt wat er nu staat bewaard als versleutelde back-up “Vóór herstel” met dezelfde wachtzin, zodat je het ongedaan kunt maken.
+88|Boek gemaakt
+89|Bottoken van @BotFather
+90|Brave Search-sleutel voor zoeken op het web (gratis)
+91|Overzichten
+92|Belt vanaf {0}
+93|Annuleren
+95|Carino laat een AI-dienst zijn antwoorden schrijven. Groq, Google Gemini en OpenRouter hebben gratis abonnementen — kies er een en plak de sleutel. Of download een kleine AI die op de telefoon zelf draait.
+96|Carino kan alleen de mappen lezen die jij kiest. Je bestanden blijven waar ze zijn.
+97|Carino vond daarin geen taken, herinneringen of dingen om te onthouden.
+98|Carino vergeet deze {0}-aanmelding. Er verandert niets in je account.
+99|Carino krijgt een eigen WhatsApp-nummer waarmee je chat. Het gebruikt het officiële WhatsApp Business-platform van Meta (gratis voor chats die jij begint) en een kleine gratis relay die berichten bewaart tot je telefoon ze ophaalt.
+100|Carino blijft antwoorden op WhatsApp en Telegram terwijl je andere apps gebruikt, met een rustige melding “Carino luistert”. Als je Carino wegveegt, wachten berichten tot je het weer opent.
+101|Carino bewaart de berichten van deze groep tot 7 dagen, zodat je kunt vragen “wat heb ik gemist?”. Alleen jij kunt dat vragen, en uitzetten wist wat bewaard is. Laat het de groep weten. (Zet in Telegram de Group Privacy van de bot uit in @BotFather zodat hij elk bericht ziet.)
+102|Carino kan dan de modellen van {0} kiezen als die het best bij een bericht passen, en elk gebruik kost geld op je {1}-account. Hieronder kun je een uitgavenlimiet instellen; bij de limiet stopt Carino met betaalde modellen.
+103|Carino handelt alleen via nauw afgebakende tools — geen algemene toegang tot computer of shell. Je kunt elke tool altijd intrekken.
+104|Carino herinnert je eraan {0} op te volgen.
+105|Carino voert leesacties en omkeerbare acties uit binnen je rechten. Verwijderingen en andere grote acties wachten hier altijd op jou.
+106|Carino meldt zich af, vraagt de aanbieder de toegang in te trekken waar dat kan en verwijdert de opgeslagen aanmelding.
+107|Carino begint weer bij het begin.
+108|Carino antwoordt daar niet meer. Het gesprek blijft in Chats.
+109|Carino leest hem niet meer en vergeet wat het had genoteerd. Je bestanden blijven onaangeroerd.
+110|Carino gebruikt hem niet meer en verwijdert de opgeslagen sleutel van dit apparaat.
+111|Carino stelde deze voor maar heeft je OK nodig — ze kunnen gevoelig of afgeleid zijn.
+112|Carino praat rechtstreeks vanaf je telefoon met {0}, via je eigen gratis ontwikkelaarsapp — niets gaat via andermans server.{1}
+113|Carino werkt zichzelf bij vanuit de officiële versies. Elke download wordt vóór installatie gecontroleerd en je gegevens blijven bewaard.
+114|Carino weet deze dingen dan niet meer. Dit kan niet ongedaan worden gemaakt.
+115|Carino stopt ermee en het opgeslagen token wordt verwijderd. Eerdere chats blijven bewaard.
+116|Carino gebruikt en bewaart geen herinneringen.
+117|Carino {0} is klaar om te installeren.
+118|Categorieën die Carino mag gebruiken
+119|Categorie
+120|Wijzigen
+121|Valuta wijzigen
+122|Op beide apparaten gewijzigd
+123|Chat met Carino op WhatsApp zoals met een vriend: tekst, spraakberichten en foto’s. Carino heeft een eigen nummer{0}; koppel het jouwe met een code.
+124|Chats
+125|Opnieuw controleren
+126|Mijn sleutel controleren
+127|Controleer in de instellingen van je telefoon of meldingen voor Carino zijn toegestaan.
+128|Nu controleren
+129|Controlenummer
+130|Checklist
+131|Kies er een paar. Ik stel eerst de juiste ideeën voor.
+132|Klassiek
+133|Wissen
+134|Alles wissen
+135|Alle meldingen wissen?
+136|Sluiten
+137|Cloudflare API-token
+138|Code
+139|Kleurenpalet
+140|Binnenkort
+141|Vergelijk het controlenummer
+142|Voltooid
+143|Koppelen
+144|Twilio koppelen
+145|App koppelen
+146|Koppel je accounts zodat Carino voor je kan lezen en handelen. E-mail versturen en posten wacht altijd op je OK.
+147|Gekoppelde apps
+148|Gekoppelde tools
+149|{0} gekoppeld
+150|Ingrijpend — verwijderingen; altijd goedkeuring nodig
+151|Doorgaan
+152|Samenvattingen van gesprekken
+153|Gekopieerd
+154|Kopiëren
+155|Kopiëren naar {0} · {1}
+156|Kosten
+157|Maak een app bij Meta for Developers (of gebruik die uit Mijn apps → Facebook) en voeg WhatsApp toe. Onder WhatsApp → API Setup geeft Meta je een gratis testnummer; voeg je eigen WhatsApp-nummer toe als ontvanger. Kopieer de Phone number ID; maak een permanent toegangstoken in Bedrijfsinstellingen → Systeemgebruikers (met whatsapp_business_messaging); en kopieer het app-geheim uit App-instellingen → Basis.
+158|Daglimiet (USD)
+159|Donker
+160|Datumnotatie
+161|Dag
+162|Deadline
+163|Weigeren
+164|Geweigerd
+165|Geweigerd — er is niets gewijzigd.
+166|Standaard
+167|Verwijderen
+168|Boek verwijderen
+169|Definitief verwijderen
+170|Het boek “{0}” verwijderen?
+171|Deze sollicitatie verwijderen?
+172|Deze back-up verwijderen?
+173|Dit boek verwijderen
+174|Deze chat verwijderen?
+175|Deze uitgave verwijderen?
+176|Deze pagina verwijderen?
+177|{0} geselecteerde verwijderen
+178|{0} {1} verwijderen?
+179|“{0}” verwijderen?
+180|{0} verwijderd
+181|{0} herinneringen verwijderd
+182|“{0}” verwijderd
+183|Verwijdert alle taken, herinneringen, onthouden dingen, bestanden, chats, instellingen en je AI-sleutel van deze telefoon. Dit kan niet ongedaan worden gemaakt.
+184|Zet je de relay zelf op? Stel er een SETUP_CODE-geheim op in zodat niemand anders hem eerst kan claimen, en vul het hier in.
+185|Uitgebreid
+186|Apparaten
+187|Verschillend
+188|Ontkoppelen
+189|{0} ontkoppelen
+190|{0} ({1}) ontkoppelen?
+191|{0} ontkoppelen?
+192|Ontdekken
+193|Ideeën ontdekken
+194|Document
+195|Toont {0} hetzelfde nummer?
+196|{0} downloaden
+197|Bijv. taken en herinneringen toevoegen als je erom vraagt. Zet uit om elke stap goed te keuren.
+198|Bewerken
+199|Bewerken of verwijderen
+200|Uitgave bewerken
+201|Voorwaarden — wat er gevraagd wordt en hoe je eraan voldoet
+202|Spraakfuncties inschakelen
+203|Spraak beëindigen
+204|Vul een bedrag in, bijv. 15000 of 15k
+205|Vul een bedrag in, bijv. 300000 of 300k
+206|Vul twee prijzen in, zoals 0.25 en 2
+207|Alles wissen
+208|Alles op deze telefoon wissen?
+209|Alles wissen…
+210|Alles
+211|Alles wat Carino kan gebruiken
+212|Alles wat erin staat wordt verwijderd. Persoonlijk geld blijft onaangeroerd.
+213|Alles — taken, herinneringen, onthouden dingen, bestanden en chats — staat alleen op deze telefoon. Niets wordt verkocht of gedeeld. Als je chat, gaan het gesprek, relevante herinneringen en bijgevoegde tekst naar de gekozen AI-dienst zodat die kan antwoorden.
+214|Alle gegevens exporteren
+215|Extra’s (optioneel)
+216|Feiten
+217|Mislukt
+218|Bestanden
+219|Je vindt deze in je Twilio-console. Het auth-token wordt versleuteld op dit apparaat bewaard.
+220|Doe eerst de eenmalige instelling hieronder.
+221|Mappen
+222|Mappen die Carino mag lezen
+223|Mappen kunnen worden gedeeld vanuit Carino voor Windows en de Android-app.
+224|Voor
+225|Voor een groep: voeg {0} toe aan de groep en stuur daar /link CODE.
+226|Vergeten
+227|Vergeten na (optioneel)
+228|Laat maar
+229|Nieuwe herinneringen vergeten na (dagen)
+230|Deze gegevens vergeten
+231|Dit vergeten?
+232|{0} vergeten
+233|{0} vergeten?
+235|Gratis abonnement · kopieer je persoonlijke adres van mcp.zapier.com
+236|Gratis abonnement · kopieer je MCP-adres van composio.dev
+237|Gratis abonnement · kopieer je MCP-adres van mcp.pipedream.com
+238|Van
+239|Haal hieronder een code op en stuur die vanaf je WhatsApp naar het nummer van Carino.
+240|Haal een gratis sleutel: {0}
+241|Haal er een op {0}. Hij wordt gecontroleerd en dan versleuteld op dit apparaat bewaard.
+242|Geef je assistent elke naam die je wilt.
+243|Geef {0} een brein
+244|Bijbehorend doel (optioneel)
+245|Doelen
+246|Veel aan je hoofd? Praat of typ het allemaal uit, in elke volgorde. Carino sorteert het in taken, herinneringen en dingen om te onthouden, en jij kiest wat je houdt.
+247|Begrepen — concepten klinken nu als jij.
+248|Groq-sleutel voor spraakberichten
+249|Hier nu
+250|Dit heeft Carino eruit gehaald. Vink uit wat je niet wilt en controleer de datums voordat je toevoegt.
+251|Je dag
+252|Hoi! Laten we alles instellen.
+253|Geschiedenis
+254|Start
+255|Hoe Carino je aanspreekt en antwoordt. Wijzigingen gelden voor nieuwe gesprekken.
+256|Hoe zal ik met je praten?
+257|Ik heb al een relay
+258|Ik woon op je telefoon en gebruik een AI-dienst om te denken. Groq en Google Gemini zijn gratis — kies er een, haal in een minuut een sleutel en plak die hier. Je kunt dit ook later doen in Instellingen.
+259|Hier verschijnen ideeën als er dubbele of losse bestanden zijn.
+260|Ideeën om te beginnen
+261|Als ze overeenkomen, zit er niemand tussen. Zo niet, koppel dan niet.
+262|Belangrijke datums
+263|Tik in WhatsApp → Configuration → Webhook op Edit, plak deze twee waarden, Verify and save, en abonneer je dan op messages.
+264|In back-up
+265|In spraakmodus kun je “pauze”, “herhaal”, “sla over”, “lees mijn overzicht” of “stop” zeggen. Dat wordt op je telefoon afgehandeld, niet naar de AI gestuurd.
+266|Invoer, USD per M tokens
+267|Installeren
+268|Instructies voor Carino
+269|Vriend uitnodigen
+270|Het kan altijd je taken, notities en opgeslagen kennis bekijken. Versturen, verwijderen, posten en andere grote acties wachten altijd op je OK.
+271|Hij stopt met draaien. De chatgeschiedenis blijft in Chats.
+272|De checklist, geschiedenis en herinneringen gaan ook weg. Bijgevoegde bestanden blijven in Carino.
+273|Eerdere versies gaan ook weg.
+274|De herinnering stopt ook. Eerdere betalingen blijven in je uitgaven.
+275|Ik ben je persoonlijke assistent. Ik onthoud wat belangrijk is, houd je taken en herinneringen bij en doe de kleine klusjes waar jij geen zin in hebt.
+276|Baan
+277|Banen en beurzen: deadlines, of je in aanmerking komt, documenten en referenties, en wanneer je opvolgt. Of zeg tegen Carino “volg deze baan…” en plak de vacature.
+278|Een samenvatting van {0} bewaren?
+279|Alles op mijn apparaten houden (alleen lokale modellen)
+280|Alleen op mijn apparaten
+281|Die van dit apparaat houden
+282|Die van {0} houden
+283|Houdt alles hier; waar een item verschilt, blijft dat van hier.
+284|Kenia (en-KE)
+285|Gescheiden van je persoonlijke geld. 
+286|Sleutel
+288|Taal en regio
+289|Taal gewijzigd
+290|Groot
+291|Afgelopen 24 uur
+292|Afgelopen 30 dagen
+293|Laatst uitgevoerd {0} 
+294|Leren
+295|Laat leeg om dit budget te verwijderen.
+296|Laat leeg om te antwoorden in de taal waarin je schrijft.
+297|Laat Carino je andere apps gebruiken — e-mail, agenda, notities, projecttools — via MCP, de open standaard voor AI-koppelingen. Carino mag er vrij mee lezen; alles wat verstuurt, wijzigt of verwijdert wacht op je goedkeuring, tenzij je anders aangeeft.
+298|De relay ook de handtekening van Meta laten controleren
+299|Laten we je eerste routines instellen
+300|Licht
+301|Zoals ik
+302|Link (optioneel)
+303|Koppel een chat of groep met een eenmalige code.
+304|Een andere WhatsApp koppelen
+305|Ik luister — neem je tijd, pauzes zijn prima.
+306|Live spraak
+307|Live spraakgesprek
+308|Vastgelegd van een foto van een bon. Dat blijft vermeld als je het bewerkt.
+309|Met langetermijngeheugen onthoudt Carino wat belangrijk is tussen gesprekken.
+310|Lunch met Sam
+311|MCP-serveradres
+312|Beheren
+313|Je herinneringen beheren
+314|Geheugen
+315|Het geheugen staat uit
+316|Herinnering opgeslagen
+317|Stuur Carino berichten via WhatsApp of Telegram zoals aan een vriend — tekst, spraakberichten en foto’s. Voeg Carino toe aan een familie- of teamgroep om lijstjes en plannen op één plek te houden. Elke chat krijgt hier in Carino een eigen gesprek.
+318|Bericht aan {0}…
+319|Berichten
+320|Berichten (WhatsApp, Telegram)
+321|Meta bezorgt berichten op een webadres dat altijd aan staat; de relay is dat adres, op je eigen Cloudflare-account. Maak een gratis Cloudflare-account, tik dan onder API Tokens op Create Token → Edit Cloudflare Workers → Use template → Continue → Create en plak het token hier. Carino zet de relay op en koppelt hem (het token wordt niet bewaard).
+322|Middernacht
+323|Model
+324|Model (gratis, beste eerst)
+325|Model op deze telefoon
+326|Geld
+327|Maandbudget
+328|Maandbudgetten
+329|Maandlimiet (USD)
+330|Meer namen
+331|Mijn apps
+332|Naam
+333|Geef dit apparaat een naam
+334|Nooit getoond aan een online AI
+335|Nieuw
+336|Nieuw boek
+337|Nieuwe chat
+338|Nieuw geldboek
+339|Nieuwe routine
+340|Nieuw token
+341|Volgende
+342|Volgende maand
+343|Nog geen AI-dienst
+344|Nog geen acties
+345|Nog geen apps gekoppeld
+346|Nog geen rekeningen
+347|Nog geen wijzigingen
+348|Geen dubbele gevonden
+349|Nog geen doelen
+350|Geen limiet
+351|Nog geen modellen.
+352|Geen meldingen
+353|Geen
+354|Niets gevonden. Als je Ollama of LM Studio gebruikt, start het en zoek opnieuw.
+355|Nog geen.
+356|Nog geen. Kies een map in de mappenkiezer van je telefoon; je kunt hem altijd verwijderen.
+357|Normaal
+358|Nog niet gekoppeld.
+359|Niet op dit apparaat
+360|Niet gebruikt: {0}
+361|Notitie
+362|Nog niets gemaakt
+363|Er verandert niets tot je het goedkeurt in Goedkeuringen, en alleen in mappen waar je wijzigingen hebt toegestaan.
+364|Niets gevonden.
+365|Niets verschuldigd
+366|Nog niets vastgelegd
+367|Niets toe te voegen
+368|Niets op te ruimen
+369|Nog niets gevolgd
+370|Niets wacht op goedkeuring.
+371|Meldingen
+372|Meldingen en routines
+374|Uit
+375|Open op je pc Carino → Instellingen → Apparaten → Telefoon koppelen. Scan dan de code die verschijnt.
+376|Open op je telefoon Carino → Instellingen → Apparaten → Koppelen met mijn pc en scan dit:
+377|Alleen goedgekeurde herinneringen worden gebruikt. Je kunt ze allemaal bekijken, bewerken of verwijderen.
+378|Alleen lokale AI leest het
+379|Alleen wat ik kies
+380|Alleen als ik “onthoud” zeg
+381|Openen
+382|@BotFather openen
+383|WhatsApp openen
+384|Chat openen
+385|Vacature openen
+386|Pagina openen
+387|Open taken
+388|{0} openen
+389|Openen controleert alleen en toont een voorbeeld: er verandert nog niets.
+390|Optioneel. Vraag Carino in de chat een bedrijf te bellen, bijvoorbeeld om openingstijden na te vragen of een tafel te reserveren. Elk gesprek wacht op je goedkeuring, begint met de mededeling dat een AI namens jou belt en wordt opgenomen zodat de antwoorden kunnen worden uitgeschreven. Gesprekken lopen via je eigen Twilio-account en worden door Twilio in rekening gebracht.
+391|Optioneel. Carino luistert alleen terwijl de microfoon aan staat en neemt nooit op de achtergrond op. Spraak gebruikt de spraakdienst en stemmen van je telefoon.
+392|Organisatie
+393|Overig
+394|Uitvoer
+395|Pc-adres
+396|Pagina’s en apps
+397|Betaald
+398|Betaalde dienst: Carino gebruikt hem pas als je betaald gebruik toestaat, en je kunt een uitgavenlimiet instellen.
+399|Telefoon koppelen
+400|Koppelen met mijn pc
+401|Gekoppelde apparaten
+402|Koppellink (uit de QR-code)
+403|Onderdeel van
+404|Wachtzin (10+ tekens)
+405|Wachtzin voor {0}
+406|Plak een persoonlijk GitHub-toegangstoken
+407|Plak een paar berichten of e-mails die je hebt verstuurd (zonder privégegevens).
+408|Plak het adres van een MCP-server. Veel apps en koppelingsdiensten geven je er een.
+409|Plak je sleutel
+410|Betaling
+411|Per maand ({0})
+412|Rechten
+413|Persoonlijk
+414|Privéleven
+415|Telefoongesprekken
+416|Phone number ID
+417|Kies een naam of typ je eigen naam. Je kunt die altijd wijzigen in Instellingen.
+418|Kies een persoonlijkheid. Je kunt die wijzigen, of me leren te klinken als jij, in Instellingen.
+419|Het model per bericht automatisch kiezen
+420|Plannen
+421|Populaire gratis koppelingen
+422|Voorkeur geven
+423|Voorkeuren
+424|Vorige maand
+425|Prijs
+426|Privacy
+427|Privacy in chats
+428|Privacy, gegevens en back-up
+429|Profiel
+430|Profiel en assistent
+431|Projecten en meer
+432|Stille uren
+433|Alles eruit gooien
+434|Mijn overzicht voorlezen als ik Carino elke dag voor het eerst open
+435|Antwoorden automatisch voorlezen
+436|Alleen lezen — zoekt dingen op, wijzigt niets
+437|Bon
+438|Recente gesprekken
+439|Recente chats
+440|Leg geleend of uitgeleend geld vast, en betalingen zodra ze binnenkomen.
+441|Beweging beperken
+442|Referentie
+443|E-mail of telefoon van de referentie
+444|Relay-adres
+445|Relay: {0}
+446|Herinneringen gaan af op deze telefoon, ook als Carino gesloten is.
+447|Herinneringen, overzichten en mislukte acties verschijnen hier.
+448|Verwijderen
+449|Stap {0} verwijderen
+450|De ontwikkelaarsapp verwijderen?
+451|Token verwijderen
+452|{0} verwijderen
+453|{0} verwijderen?
+454|{0} verwijderd
+455|Hernoemen
+456|Alles vervangen
+457|Vervang {0} door je eigen gegevens.
+458|Antwoorden op je berichten zijn gratis. Meta rekent alleen voor berichten die een bedrijf na 24 uur stilte begint, en die stuurt Carino niet. De relay bewaart alleen de leveringen van Meta tot je telefoon ze ophaalt (maximaal 7 dagen); je app-geheim en antwoorden gaan er nooit doorheen.
+459|Antwoordtaal
+460|Een probleem melden of iets voorstellen
+461|Vereiste
+462|Antwoordstijl
+463|Herstellen
+464|Een back-up herstellen
+465|Herstellen vanuit een bestand…
+466|Dit herstellen
+467|Hersteld als nieuwste versie
+468|Hersteld. {0}
+469|Omkeerbare wijzigingen — maakt of bewerkt je gegevens
+470|Routines
+471|Routines draaien vanzelf en sturen je een melding. Vink de routines aan die je wilt — je kunt ze wijzigen of meer toevoegen op de pagina Routines.
+472|Opslaan
+473|Wijzigingen opslaan
+474|Limieten opslaan
+475|Afbeelding opslaan
+476|Prijs opslaan
+477|Opslaan in Downloads
+478|Opslaan wat ik zeg; vragen bij gevoelig of afgeleid
+479|Opgeslagen
+480|Opgeslagen in {0}
+481|Opgeslagen. Keur het goed om te versturen.
+482|Opgeslagen. Meld je nu aan.
+483|Beurs
+484|Chats doorzoeken
+485|Zoeken in je bestanden… bijv. “verzekering”
+486|Herinneringen doorzoeken
+487|Zoeken gebeurt op dit apparaat. “Samenvatten” stuurt de tekst van het bestand naar je AI-dienst — behalve uit mappen die op je apparaten blijven; die leest alleen lokale AI.
+488|Versturen
+489|Test versturen
+490|Feedback sturen
+491|Test versturen
+492|Gevoelige gegevens en vermoedens hebben altijd je goedkeuring nodig.
+493|Wordt als Bearer-token naar de app gestuurd. Versleuteld bewaard en nooit meer getoond.
+494|Dienst
+495|Stel een limiet in voor een maand — voor alles of alleen uit eten — en Carino waarschuwt je bij 80% en als je erover gaat.
+496|Instellen
+497|Kies iets om voor te sparen en vul het gaandeweg aan.
+498|Instellingen
+499|Instelcode (indien ingesteld)
+500|Delen
+501|Deel een link om Carino te downloaden
+502|Winkel of persoon
+503|Kort en direct
+504|Alle {0} modellen tonen
+505|Afgeronde tonen
+506|Laat zien hoe je schrijft
+507|Aanmelden
+508|Opnieuw aanmelden
+509|Aanmelden met Linear
+510|Aanmelden met Notion
+511|Aanmelden met de app
+512|Aangemelde accounts
+513|Aangemelde accounts blijven werken tot hun aanmelding verloopt.
+514|Overslaan
+515|Iets anders…
+516|Klink als ik
+517|Spraaktaal
+518|Snelheid
+519|Uitgaven
+520|Live gesprek starten
+521|Status
+522|Stap {0}
+523|Stap {0} van {1}
+524|Stappen (optioneel)
+525|Stoppen
+526|De rekening “{0}” stoppen?
+527|{0} stoppen
+528|Samenvatten
+529|Nu synchroniseren
+530|Systeem
+531|Praten
+532|Handsfree praten (spraakmodus)
+533|Tik op een idee om te beginnen. Niets wordt verstuurd, gekocht of verwijderd zonder je OK.
+535|Zeg tegen Carino “onthoud dat…” in een chat, of voeg er hier een toe.
+536|Testen
+537|Testmelding verstuurd
+538|Stem testen
+539|{0} testen?
+540|Tekstgrootte
+541|De AI-diensten, lokale AI en accounts die Carino mag gebruiken. Carino gebruikt alleen wat je hier instelt, houdt aanmeldingen zelf actueel en stuurt nooit privé-inhoud naar een online AI.
+542|De camera is niet beschikbaar. Typ de code in plaats daarvan.
+543|De code is 10 minuten geldig.
+544|Hetzelfde bedrag is een paar minuten geleden vastgelegd — verwijder er een als het dubbel is.
+545|Dezelfde inhoud op meer dan één plek. Zie Opruimen om extra kopieën te verwijderen.
+546|Het token wordt versleuteld op dit apparaat bewaard en alleen naar {0} gestuurd. Wijzigingen en berichten wachten op je OK, tenzij je ze toestaat in Instellingen → Rechten.
+547|Thema
+548|Deze zijn op beide bewerkt voordat ze konden synchroniseren. Er is niets overschreven: kies welke je houdt.
+549|Ze komen niet overeen
+550|Ze komen overeen
+551|Ze synchroniseren niet meer. Niets wat al op een van beide apparaten staat wordt verwijderd.
+552|Dit account wordt precies de back-up. Alles wat sindsdien is toegevoegd wordt verwijderd.
+553|Deze app biedt geen tools.
+554|Dit apparaat
+555|Dit apparaat: {0}
+556|Dit idee gebruikt een gekoppelde app (bijv. je e-mail of agenda).
+557|Dit model kost geld. Een test gebruikt ongeveer {0} van je {1}-tegoed.
+558|Deze maand
+559|Dit deel van Carino is hier nog niet beschikbaar.
+560|Dit verwijdert alle meldingen definitief. Herinneringen en routines blijven werken.
+561|Dit verwijdert ze definitief. Dit kan niet ongedaan worden gemaakt.
+562|Deze versie
+563|Tijd
+564|Tijdzone
+565|Tijden zijn in je tijdzone. Een routine die meer dan drie uur is gemist, wordt overgeslagen tot de volgende dag.
+566|Titel
+567|Aan
+568|Om een kopie in Google Drive of OneDrive te bewaren, koppel het in Mijn apps (optioneel). De kopie blijft versleuteld.
+569|Om spraakberichten te begrijpen, voeg een gratis Groq-sleutel toe in Instellingen → AI-dienst. Tekst en foto’s werken ook zonder.
+570|Taken
+571|Taken en herinneringen
+572|Token
+573|Tokens
+574|Sollicitatie volgen
+575|Spraakberichten uitschrijven
+576|Opnieuw proberen
+577|Stille uren uitzetten
+578|Zet uit om herinneringen alleen in de app te houden.
+579|Aanzetten
+580|Zet Telegram-spraakberichten om in tekst (gratis).
+581|Zet animaties uit.
+582|Twilio-account
+583|Oeganda (en-UG)
+584|Ongedaan maken
+585|Ongedaan gemaakt
+586|Ontkoppelen
+587|{0} ontkoppelen?
+588|Opgewekt
+589|Automatisch bijwerken
+590|Updates
+591|Carino wordt bijgewerkt naar {0}… het opent zo weer.
+592|Gebruik wifi voor de download. Daarna werkt het zonder internet.{0}
+593|Gebruik een code van 3 letters zoals UGX, KES of USD
+594|Langetermijngeheugen gebruiken
+595|Deze gebruiken
+596|Gebruikt voor datums, herinneringen, overzichten en plannen in gewone taal.
+597|Gebruik
+598|Versie {0} (nieuwste)
+599|Versie {0} · {1}
+600|Versies
+601|Spraak
+602|Wacht op OK
+603|Even wachten… (15 minuten geldig)
+604|Hartelijk
+605|Wat
+606|Waar Carino bij kan
+607|Wat kan {0} van je overnemen?
+608|Wat gebeurde er, of wat zou Carino beter maken? Laat privégegevens weg.
+609|Wat het mag gebruiken
+610|Wat moet Carino elke keer doen?
+611|Wat moet Carino onthouden?
+612|Hoe zal ik je noemen?
+613|Hoe ga je mij noemen?
+614|Waarmee wil je hulp, {0}?
+616|WhatsApp is niet geïnstalleerd op deze telefoon.
+617|WhatsApp gekoppeld
+618|Als Carino iets wil onthouden
+619|Als het uit staat, leest noch bewaart Carino herinneringen.
+620|Waar het naartoe ging
+621|Waar je een adres krijgt
+622|Wie je chats beantwoordt
+623|Werk
+624|Werk en leven
+625|Werk of bedrijf
+626|Jij
+627|Je meldt je aan op de eigen pagina van {0} en kiest wat Carino mag doen. Je aanmelding blijft op deze telefoon.
+628|Je Twilio-nummer
+629|Je app-geheim staat dan ook op je eigen Cloudflare-account. Uit: de relay weigert alles wat niet lijkt op een WhatsApp-levering voor jouw nummer en beperkt hoe vaak één adres kan posten.
+630|Je valuta
+631|Je gegevens zitten niet in de eigen back-up van Android (die zou de sleutel van je aanmeldingen bevatten). Maak hier je eigen versleutelde back-ups.
+632|Je naam
+633|Je telefoon en je pc, gelijk gehouden via je wifi. Niets gaat via internet.
+634|Je routines
+635|Je opgeslagen sleutels konden op dit apparaat niet worden ontgrendeld (de beveiligde sleutelopslag is gereset). Voer ze opnieuw in.
+636|Je aanmeldingen staan versleuteld op deze telefoon. Carino vraagt het voordat het e-mail verstuurt of iets post. Je kunt in Instellingen → Rechten wijzigen wat het zelf mag doen.
+637|Jouw spullen
+639|datum
+640|bijv. 300k
+641|bijv. Africa/Kampala, Europe/Amsterdam
+642|bijv. Ik moet vóór vrijdag paracetamol bestellen, herinner me eraan mama morgen om 5 uur te bellen, het winkelbord is kapot, en ik had een idee voor een klantenkaart…
+643|bijv. Ik wil graag om 7:00 een ochtendoverzicht
+644|bijv. Ik run een buurtapotheek in Kampala. Gebruik UGX voor geld.
+645|bijv. Kijk wat ik deze week heb afgerond en bewaar een korte notitie met successen.
+646|bijv. Werkmail
+647|feit
+648|{0} opvolgen
+649|uit “{0}”
+650|doel
+651|komt mogelijk niet in aanmerking
+652|voorkeur
+653|profiel
+654|project
+655|routine
+656|samenvatting
+657|{0} KB · versleuteld
+658|{0} kan nu door Carino worden geopend
+659|{0} gekoppeld — {1} tool(s) beschikbaar
+660|{0} kopieën · elk {1}
+661|{0} van {1} klaar
+662|{0} van {1} klaar{2}
+663|{0} van {1} · houd Carino open
+664|{0} item(s) vragen je aandacht
+665|{0} tool(s) · {2}{3}
+666|{0} wacht(en) op je goedkeuring
+667|{0} · gekoppeld {1}
+668|{0} · met {1}
+669|{0} · {1} · {2} model(len){4}
+670|“{0}” en de berichten erin worden verwijderd.
+671|“{0}” is uitgevoerd — zie het resultaat hierboven
+672|…of
+673|…of een SearXNG-adres
+674|🔒 Privéchat: alleen beantwoord door AI op je apparaten
+675|🔒 {0} Alleen de laatste 4 tekens worden ooit getoond.
+676|🔔 Volgende herinnering: {0} · {1}
+677|Op je apparaten — inhoud blijft bij jou
+678|Online
+679|Gratis
+680|Kan geld kosten
+681|aangemeld
+682|token opgeslagen
+683|geen token
+684|nog nodig: {0}
+686|Er staat een nieuwe versie van Carino klaar.
+687|Een notitie voor later (optioneel)
+688|Een apart boek voor een bedrijf of project: uitgaven, inkomsten, rekeningen, schulden en spaargeld blijven gescheiden van je persoonlijke geld.
+689|AI op je apparaten
+690|AI-diensten
+692|API-sleutel
+694|Accessoire
+695|Account verwijderd
+696|Accounts en gekoppelde tools
+698|Actie wacht op goedkeuring
+699|Actiegeschiedenis
+700|Actief
+701|Actieve AI-aanbieder
+702|Afhankelijkheid toevoegen
+703|Herinnering toevoegen
+704|Subtaak toevoegen
+705|Taak toevoegen
+706|Taak toevoegen… bijv. “Herinner me morgenochtend aan het budget”
+707|App toevoegen
+708|Budget toevoegen
+709|Mijn huidige locatie toevoegen (voor plekken in de buurt)
+710|Mijn locatie toevoegen
+711|Uitgave toevoegen
+713|Toegevoegd
+714|Toegevoegd aan je taken
+715|Toegevoegd · nogmaals toevoegen
+717|Geavanceerd: mijn eigen ontwikkelaarsapp gebruiken
+718|Alle chats
+719|Alle herinneringen
+720|Hele dag
+721|Locatie toestaan
+722|Omkeerbare wijzigingen toestaan
+723|Alt 1–7
+724|Bedrag (
+725|Bedrag om te storten of op te nemen
+726|Bedragen zijn in
+727|Elke prioriteit
+728|Alles wat goedkeuring nodig heeft, verschijnt
+731|Sollicitatie
+733|Goedkeuringen en activiteit
+734|Apps
+735|Apps die het ondersteunen kun je koppelen met
+736|Apps met een eigen MCP-server
+737|Gearchiveerd
+738|Vragen
+739|Vraag alles, plan je dag, zet herinneringen of stuur me een foto of bestand om naar te kijken.
+740|Toestemming vragen
+741|Vraagt je eerst voordat het:
+742|Om
+743|Minstens 10 tekens. Een zin van een paar woorden werkt goed.
+744|Bijvoegen
+748|Automatisch
+749|Back-up van
+750|Wachtzin van de back-up
+751|Slecht antwoord
+752|Vóór het herstellen wordt wat er nu staat bewaard als versleutelde back-up “Vóór herstel” met dezelfde wachtzin, zodat je het ongedaan kunt maken. Niet in back-ups:
+753|Bèta
+754|Rekeningen
+755|Blokkeert:
+756|BotFather antwoordt met een token zoals
+757|Brave Search-sleutel voor zoeken op het web (gratis, optioneel)
+758|Deel het op in stappen die Carino op volgorde volgt, bijv. “Rekeningen voor deze week nakijken” en dan “Voor elke rekening een taak toevoegen”.
+759|Budgetten
+762|Per categorie
+765|Binnengekomen deze maand
+766|Kan:
+767|Carino-start
+768|Carino denkt na
+769|Carino heeft een AI-dienst nodig om te chatten.
+770|Carino herinnert je eraan op te volgen bij
+771|Carino voert leesacties en omkeerbare acties uit binnen de rechten die je instelt. Verwijderingen en andere ingrijpende acties wachten hier altijd op jou.
+772|Carino toont een code van 6 cijfers — stuur die naar je nieuwe bot. Klaar. Een openbaar webadres is niet nodig.
+773|Carino stelde deze voor maar heeft je OK nodig — ze kunnen gevoelig zijn, afgeleid in plaats van gezegd, of je instellingen vragen om goedkeuring.
+775|Carino onthoudt dit
+776|Categorieën
+777|Uitdagingen
+778|Wachtwoord wijzigen
+779|Te controleren wijzigingen
+780|Chat met Carino op WhatsApp zoals met een vriend: tekst, spraakberichten en foto’s. Carino heeft een eigen nummer
+782|Details controleren
+783|Controleer je verbinding en probeer het opnieuw. Je gegevens zijn veilig.
+784|Kies een taak waarvan deze afhangt…
+785|Kies wat je ermee wilt doen. Er is nog niets naar de server van Carino gestuurd.
+790|Cloud
+791|Cloudflare-account
+792|Voltooid op dit apparaat — wordt gesynchroniseerd zodra je weer online bent
+793|Bevestig op beide apparaten. Als de nummers verschillen, zit er iets tussen: koppel dan niet.
+794|Verbindingen
+795|Koppelingsdiensten
+796|Koppelingen
+799|Gespreksopties
+800|Samenvatting van het gesprek
+801|Gesprekken
+803|Naar de cloud kopiëren
+804|Het gedeelde kon niet worden geopend.
+805|Maken
+808|Ctrl K
+809|Huidig wachtwoord
+810|Dagelijks
+811|Datum en tijd (
+812|Dagen
+813|Schulden
+814|Account verwijderen
+815|Account definitief verwijderen
+816|Alles verwijderen
+817|Herinnering verwijderen
+818|Mijn account verwijderen…
+819|Deze back-up verwijderen
+820|Hangt af van
+822|Beschrijving
+823|Desktop
+824|Desktopapp
+825|Ontwikkeling
+826|Mijn wijziging weggooien
+827|Sluiten
+828|Weergavenaam
+829|Komen de nummers overeen?
+830|Herhaalt niet
+831|Klaar
+832|Klaar met praten
+833|Downloaden
+834|Export downloaden
+835|Antwoord opstellen
+836|Verkleden
+837|Vervalt (
+838|Dubbele
+839|Elk levert op
+841|Herinnering bewerken
+842|Taak bewerken
+843|E-mail
+844|E-mail of telefoon
+845|Spraak inschakelen
+846|Einde
+847|Spraakgesprek beëindigen
+848|Enter
+849|Esc
+850|Schatting (minuten)
+851|Uitgaven
+852|Exporteren
+856|Snelste · gekozen
+857|Filteren op prioriteit
+858|Geschiedenis filteren
+859|Opvolgen bij
+860|Opvolgen:
+861|Opvolgingen
+863|Van deze week. Houd wat klopt, vergeet wat niet klopt.
+864|Van je andere apparaat
+865|Haal een gratis sleutel:
+866|Haal er een op
+867|Aan de slag
+870|Terug
+871|Goed antwoord
+878|Groq en Google Gemini zijn gratis: haal een sleutel en plak die in
+879|Groq-sleutel voor spraakberichten (gratis, optioneel)
+881|Hoog
+882|De geschiedenis bewaart wat elke actie deed, niet de volledige inhoud van jullie gesprek.
+883|Hoe Carino een model kiest
+884|Hoe kan ik helpen?
+885|Zo herstel je
+886|Ik las “
+887|Ideeëncategorieën
+888|Ideeën voor jou
+889|Als een model stopt, druk is of over zijn gratis limiet gaat, schakelt Carino zelf over naar het volgende in deze lijst.
+890|In
+891|In Chrome en Edge wordt spraak-naar-tekst verwerkt door de online spraakdienst van de browsermaker (Google of Microsoft). Voorlezen gebruikt de stemmen op je apparaat.
+893|In groepen antwoordt Carino alleen als het genoemd of beantwoord wordt, kan het taken en herinneringen toevoegen, dingen opzoeken en plekken vinden — maar ziet het je herinneringen, taken, notities en documenten niet.
+894|In spraakmodus kun je zeggen
+895|Inkomsten deze maand
+896|Invoer, USD per miljoen tokens
+897|Installeer Carino voor Windows op je pc, open daar Instellingen → Apparaten en kies “Telefoon koppelen”.
+898|Het verschijnt bovenaan Start op
+899|Het kan altijd je taken, notities en opgeslagen kennis bekijken. Versturen, verwijderen, posten en andere grote acties wachten altijd op je OK in Goedkeuringen.
+900|Item
+901|Banen en beurzen waar je voor gaat: deadlines, of je in aanmerking komt, de documenten en referenties die elk nodig heeft, en wanneer je opvolgt. Of zeg tegen Carino: “volg deze baan…” en plak de vacature.
+902|Houden
+903|Mijn wijziging houden
+904|Alleen op mijn apparaten — nooit getoond aan een online AI
+905|Gescheiden van je persoonlijke geld: niet in je dagoverzicht of budgetten.
+906|Sneltoetsen:
+908|Soort
+909|Soort item
+910|Afgelopen 7 dagen
+911|Laatst uitgevoerd
+913|Laat de relay ook de handtekening van Meta controleren, zodat nepberichten hem niet kunnen vullen.
+915|Lijst
+916|Ik luister — neem je tijd, pauzes zijn prima. Spraak wordt uitgeschreven door de spraakdienst van je browser.
+917|Live spraak stuurt je geluid tijdens het gesprek naar de gekozen dienst. Wijzigingen die het maakt wachten nog steeds op je goedkeuring.
+918|Laden
+919|Laden…
+920|Alleen lokale modellen
+922|Het langetermijngeheugen staat los van de chatgeschiedenis. Alleen goedgekeurde herinneringen worden gebruikt, en je kunt ze allemaal bekijken, bewerken, exporteren of verwijderen.
+923|Ziet er netjes uit. Hier verschijnen ideeën als er dubbele of losse bestanden zijn.
+924|Laag
+925|Hoofd
+926|Hoofdnavigatie
+927|Hoofdonderdelen
+931|Mijn taal gebruiken
+932|Ik
+933|Het geheugen staat uit — Carino gebruikt en bewaart geen herinneringen.
+934|Opslagmodus voor herinneringen
+935|Bericht aan Carino
+939|Modellen
+940|Geldboek
+941|Maand
+942|Maandelijks
+943|Meer opties
+944|Microfoon dempen
+945|Noem hem “Carino”. Wie hem mag gebruiken:
+948|Nieuw wachtwoord
+949|Nieuw wachtwoord (10+ tekens)
+951|Nieuwe subtaak
+952|Nieuw
+953|Volgende herinnering:
+954|Volgende stap
+955|Geen Carino-QR-code gezien. Plak de code in plaats daarvan.
+956|Al 2+ dagen geen antwoord ·
+957|Geen antwoord nodig
+958|Nog geen eigen routines
+959|Geen opgeslagen items komen overeen met “
+960|Geen tools
+961|Niet genoeg vrije ruimte
+962|Niet gebruikt:
+963|Notities
+964|Niets te controleren
+965|Niets te timen.
+966|Meldingen ingeschakeld op dit apparaat
+968|Offline wijzigingen om te bekijken
+969|Offline kopie van
+970|Offline kopie op dit apparaat
+971|Op het apparaat
+972|Op deze telefoon
+973|Eenmalige instelling
+974|Alleen chats die je met een eenmalige code koppelt, krijgen antwoord. In je privéchat krijgt alleen je eigen account antwoord.
+975|Alleen de laatste 4 tekens worden ooit getoond.
+976|Alleen als ik uitdrukkelijk “onthoud” zeg
+977|Openstaande schulden
+978|Menu openen
+979|Open taken
+981|WhatsApp openen…
+982|Of typ de code
+983|Aan jou verschuldigd
+984|Pagina’s
+985|Koppel je telefoon en pc om taken, chats, geld, sollicitaties en bestanden gelijk te houden en verder te gaan waar je gebleven was. Ze praten rechtstreeks via je wifi, versleuteld met een sleutel die alleen de twee apparaten hebben. Goedkeuringen en routines blijven op het apparaat waar ze zijn ingesteld.
+986|QR-code om te koppelen
+987|Wachtzin voor
+988|Wachtwoord
+989|Wachtwoord gewijzigd. Andere apparaten zijn afgemeld.
+990|Plak een token als de app je er een gaf
+991|Per maand (
+992|Privé en werk
+993|Privé of werk
+994|Telefoonmeldingen
+995|Foto’s
+996|Kies hieronder een idee of maak er een vanaf nul. Je kunt Carino ook gewoon in de chat vragen: “elke vrijdag om 16:30 mijn successen noteren”.
+997|Model automatisch kiezen
+998|Prioriteit
+1002|Push is niet ingesteld op de server. Voer uit
+1003|Pushmeldingen
+1004|Snelle start
+1005|Einde stille uren
+1006|Begin stille uren
+1007|Beperkt
+1008|Lezen + wijzigingen in de wachtrij
+1009|Lezen en schrijven
+1010|Mijn overzicht elke dag voorlezen
+1011|Antwoorden voorlezen
+1012|Leest:
+1013|Foto van bon
+1014|Aanbevolen:
+1015|Opnemen… spraak wordt uitgeschreven door de spraakdienst van je browser.
+1017|Doorverwijsadres
+1018|Contact van referentie
+1019|Registreren
+1020|Instelcode van de relay
+1021|Relay:
+1022|Onthoud dit
+1023|Onthouden
+1024|Herinnering gepland
+1025|Herinneringen
+1026|Gesprek hernoemen
+1027|Herhaal elke N
+1028|Herhalingen
+1029|Vervangen
+1030|Antwoorden aan
+1032|Bewaartermijn
+1033|Bewaardagen
+1034|Opnieuw
+1035|Bekijken
+1036|Tijd van de routine
+1037|pagina Routines
+1039|Salaris of prijs
+1041|Instructies opslaan
+1042|Taak opslaan
+1043|Opgeslagen op dit apparaat — wordt gesynchroniseerd zodra de verbinding terug is.
+1044|Opgeslagen op dit apparaat — wordt gesynchroniseerd zodra je weer online bent
+1045|Spaardoelen
+1046|Zeg hallo.
+1047|Zeg “pauze”, “herhaal”, “lees mijn overzicht” of “stop”. Gebruikt de spraakdienst en stemmen van je browser (kies een stem in Instellingen → Spraak). Alles wordt in deze chat bewaard.
+1048|Geplande overzichten op basis van je echte gegevens, plus je eigen routines. Beheer ze allemaal en blader door ideeën op de
+1049|Gepland:
+1050|Zoeken
+1051|Carino doorzoeken
+1052|Gesprekken doorzoeken
+1053|Bestanden doorzoeken
+1054|Zoeken in je bestanden… bijv. “verzekering” of “paracetamol”
+1055|Taken doorzoeken
+1056|Zoek taken, herinneringen, chats… of typ een opdracht
+1057|Zoeken gebeurt op dit apparaat. “Samenvatten” stuurt de tekst van het bestand naar je AI-dienst om de samenvatting te schrijven — behalve uit mappen die op je apparaten blijven; die leest alleen lokale AI.
+1058|Stuur me op dit tijdstip een herinnering
+1059|Pushmeldingen sturen
+1060|Verstuurd naar
+1061|Wordt als Bearer-token naar de app gestuurd. Het wordt versleuteld op je Carino-server bewaard en nooit meer getoond.
+1062|Op server
+1063|Stel een vervaldatum in zodat de volgende keer kan worden gepland.
+1064|Instellingenonderdeel
+1065|Instellingenonderdelen
+1066|Instellingen → AI-dienst
+1069|Delen met Carino
+1070|Gedeeld met Carino
+1071|Shift Enter
+1072|Alles tonen
+1073|Afgeronde tonen
+1074|Meer tonen
+1075|Toont alleen je Carino-taken. Schakel de agendafeed in bij Instellingen om ze in Google of Outlook Agenda te zien.
+1077|Afmelden
+1078|Alle andere apparaten afmelden
+1079|Aanmelden niet voltooid:
+1080|Registreren is gesloten op deze server.
+1081|Aangemeld —
+1082|Aangemelde apparaten
+1083|Sluimeren
+1084|Iets anders
+1085|Er wacht iets op je
+1086|Sorteren
+1087|Sorteren: vervaldatum
+1088|Sorteren: nieuwste
+1089|Sorteren: prioriteit
+1090|Bronnen
+1091|Uitgegeven
+1092|Uitgegeven van limiet
+1093|Begin het gesprek
+1094|Blijft op dit apparaat: beantwoord door
+1095|Stoppen met genereren
+1096|Gestopt.
+1097|Geabonneerde apparaten
+1098|Subtaken
+1099|Samenvatten en onthouden
+1100|Samenvatten…
+1101|Samenvatting
+1102|Blader door de ideeën en tik er een aan om te beginnen.
+1103|Synchroniseren
+1104|Labels (gescheiden door komma’s)
+1105|Handsfree praten
+1106|Praat met Carino vanuit je berichtenapps
+1108|Tik om handsfree te praten
+1110|Taak
+1111|Taak verwijderd
+1112|Taken
+1113|Telegram-bottoken
+1114|Telegram gekoppeld — stuur nu de code naar je bot
+1115|Vertel Meta waar het moet bezorgen.
+1116|Test
+1117|De camera is niet beschikbaar. Plak of typ de code.
+1118|De code is 10 minuten geldig. Kies daarna “Controlenummer” naast de telefoon om te vergelijken.
+1119|De kopie blijft versleuteld met je wachtzin: Google of Microsoft kunnen hem niet lezen.
+1120|De andere app heeft geen inhoud gedeeld.
+1122|Dingen die Carino volgens een schema voor je doet — op de server, ook als de app dicht is. Resultaten komen als melding en in de eigen chat van de routine. Alles wat je goedkeuring nodig heeft, wacht op jou.
+1123|Het adres van deze pc is hier niet bekend. In de Windows-app wordt het voor je ingevuld.
+1124|Deze browser kan niet luisteren. Spraakmodus werkt in Chrome en Edge (op Android en Windows). Je kunt nog steeds typen in de chat.
+1125|Deze browser ondersteunt geen webpush. Herinneringen verschijnen in de app.
+1126|Dit apparaat:
+1129|Dit scherm kon niet worden geopend
+1130|Dit is elders gewijzigd sinds je het opende. Bekijk het bij “Te controleren wijzigingen”.
+1131|Deze week
+1132|Opruimen
+1134|Tijd bespaard
+1135|Tijden zijn in je tijdzone (Instellingen → Regio). Een routine die meer dan drie uur is gemist — bijvoorbeeld omdat de server uit stond — wordt overgeslagen tot de volgende dag.
+1136|Om een kopie in Google Drive of OneDrive te bewaren, koppel het in Mijn apps (optioneel).
+1138|Vandaag
+1139|Morgen
+1140|Tools
+1141|Zet het aan in Instellingen
+1142|Uitgeschakeld
+1143|Zet Telegram-spraakberichten om in tekst
+1144|Type
+1145|Typ DELETE om te bevestigen
+1146|Typ hieronder een bericht.
+1147|Typ een modelnaam…
+1149|Niet beschikbaar
+1151|Bijwerken
+1152|Gebruik wifi voor de download. Daarna werkt het zonder internet.
+1153|Apparaat gebruiken
+1155|Gebruikt
+1159|Verificatietoken
+1160|Spraakgesprek
+1161|Spraakinvoer is niet beschikbaar in deze browser (werkt in Chrome en Edge). Je kunt nog steeds typen.
+1162|Wacht op goedkeuring
+1163|Wekelijks
+1164|Wat Carino onthoudt
+1165|Wat kan
+1166|Waarmee wil je hulp,
+1167|Wat je uitgeeft en je maandbudgetten. Vertel het Carino in de chat — “15k uitgegeven aan lunch” — of stuur een foto van een bon.
+1170|Wanneer
+1171|Bij het aanmelden zegt Google dat de app niet geverifieerd is — dat is normaal voor je eigen app. Tik op
+1172|Werk- of schoolaccounts hebben mogelijk toestemming van hun IT-beheerder nodig.
+1173|Schrijf het
+1175|Het gratis abonnement van X staat ongeveer 500 posts per maand toe en heel weinig leesacties.
+1176|Jaarlijks
+1177|Je hebt ook
+1178|Jij bent verschuldigd
+1181|Je gegevens
+1182|Je dag in één oogopslag
+1183|Je eigen antwoord
+1184|Je eigen server
+1185|Je wachtwoord
+1186|Je gedachten
+1187|Je relay
+1189|“pauze”
+1190|“lees mijn overzicht”
+1191|“herhaal”
+1192|“sla over”
+1193|“stop”
+1194|…of een SearXNG-adres (gratis, optioneel)

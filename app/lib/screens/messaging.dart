@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -44,20 +45,20 @@ class _MessagingScreenState extends State<MessagingScreen> {
     final shared = d?['shared_whatsapp'] as Map?;
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Messaging')),
+      appBar: AppBar(title: const Tx('Messaging')),
       body: d == null
           ? (_error != null ? ErrorPanel(error: _error!, retry: _load) : const Center(child: CircularProgressIndicator()))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
-                Text('Message Carino from WhatsApp or Telegram as you would a friend — text, voice notes and photos. Add Carino to a family or team group to keep lists and plans in one place. Each chat gets its own conversation here in Carino.', style: TextStyle(color: cs.onSurfaceVariant)),
+                Tx('Message Carino from WhatsApp or Telegram as you would a friend — text, voice notes and photos. Add Carino to a family or team group to keep lists and plans in one place. Each chat gets its own conversation here in Carino.', style: TextStyle(color: cs.onSurfaceVariant)),
                 const SizedBox(height: 12),
                 if (d['transcription'] != true)
                   Card(
                     color: cs.secondaryContainer,
                     child: ListTile(
                       leading: const Icon(Icons.mic_none),
-                      title: const Text('To understand voice notes, add a free Groq key in Settings → AI service. Text and photos work without it.'),
+                      title: const Tx('To understand voice notes, add a free Groq key in Settings → AI service. Text and photos work without it.'),
                       onTap: () => openPath(context, '/settings#ai'),
                     ),
                   ),
@@ -66,14 +67,14 @@ class _MessagingScreenState extends State<MessagingScreen> {
                 else
                   _WhatsAppCard(ch: wa, reload: _load),
                 if (shared != null && wa == null)
-                  Card(child: ExpansionTile(title: const Text('Advanced: use my own WhatsApp Business number'), childrenPadding: const EdgeInsets.all(8), children: [_WhatsAppCard(ch: null, reload: _load)])),
+                  Card(child: ExpansionTile(title: const Tx('Advanced: use my own WhatsApp Business number'), childrenPadding: const EdgeInsets.all(8), children: [_WhatsAppCard(ch: null, reload: _load)])),
                 _TelegramCard(ch: tg, reload: _load),
                 if (tg != null || wa != null) const _Background(),
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(14),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Privacy in chats', style: Theme.of(context).textTheme.titleSmall),
+                      Tx('Privacy in chats', style: Theme.of(context).textTheme.titleSmall),
                       const SizedBox(height: 6),
                       Text('• Only chats you link with a one-time code are answered. In your private chat, only your own account is answered.\n'
                           '• In groups Carino answers only when mentioned or replied to, can add to-dos and reminders, look things up and find places — but can’t see your memories, tasks, notes or documents.\n'
@@ -121,7 +122,7 @@ class _Chats extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           leading: Icon(c['is_group'] == true ? Icons.group_outlined : Icons.chat_bubble_outline),
           title: Text('${c['title'] ?? (c['is_group'] == true ? 'Group' : 'Private chat')}', maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text('${c['is_group'] == true ? 'group' : 'private'} · linked ${fmtDateTime('${c['created_at']}', time: false)}'),
+          subtitle: Tx('{0} · linked {1}', args: [c['is_group'] == true ? 'group' : 'private', fmtDateTime('${c['created_at']}', time: false)]),
           onTap: c['conversation_id'] != null ? () => openPath(context, '/chat/${c['conversation_id']}') : null,
           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
             if (c['is_group'] == true)
@@ -132,16 +133,16 @@ class _Chats extends StatelessWidget {
                 selectedIcon: Icon(Icons.history, color: Theme.of(context).colorScheme.primary),
                 onPressed: () async {
                   final on = c['catchup'] != true;
-                  if (on && !await confirmDialog(context, title: 'Keep a catch-up of ${c['title'] ?? 'this group'}?', body: 'Carino keeps this group’s messages for up to 7 days so you can ask “what did I miss?”. Only you can ask for it, and turning it off deletes what was kept. Let the group know. (On Telegram, turn off the bot’s Group Privacy in @BotFather so it sees every message.)', confirm: 'Turn on')) return;
+                  if (on && !await confirmDialog(context, title: tr('Keep a catch-up of {0}?', [c['title'] ?? 'this group']), body: tr('Carino keeps this group’s messages for up to 7 days so you can ask “what did I miss?”. Only you can ask for it, and turning it off deletes what was kept. Let the group know. (On Telegram, turn off the bot’s Group Privacy in @BotFather so it sees every message.)'), confirm: tr('Turn on'))) return;
                   if (context.mounted) await _run(context, () async { await api.patch('/channel-chats/${c['id']}', {'catchup': on}); await reload(); });
                 },
               ),
             Switch(value: c['muted'] != true, onChanged: (v) => _run(context, () async { await api.patch('/channel-chats/${c['id']}', {'muted': !v}); await reload(); })),
             IconButton(
-              tooltip: 'Unlink',
+              tooltip: tr('Unlink'),
               icon: const Icon(Icons.close),
               onPressed: () async {
-                if (!await confirmDialog(context, title: 'Unlink ${c['title'] ?? 'this chat'}?', body: 'Carino stops answering there. Its conversation stays in Chat.', confirm: 'Unlink', danger: true)) return;
+                if (!await confirmDialog(context, title: tr('Unlink {0}?', [c['title'] ?? 'this chat']), body: tr('Carino stops answering there. Its conversation stays in Chat.'), confirm: tr('Unlink'), danger: true)) return;
                 if (context.mounted) await _run(context, () => api.delete('/channel-chats/${c['id']}'));
                 await reload();
               },
@@ -176,7 +177,7 @@ class _PairingState extends State<_Pairing> {
           const SizedBox(width: 8),
           Expanded(
             child: _code == null
-                ? const Text('Link a chat or group with a one-time code.')
+                ? const Tx('Link a chat or group with a one-time code.')
                 : Text.rich(TextSpan(children: [
                     TextSpan(text: '${widget.howTo} '),
                     TextSpan(text: _code, style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w800, fontSize: 17, letterSpacing: 2)),
@@ -224,17 +225,17 @@ class _ChannelHeader extends StatelessWidget {
             dense: true,
             value: (ch['config'] as Map?)?['transcribe_voice'] != false,
             onChanged: (v) => _run(context, () async { await api.patch('/channels/${ch['id']}', {'transcribe_voice': v == true}); await reload(); }),
-            title: const Text('Transcribe voice notes'),
+            title: const Tx('Transcribe voice notes'),
           ),
         ),
         TextButton.icon(
           onPressed: () async {
-            if (!await confirmDialog(context, title: 'Disconnect $title?', body: 'All linked chats are unlinked and the saved token is deleted.', confirm: 'Disconnect', danger: true)) return;
+            if (!await confirmDialog(context, title: tr('Disconnect {0}?', [title]), body: tr('All linked chats are unlinked and the saved token is deleted.'), confirm: tr('Disconnect'), danger: true)) return;
             if (context.mounted) await _run(context, () => api.delete('/channels/${ch['id']}'));
             await reload();
           },
           icon: const Icon(Icons.delete_outline, size: 16),
-          label: const Text('Disconnect'),
+          label: const Tx('Disconnect'),
         ),
       ]),
     ]);
@@ -259,20 +260,20 @@ class _TelegramCardState extends State<_TelegramCard> {
     if (ch != null) {
       final bot = '@${(ch['config'] as Map?)?['bot_username']}';
       return _Card([
-        _ChannelHeader(ch: ch, title: 'Telegram', sub: 'Your bot: $bot${ch['last_seen_at'] != null ? ' · last message ${fmtDateTime('${ch['last_seen_at']}')}' : ''}', reload: widget.reload),
+        _ChannelHeader(ch: ch, title: tr('Telegram'), sub: 'Your bot: $bot${ch['last_seen_at'] != null ? ' · last message ${fmtDateTime('${ch['last_seen_at']}')}' : ''}', reload: widget.reload),
         _Pairing(ch: ch, reload: widget.reload, howTo: 'Open $bot in Telegram and send'),
-        Padding(padding: const EdgeInsets.only(top: 6), child: Text('For a group: add $bot to the group, then send /link CODE there.', style: const TextStyle(fontSize: 12))),
+        Padding(padding: const EdgeInsets.only(top: 6), child: Tx('For a group: add {0} to the group, then send /link CODE there.', args: [bot], style: const TextStyle(fontSize: 12))),
         _Chats(ch: ch, reload: widget.reload),
       ]);
     }
     return _Card([
-      Row(children: [Text('Telegram', style: Theme.of(context).textTheme.titleMedium), const SizedBox(width: 8), const Pill('free')]),
+      Row(children: [Tx('Telegram', style: Theme.of(context).textTheme.titleMedium), const SizedBox(width: 8), const Pill('free')]),
       const SizedBox(height: 6),
       const Text('1. In Telegram, open @BotFather and send /newbot. Pick a name (e.g. “Carino”) and a username ending in bot.\n'
           '2. BotFather replies with a token like 123456789:AAE…. Paste it here.\n'
           '3. Carino shows a 6-digit code — send it to your new bot. Done. No public web address is needed.', style: TextStyle(fontSize: 13)),
-      TextButton.icon(onPressed: () => Device(api).openExternal('https://t.me/BotFather'), icon: const Icon(Icons.open_in_new, size: 16), label: const Text('Open @BotFather')),
-      TextField(controller: _token, obscureText: true, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Bot token from @BotFather')),
+      TextButton.icon(onPressed: () => Device(api).openExternal('https://t.me/BotFather'), icon: const Icon(Icons.open_in_new, size: 16), label: const Tx('Open @BotFather')),
+      TextField(controller: _token, obscureText: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Bot token from @BotFather'))),
       const SizedBox(height: 10),
       FilledButton(
         onPressed: _busy || _token.text.trim().length < 20
@@ -302,11 +303,11 @@ class _Copyable extends StatelessWidget {
         title: Text(label),
         subtitle: SelectableText(value, style: const TextStyle(fontFamily: 'monospace')),
         trailing: IconButton(
-          tooltip: 'Copy',
+          tooltip: tr('Copy'),
           icon: const Icon(Icons.copy, size: 18),
           onPressed: () async {
             await Clipboard.setData(ClipboardData(text: value));
-            if (context.mounted) toast(context, 'Copied');
+            if (context.mounted) toast(context, tr('Copied'));
           },
         ),
       );
@@ -359,18 +360,18 @@ class _WhatsAppCardState extends State<_WhatsAppCard> {
     const small = TextStyle(fontSize: 13);
     return _Card([
       if (ch != null)
-        _ChannelHeader(ch: ch, title: 'WhatsApp', sub: 'Carino’s number: ${cfg['display_phone'] ?? cfg['phone_number_id']}${ch['last_seen_at'] != null ? ' · last message ${fmtDateTime('${ch['last_seen_at']}')}' : ''}', reload: widget.reload)
+        _ChannelHeader(ch: ch, title: tr('WhatsApp'), sub: 'Carino’s number: ${cfg['display_phone'] ?? cfg['phone_number_id']}${ch['last_seen_at'] != null ? ' · last message ${fmtDateTime('${ch['last_seen_at']}')}' : ''}', reload: widget.reload)
       else ...[
-        Row(children: [Text('WhatsApp', style: Theme.of(context).textTheme.titleMedium), const SizedBox(width: 8), const Pill('Beta')]),
-        Text('Carino gets its own WhatsApp number that you chat with. It uses Meta’s official WhatsApp Business platform (free for chats you start) and a tiny free relay that holds messages until your phone collects them.', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
+        Row(children: [Tx('WhatsApp', style: Theme.of(context).textTheme.titleMedium), const SizedBox(width: 8), const Pill('Beta')]),
+        Tx('Carino gets its own WhatsApp number that you chat with. It uses Meta’s official WhatsApp Business platform (free for chats you start) and a tiny free relay that holds messages until your phone collects them.', style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant)),
       ],
       step(1, ch != null, 'Your Meta app', [
-        const Text('Create an app at Meta for Developers (or use the one from My apps → Facebook) and add WhatsApp. Under WhatsApp → API Setup, Meta gives you a free test number; add your own WhatsApp number as a recipient. Copy the Phone number ID; make a permanent access token in Business settings → System users (with whatsapp_business_messaging); and copy the App secret from App settings → Basic.', style: small),
+        const Tx('Create an app at Meta for Developers (or use the one from My apps → Facebook) and add WhatsApp. Under WhatsApp → API Setup, Meta gives you a free test number; add your own WhatsApp number as a recipient. Copy the Phone number ID; make a permanent access token in Business settings → System users (with whatsapp_business_messaging); and copy the App secret from App settings → Basic.', style: small),
         Wrap(spacing: 12, children: [link('Meta for Developers', 'https://developers.facebook.com/apps/creation/'), link('System users', 'https://business.facebook.com/settings/system-users')]),
         if (ch == null) ...[
-          TextField(controller: _phoneId, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Phone number ID')),
-          TextField(controller: _access, obscureText: true, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Access token')),
-          TextField(controller: _secret, obscureText: true, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'App secret')),
+          TextField(controller: _phoneId, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Phone number ID'))),
+          TextField(controller: _access, obscureText: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Access token'))),
+          TextField(controller: _secret, obscureText: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('App secret'))),
           const SizedBox(height: 8),
           FilledButton(
             onPressed: _busy || _phoneId.text.isEmpty || _access.text.isEmpty || _secret.text.isEmpty ? null : () => _go(() => api.post('/channels/whatsapp', {'phone_number_id': _phoneId.text.trim(), 'access_token': _access.text.trim(), 'app_secret': _secret.text.trim()}), 'WhatsApp connected — now set up the relay'),
@@ -379,17 +380,17 @@ class _WhatsAppCardState extends State<_WhatsAppCard> {
         ],
       ]),
       step(2, linked, 'Your relay (free)', [
-        const Text('Meta delivers messages to a web address that’s always on; the relay is that address, on your own Cloudflare account. Make a free Cloudflare account, then in API Tokens tap Create Token → Edit Cloudflare Workers → Use template → Continue → Create, and paste the token here. Carino sets the relay up and links it (the token isn’t kept).', style: small),
+        const Tx('Meta delivers messages to a web address that’s always on; the relay is that address, on your own Cloudflare account. Make a free Cloudflare account, then in API Tokens tap Create Token → Edit Cloudflare Workers → Use template → Continue → Create, and paste the token here. Carino sets the relay up and links it (the token isn’t kept).', style: small),
         Wrap(spacing: 12, children: [link('Cloudflare sign-up', 'https://dash.cloudflare.com/sign-up'), link('API Tokens', 'https://dash.cloudflare.com/profile/api-tokens')]),
         if (ch != null) ...[
-          TextField(controller: _cf, obscureText: true, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Cloudflare API token')),
+          TextField(controller: _cf, obscureText: true, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Cloudflare API token'))),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
             value: _verifyAtRelay,
             onChanged: (v) => setState(() => _verifyAtRelay = v == true),
-            title: const Text('Let the relay check Meta’s signature too', style: small),
-            subtitle: const Text('Your app secret is then also kept on your own Cloudflare account. Off: the relay turns away anything not shaped like a WhatsApp delivery for your number, and limits how often one address can post.', style: TextStyle(fontSize: 12)),
+            title: const Tx('Let the relay check Meta’s signature too', style: small),
+            subtitle: const Tx('Your app secret is then also kept on your own Cloudflare account. Off: the relay turns away anything not shaped like a WhatsApp delivery for your number, and limits how often one address can post.', style: TextStyle(fontSize: 12)),
           ),
           FilledButton(
             onPressed: _busy || _cf.text.trim().length < 20 ? null : () => _go(() async { await api.post('/channels/whatsapp/relay/create', {'token': _cf.text.trim(), 'verify_at_relay': _verifyAtRelay}); _cf.clear(); }, 'Relay created and linked'),
@@ -397,10 +398,10 @@ class _WhatsAppCardState extends State<_WhatsAppCard> {
           ),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
-            title: const Text('I already have a relay', style: small),
+            title: const Tx('I already have a relay', style: small),
             children: [
-              TextField(controller: _relay, keyboardType: TextInputType.url, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Relay address', hintText: 'https://…workers.dev')),
-              TextField(controller: _setup, obscureText: true, decoration: const InputDecoration(labelText: 'Setup code (if set)')),
+              TextField(controller: _relay, keyboardType: TextInputType.url, onChanged: (_) => setState(() {}), decoration: InputDecoration(labelText: tr('Relay address'), hintText: 'https://…workers.dev')),
+              TextField(controller: _setup, obscureText: true, decoration: InputDecoration(labelText: tr('Setup code (if set)'))),
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
@@ -409,21 +410,21 @@ class _WhatsAppCardState extends State<_WhatsAppCard> {
                   child: Text(linked ? 'Link again' : 'Link relay'),
                 ),
               ),
-              const Text('Deploying the relay yourself? Set a SETUP_CODE secret on it so nobody else can claim it first, and enter it here.', style: TextStyle(fontSize: 12)),
+              const Tx('Deploying the relay yourself? Set a SETUP_CODE secret on it so nobody else can claim it first, and enter it here.', style: TextStyle(fontSize: 12)),
             ],
           ),
-          if (linked) Text('Relay: ${cfg['relay_url']}', style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
+          if (linked) Tx('Relay: {0}', args: [cfg['relay_url']], style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
         ],
       ]),
       step(3, ch?['last_seen_at'] != null, 'Tell Meta where to deliver', [
-        const Text('In WhatsApp → Configuration → Webhook, tap Edit, paste these two values, Verify and save, then subscribe to messages.', style: small),
+        const Tx('In WhatsApp → Configuration → Webhook, tap Edit, paste these two values, Verify and save, then subscribe to messages.', style: small),
         if (linked && ch?['webhook_url'] != null) ...[_Copyable('Callback URL', '${ch!['webhook_url']}'), _Copyable('Verify token', '${cfg['verify_token']}')],
       ]),
-      step(4, false, 'Say hello', [const Text('Get a code below and send it from your WhatsApp to Carino’s number.', style: small)]),
+      step(4, false, 'Say hello', [const Tx('Get a code below and send it from your WhatsApp to Carino’s number.', style: small)]),
       if (ch != null && linked) _Pairing(ch: ch, reload: widget.reload, howTo: 'Send this from your WhatsApp to ${cfg['display_phone'] ?? 'Carino’s number'}:'),
       if (ch != null) _Chats(ch: ch, reload: widget.reload),
       const SizedBox(height: 8),
-      Text('Replies to your messages are free. Meta only charges for messages a business starts after 24 hours of silence, which Carino doesn’t send. The relay only holds Meta’s deliveries until your phone collects them (at most 7 days); your app secret and replies never pass through it.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+      Tx('Replies to your messages are free. Meta only charges for messages a business starts after 24 hours of silence, which Carino doesn’t send. The relay only holds Meta’s deliveries until your phone collects them (at most 7 days); your app secret and replies never pass through it.', style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
     ]);
   }
 }
@@ -463,7 +464,7 @@ class _SharedWhatsAppState extends State<_SharedWhatsApp> {
           t.cancel();
           if (!mounted) return;
           setState(() => _link = null);
-          toast(context, 'WhatsApp linked');
+          toast(context, tr('WhatsApp linked'));
           await widget.reload();
         }
       });
@@ -481,16 +482,16 @@ class _SharedWhatsAppState extends State<_SharedWhatsApp> {
     final linked = ((ch?['chats'] as List?) ?? const []).isNotEmpty;
     if (ch != null && linked && _link == null) {
       return _Card([
-        _ChannelHeader(ch: ch, title: 'WhatsApp', sub: 'Chat with Carino on ${number ?? 'its WhatsApp number'}${ch['last_seen_at'] != null ? ' · last message ${fmtDateTime('${ch['last_seen_at']}')}' : ''}', reload: widget.reload),
+        _ChannelHeader(ch: ch, title: tr('WhatsApp'), sub: 'Chat with Carino on ${number ?? 'its WhatsApp number'}${ch['last_seen_at'] != null ? ' · last message ${fmtDateTime('${ch['last_seen_at']}')}' : ''}', reload: widget.reload),
         _Chats(ch: ch, reload: widget.reload),
-        TextButton.icon(onPressed: _busy ? null : _start, icon: const Icon(Icons.refresh, size: 16), label: const Text('Link a different WhatsApp')),
+        TextButton.icon(onPressed: _busy ? null : _start, icon: const Icon(Icons.refresh, size: 16), label: const Tx('Link a different WhatsApp')),
       ]);
     }
     final l = _link;
     return _Card([
-      Text('WhatsApp', style: Theme.of(context).textTheme.titleMedium),
+      Tx('WhatsApp', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 4),
-      Text('Chat with Carino on WhatsApp like with a friend: text, voice notes and photos. Carino has its own number${number != null ? ' ($number)' : ''}; link yours with a code.', style: const TextStyle(fontSize: 13)),
+      Tx('Chat with Carino on WhatsApp like with a friend: text, voice notes and photos. Carino has its own number{0}; link yours with a code.', args: [number != null ? ' ($number)' : ''], style: const TextStyle(fontSize: 13)),
       const SizedBox(height: 10),
       if (l == null)
         FilledButton.icon(onPressed: _busy ? null : _start, icon: const Icon(Icons.send, size: 16), label: Text(_busy ? 'Getting a code…' : 'Link my WhatsApp'))
@@ -507,8 +508,8 @@ class _SharedWhatsAppState extends State<_SharedWhatsApp> {
                 TextSpan(text: '${l['number']}', style: const TextStyle(fontWeight: FontWeight.w700)),
                 const TextSpan(text: ' on WhatsApp.'),
               ])),
-              const Text('Waiting for it… (valid for 15 minutes)', style: TextStyle(fontSize: 12)),
-              if (l['link'] != null) Padding(padding: const EdgeInsets.only(top: 8), child: FilledButton(onPressed: () => Device(AppState.read(context).api).openExternal('${l['link']}'), child: const Text('Open WhatsApp'))),
+              const Tx('Waiting for it… (valid for 15 minutes)', style: TextStyle(fontSize: 12)),
+              if (l['link'] != null) Padding(padding: const EdgeInsets.only(top: 8), child: FilledButton(onPressed: () => Device(AppState.read(context).api).openExternal('${l['link']}'), child: const Tx('Open WhatsApp'))),
             ]),
           ),
         ),
@@ -543,8 +544,8 @@ class _BackgroundState extends State<_Background> {
           final r = await AppState.read(context).api.put('/device/listen', {'on': v}) as Map;
           if (mounted) setState(() => _state = r);
         }),
-        title: const Text('Answer in the background'),
-        subtitle: const Text('Carino keeps answering WhatsApp and Telegram while you use other apps, with a quiet “Carino is listening” notification. If you swipe Carino away, messages wait until you open it again.'),
+        title: const Tx('Answer in the background'),
+        subtitle: const Tx('Carino keeps answering WhatsApp and Telegram while you use other apps, with a quiet “Carino is listening” notification. If you swipe Carino away, messages wait until you open it again.'),
       ),
     );
   }

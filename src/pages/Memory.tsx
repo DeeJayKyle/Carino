@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useState } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -71,30 +72,30 @@ export default function Memory() {
   };
 
   return (
-    <Shell title="Memory" actions={<button className="btn primary sm" onClick={() => setEditing({})}><Icon name="plus" size={16} />Add memory</button>}>
+    <Shell title={t('Memory')} actions={<button className="btn primary sm" onClick={() => setEditing({})}><Icon name="plus" size={16} />{t('Add memory')}</button>}>
       <div className="page">
-        <div className="page-head"><div><h1>What Carino remembers</h1><p className="sub">Long-term memory is separate from chat history. Only approved memories are used, and you can view, edit, export or delete any of them.</p></div></div>
-        {memOff && <div className="callout warning" style={{ marginBottom: 14 }}><Icon name="info" size={16} />Memory is turned off — Carino won’t use or save memories. <Link to="/settings#memory">Turn it on in Settings</Link>.</div>}
+        <div className="page-head"><div><h1>{t('What Carino remembers')}</h1><p className="sub">{t('Long-term memory is separate from chat history. Only approved memories are used, and you can view, edit, export or delete any of them.')}</p></div></div>
+        {memOff && <div className="callout warning" style={{ marginBottom: 14 }}><Icon name="info" size={16} />{t('Memory is turned off — Carino won’t use or save memories.')}{' '}<Link to="/settings#memory">{t('Turn it on in Settings')}</Link>.</div>}
         <div className="tabs" role="tablist">
-          <button role="tab" aria-selected={status === 'active'} className={status === 'active' ? 'on' : ''} onClick={() => setStatus('active')}>Saved</button>
+          <button role="tab" aria-selected={status === 'active'} className={status === 'active' ? 'on' : ''} onClick={() => setStatus('active')}>{t('Saved')}</button>
           <button role="tab" aria-selected={status === 'proposed'} className={status === 'proposed' ? 'on' : ''} onClick={() => setStatus('proposed')}>
-            Waiting for approval {proposed.data?.memories.length > 0 && <span className="badge accent">{proposed.data.memories.length}</span>}
+            {t('Waiting for approval')}{' '}{proposed.data?.memories.length > 0 && <span className="badge accent">{proposed.data.memories.length}</span>}
           </button>
         </div>
         <div className="row wrap" style={{ marginBottom: 14 }}>
-          <input className="input" style={{ maxWidth: 260 }} placeholder="Search memories" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search memories" />
-          <select className="select" style={{ maxWidth: 160 }} value={context} onChange={(e) => { setContext(e.target.value); setPicked(new Set()); }} aria-label="Personal or work">
-            <option value="">Personal and work</option><option value="personal">Personal</option><option value="work">Work</option>
+          <input className="input" style={{ maxWidth: 260 }} placeholder={t('Search memories')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('Search memories')} />
+          <select className="select" style={{ maxWidth: 160 }} value={context} onChange={(e) => { setContext(e.target.value); setPicked(new Set()); }} aria-label={t('Personal or work')}>
+            <option value="">{t('Personal and work')}</option><option value="personal">{t('Personal')}</option><option value="work">{t('Work')}</option>
           </select>
-          <select className="select" style={{ maxWidth: 220 }} value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category">
-            <option value="">All categories</option>{Object.entries(CAT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <select className="select" style={{ maxWidth: 220 }} value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('Category')}>
+            <option value="">{t('All categories')}</option>{Object.entries(CAT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <span className="spacer" />
-          {picked.size > 0 && <button className="btn danger sm" onClick={deletePicked}><Icon name="trash" size={14} />Delete {picked.size} selected</button>}
-          <button className="btn sm" onClick={exportMemories} disabled={!data?.memories.length}><Icon name="download" size={14} />Export</button>
+          {picked.size > 0 && <button className="btn danger sm" onClick={deletePicked}><Icon name="trash" size={14} />{t('Delete')}{' '}{picked.size} selected</button>}
+          <button className="btn sm" onClick={exportMemories} disabled={!data?.memories.length}><Icon name="download" size={14} />{t('Export')}</button>
           <button className="btn danger sm" onClick={clearAll} disabled={!data?.memories.length}><Icon name="trash" size={14} />{category ? 'Clear category' : 'Clear all'}</button>
         </div>
-        {status === 'proposed' && <p className="small muted" style={{ marginBottom: 12 }}>Carino suggested these but needs your OK — they may be sensitive, inferred rather than stated, or your settings require approval.</p>}
+        {status === 'proposed' && <p className="small muted" style={{ marginBottom: 12 }}>{t('Carino suggested these but needs your OK — they may be sensitive, inferred rather than stated, or your settings require approval.')}</p>}
         <ErrorBox error={error} retry={reload} />
         {loading && !data ? <Loading /> : data?.memories.length === 0 ? (
           <Empty icon="brain" title={status === 'proposed' ? 'Nothing waiting for approval' : 'No memories yet'}>
@@ -110,17 +111,17 @@ export default function Memory() {
                   <div className="row wrap faint tiny" style={{ marginTop: 4 }}>
                     <span className="badge">{CAT_LABEL[m.category] ?? m.category}</span>
                     {m.context === 'work' && <span className="badge accent"><Icon name="briefcase" size={10} /> work</span>}
-                    {!!m.local_only && <span className="badge success"><Icon name="lock" size={10} /> on your devices only</span>}
+                    {!!m.local_only && <span className="badge success"><Icon name="lock" size={10} /> {t('on your devices only')}</span>}
                     {m.sensitive && <span className="badge warning"><Icon name="lock" size={10} /> sensitive{m.sensitivity ? ` · ${m.sensitivity}` : ''}</span>}
                     <span>{m.source === 'assistant' ? 'Suggested by Carino' : m.source === 'conversation_summary' ? 'From a conversation' : 'Added by you'} · {fmtDateTime(m.created_at, { time: false, year: true })}</span>
-                    {m.last_used_at && <span>· last used {fmtDateTime(m.last_used_at, { time: false })}</span>}
-                    {m.expires_at && <span>· expires {fmtDateTime(m.expires_at, { time: false })}</span>}
-                    {m.source_ref && m.source === 'assistant' && <Link to={`/chat/${m.source_ref}`}>· view conversation</Link>}
+                    {m.last_used_at && <span>{t('· last used')}{' '}{fmtDateTime(m.last_used_at, { time: false })}</span>}
+                    {m.expires_at && <span>{t('· expires')}{' '}{fmtDateTime(m.expires_at, { time: false })}</span>}
+                    {m.source_ref && m.source === 'assistant' && <Link to={`/chat/${m.source_ref}`}>{t('· view conversation')}</Link>}
                   </div>
                 </div>
-                {m.status === 'proposed' && <button className="btn primary sm" onClick={async () => { await post(`/memories/${m.id}/approve`); toast('Memory saved'); reload(); proposed.reload(); }}>Approve</button>}
-                <button className="btn ghost icon sm" aria-label="Edit memory" onClick={() => setEditing(m)}><Icon name="edit" size={15} /></button>
-                <button className="btn ghost icon sm" aria-label="Delete memory" onClick={async () => { await del(`/memories/${m.id}`); toast(m.status === 'proposed' ? 'Discarded' : 'Forgotten'); reload(); proposed.reload(); }}><Icon name="trash" size={15} /></button>
+                {m.status === 'proposed' && <button className="btn primary sm" onClick={async () => { await post(`/memories/${m.id}/approve`); toast(t('Memory saved')); reload(); proposed.reload(); }}>{t('Approve')}</button>}
+                <button className="btn ghost icon sm" aria-label={t('Edit memory')} onClick={() => setEditing(m)}><Icon name="edit" size={15} /></button>
+                <button className="btn ghost icon sm" aria-label={t('Delete memory')} onClick={async () => { await del(`/memories/${m.id}`); toast(m.status === 'proposed' ? 'Discarded' : 'Forgotten'); reload(); proposed.reload(); }}><Icon name="trash" size={15} /></button>
               </li>
             ))}
           </ul></div>
@@ -147,7 +148,7 @@ function MemoryForm({ memory, onClose, onSaved }: { memory: any; onClose: () => 
         const newId = made?.id ?? made?.memory?.id;
         if (localOnly && newId) await patch(`/memories/${newId}`, { local_only: true });
       }
-      toast('Memory saved');
+      toast(t('Memory saved'));
       onSaved();
       onClose();
     } catch (e: any) {
@@ -155,15 +156,15 @@ function MemoryForm({ memory, onClose, onSaved }: { memory: any; onClose: () => 
     }
   };
   return (
-    <Modal title={memory.id ? 'Edit memory' : 'Add a memory'} onClose={onClose} footer={<><button className="btn" onClick={onClose}>Cancel</button><button className="btn primary" disabled={content.trim().length < 2} onClick={save}>Save</button></>}>
+    <Modal title={memory.id ? 'Edit memory' : 'Add a memory'} onClose={onClose} footer={<><button className="btn" onClick={onClose}>{t('Cancel')}</button><button className="btn primary" disabled={content.trim().length < 2} onClick={save}>{t('Save')}</button></>}>
       <div className="stack">
-        <div className="field"><label htmlFor="m-c">What should Carino remember?</label><textarea id="m-c" className="textarea" value={content} onChange={(e) => setContent(e.target.value)} placeholder="e.g. I prefer a morning briefing at 7:00 and short answers." /></div>
+        <div className="field"><label htmlFor="m-c">{t('What should Carino remember?')}</label><textarea id="m-c" className="textarea" value={content} onChange={(e) => setContent(e.target.value)} placeholder={t('e.g. I prefer a morning briefing at 7:00 and short answers.')} /></div>
         <div className="grid two">
-          <div className="field"><label htmlFor="m-cat">Category</label><select id="m-cat" className="select" value={category} onChange={(e) => setCategory(e.target.value)}>{Object.entries(CAT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
-          <div className="field"><label htmlFor="m-ctx">Part of</label><select id="m-ctx" className="select" value={ctx} onChange={(e) => setCtx(e.target.value)}><option value="personal">Personal life</option><option value="work">Work or business</option></select></div>
-          <div className="field"><label htmlFor="m-exp">Forget after (optional)</label><input id="m-exp" type="date" className="input" value={expires} onChange={(e) => setExpires(e.target.value)} /></div>
+          <div className="field"><label htmlFor="m-cat">{t('Category')}</label><select id="m-cat" className="select" value={category} onChange={(e) => setCategory(e.target.value)}>{Object.entries(CAT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+          <div className="field"><label htmlFor="m-ctx">{t('Part of')}</label><select id="m-ctx" className="select" value={ctx} onChange={(e) => setCtx(e.target.value)}><option value="personal">{t('Personal life')}</option><option value="work">{t('Work or business')}</option></select></div>
+          <div className="field"><label htmlFor="m-exp">{t('Forget after (optional)')}</label><input id="m-exp" type="date" className="input" value={expires} onChange={(e) => setExpires(e.target.value)} /></div>
         </div>
-        <label className="row" style={{ gap: 8 }}><input type="checkbox" checked={localOnly} onChange={(e) => setLocalOnly(e.target.checked)} />Keep on my devices only — never shown to an online AI</label>
+        <label className="row" style={{ gap: 8 }}><input type="checkbox" checked={localOnly} onChange={(e) => setLocalOnly(e.target.checked)} />{t('Keep on my devices only — never shown to an online AI')}</label>
       </div>
     </Modal>
   );

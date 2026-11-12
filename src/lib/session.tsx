@@ -1,3 +1,4 @@
+import { setLanguage } from './i18n';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, patch, post, setUnauthorizedHandler } from './api';
 import { cacheClear, cacheGet, cacheSet } from './offline';
@@ -51,6 +52,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (m) {
       applyAppearance(m.settings);
       setFormatPrefs(m.settings.regional);
+      void setLanguage(m.settings.regional?.language ?? '');
       void cacheSet('me', m);
     }
   }, []);
@@ -110,6 +112,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const next = { ...m, settings: s };
       applyAppearance(s);
       setFormatPrefs(s.regional);
+      void setLanguage(s.regional?.language ?? '');
       void cacheSet('me', next);
       return next;
     });

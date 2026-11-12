@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useState } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -38,22 +39,22 @@ export default function Files() {
   };
   const folders: any[] = data?.folders ?? [];
   return (
-    <Shell title="Files">
+    <Shell title={t('Files')}>
       <div className="page">
         <div className="page-head"><div>
-          <h1>Files</h1>
-          <p className="sub">Folders on this device you choose to let Carino read: it can search inside your documents, spreadsheets and PDFs, find duplicates and suggest tidying up. Your files stay where they are; Carino only reads them.</p>
+          <h1>{t('Files')}</h1>
+          <p className="sub">{t('Folders on this device you choose to let Carino read: it can search inside your documents, spreadsheets and PDFs, find duplicates and suggest tidying up. Your files stay where they are; Carino only reads them.')}</p>
         </div></div>
         <ErrorBox error={error} retry={reload} />
         {loading && !data ? <Loading /> : data && !data.available ? (
-          <Empty icon="folder" title="Not on this device">Folders can be shared from Carino for Windows and the Android app.</Empty>
+          <Empty icon="folder" title={t('Not on this device')}>{t('Folders can be shared from Carino for Windows and the Android app.')}</Empty>
         ) : data && (
           <>
-            <section className="card pad" aria-label="Folders">
-              <div className="row"><h2 className="grow">Folders Carino may read</h2>
+            <section className="card pad" aria-label={t('Folders')}>
+              <div className="row"><h2 className="grow">{t('Folders Carino may read')}</h2>
                 {canPickFolders() && <button className="btn primary sm" disabled={!!busy} onClick={add}><Icon name="plus" size={14} />{busy === 'add' ? 'Reading…' : 'Add a folder'}</button>}
               </div>
-              {!folders.length ? <p className="small muted">None yet. Choose a folder in your phone’s or PC’s own folder picker; Carino can read only that folder and what’s inside it, and you can remove it any time.</p> : (
+              {!folders.length ? <p className="small muted">{t('None yet. Choose a folder in your phone’s or PC’s own folder picker; Carino can read only that folder and what’s inside it, and you can remove it any time.')}</p> : (
                 <ul className="list divided">
                   {folders.map((f) => (
                     <li key={f.id} className="list-item" style={{ flexWrap: 'wrap' }}>
@@ -79,7 +80,7 @@ export default function Files() {
             </section>
             {folders.length > 0 && (
               <>
-                <div className="tabs" role="tablist" aria-label="Files">
+                <div className="tabs" role="tablist" aria-label={t('Files')}>
                   {([['search', 'Search'], ['duplicates', 'Duplicates'], ['tidy', 'Tidy up'], ['history', 'History']] as const).map(([id, l]) => <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{l}</button>)}
                 </div>
                 {tab === 'search' && <Search />}
@@ -100,9 +101,9 @@ function Search() {
   const dq = useDebounced(q, 300);
   const { data } = useData<any>(dq.trim().length >= 2 ? `/files/search?q=${encodeURIComponent(dq.trim())}` : null);
   return (
-    <section className="card pad" aria-label="Search files">
-      <input className="input" placeholder="Search inside your files… e.g. “insurance” or “Paracetamol”" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search files" autoFocus />
-      {data && (!data.results.length ? <p className="small muted" style={{ marginTop: 10 }}>Nothing found.</p> : (
+    <section className="card pad" aria-label={t('Search files')}>
+      <input className="input" placeholder={t('Search inside your files… e.g. “insurance” or “Paracetamol”')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t('Search files')} autoFocus />
+      {data && (!data.results.length ? <p className="small muted" style={{ marginTop: 10 }}>{t('Nothing found.')}</p> : (
         <ul className="list divided" style={{ marginTop: 8 }}>
           {data.results.map((f: any) => (
             <li key={f.id} className="list-item" style={{ alignItems: 'flex-start' }}>
@@ -112,12 +113,12 @@ function Search() {
                 <span className="tiny muted" style={{ display: 'block' }}>{f.folder}/{f.rel_path} · {fmtBytes(f.size)}{f.where && f.where !== 'name' ? ` · ${f.where}` : ''}</span>
                 {f.snippet && <span className="small" style={{ display: 'block' }}><Highlight text={f.snippet} /></span>}
               </span>
-              <Link className="btn ghost sm" to={`/chat/new?q=${encodeURIComponent(`Summarise the file "${f.name}" from my folder ${f.folder} (file id ${f.id}).`)}`}>Summarise</Link>
+              <Link className="btn ghost sm" to={`/chat/new?q=${encodeURIComponent(`Summarise the file "${f.name}" from my folder ${f.folder} (file id ${f.id}).`)}`}>{t('Summarise')}</Link>
             </li>
           ))}
         </ul>
       ))}
-      <p className="tiny muted" style={{ marginTop: 8 }}>Searching happens on this device. “Summarise” sends that file’s text to your AI service to write the summary — except from folders kept on your devices, which only local AI reads.</p>
+      <p className="tiny muted" style={{ marginTop: 8 }}>{t('Searching happens on this device. “Summarise” sends that file’s text to your AI service to write the summary — except from folders kept on your devices, which only local AI reads.')}</p>
     </section>
   );
 }
@@ -125,13 +126,13 @@ function Search() {
 function Duplicates() {
   const { data } = useData<any>('/files/duplicates');
   if (!data) return <Loading />;
-  if (!data.groups.length) return <Empty icon="check" title="No duplicates found" />;
+  if (!data.groups.length) return <Empty icon="check" title={t('No duplicates found')} />;
   return (
-    <section className="card pad" aria-label="Duplicates">
-      <p className="small muted">The same content in more than one place. To remove extra copies, see Tidy up.</p>
+    <section className="card pad" aria-label={t('Duplicates')}>
+      <p className="small muted">{t('The same content in more than one place. To remove extra copies, see Tidy up.')}</p>
       {data.groups.map((g: any) => (
         <div key={g.sha256} className="dup-group">
-          <b>{g.copies} copies · {fmtBytes(g.size)} each</b>
+          <b>{g.copies} {t('copies ·')}{' '}{fmtBytes(g.size)} each</b>
           <ul className="tiny">{g.files.map((f: any, i: number) => <li key={f.id}>{f.folder}/{f.rel_path}{i === 0 ? ' — kept' : ''}</li>)}</ul>
         </div>
       ))}
@@ -144,7 +145,7 @@ function Tidy() {
   const { data, reload } = useData<any>('/files/suggestions');
   const [open, setOpen] = useState<string | null>(null);
   if (!data) return <Loading />;
-  if (!data.suggestions.length) return <Empty icon="check" title="Nothing to tidy">Looks orderly. Ideas appear here when there are duplicates or loose files.</Empty>;
+  if (!data.suggestions.length) return <Empty icon="check" title={t('Nothing to tidy')}>{t('Looks orderly. Ideas appear here when there are duplicates or loose files.')}</Empty>;
   const ask = async (s: any) => {
     try {
       const r = await post<any>('/files/changes', { ops: s.ops });
@@ -155,7 +156,7 @@ function Tidy() {
     }
   };
   return (
-    <section className="stack" aria-label="Tidy up">
+    <section className="stack" aria-label={t('Tidy up')}>
       {data.suggestions.map((s: any) => (
         <div key={s.id} className="card pad">
           <b>{s.title}</b>
@@ -163,12 +164,12 @@ function Tidy() {
           <button className="linklike small" onClick={() => setOpen(open === s.id ? null : s.id)}>{open === s.id ? 'Hide' : 'Preview'} the {s.ops.length} change{s.ops.length === 1 ? '' : 's'}</button>
           {open === s.id && <ul className="tiny">{s.ops.map((o: any, i: number) => <li key={i}>{o.op === 'move' ? `Move ${o.from} → ${o.to}` : `Delete ${o.path} (a copy is kept so it can be undone)`}</li>)}</ul>}
           <div className="row" style={{ gap: 8, marginTop: 8 }}>
-            <button className="btn sm primary" onClick={() => ask(s)}>Ask to do this</button>
-            <Link className="btn ghost sm" to="/actions">Approvals</Link>
+            <button className="btn sm primary" onClick={() => ask(s)}>{t('Ask to do this')}</button>
+            <Link className="btn ghost sm" to="/actions">{t('Approvals')}</Link>
           </div>
         </div>
       ))}
-      <p className="tiny muted">Nothing changes until you approve it in Approvals, and only in folders where you allowed changes.</p>
+      <p className="tiny muted">{t('Nothing changes until you approve it in Approvals, and only in folders where you allowed changes.')}</p>
     </section>
   );
 }
@@ -177,9 +178,9 @@ function History() {
   const toast = useToast();
   const { data, reload } = useData<any>('/files/history');
   if (!data) return <Loading />;
-  if (!data.history.length) return <Empty icon="clock" title="No changes yet" />;
+  if (!data.history.length) return <Empty icon="clock" title={t('No changes yet')} />;
   return (
-    <section className="card pad" aria-label="History">
+    <section className="card pad" aria-label={t('History')}>
       <ul className="list divided">
         {data.history.map((h: any) => (
           <li key={h.id} className="list-item">
@@ -187,7 +188,7 @@ function History() {
               <span className="ellipsis" style={{ display: 'block' }}>{h.op === 'move' ? `Moved ${h.from_rel} → ${h.to_rel}` : `Deleted ${h.from_rel}`}</span>
               <span className="tiny muted">{h.folder} · {fmtDateTime(h.created_at)}{h.status === 'undone' ? ' · undone' : ''}</span>
             </span>
-            {h.status === 'done' && <button className="btn ghost sm" onClick={async () => { try { await post(`/files/history/${h.id}/undo`, {}); toast('Undone'); reload(); } catch (e: any) { toast(e.message, 'error'); } }}>Undo</button>}
+            {h.status === 'done' && <button className="btn ghost sm" onClick={async () => { try { await post(`/files/history/${h.id}/undo`, {}); toast(t('Undone')); reload(); } catch (e: any) { toast(e.message, 'error'); } }}>{t('Undo')}</button>}
           </li>
         ))}
       </ul>

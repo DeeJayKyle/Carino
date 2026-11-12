@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../l10n.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -68,15 +69,15 @@ class _DevicesSettingsState extends State<DevicesSettings> {
     final match = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Compare the check number'),
+        title: const Tx('Compare the check number'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Does $name show the same number?'),
+          Tx('Does {0} show the same number?', args: [name]),
           const SizedBox(height: 12),
           Text(number, style: Theme.of(ctx).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 4)),
           const SizedBox(height: 8),
-          const Text('If they match, nobody else is in the middle. If not, don’t pair.', textAlign: TextAlign.center),
+          const Tx('If they match, nobody else is in the middle. If not, don’t pair.', textAlign: TextAlign.center),
         ]),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('They don’t match')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('They match'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Tx('They don’t match')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Tx('They match'))],
       ),
     );
     if (match == true) {
@@ -91,23 +92,23 @@ class _DevicesSettingsState extends State<DevicesSettings> {
     final d = _data;
     final api = AppState.read(context).api;
     return Scaffold(
-      appBar: AppBar(title: const Text('Devices')),
+      appBar: AppBar(title: const Tx('Devices')),
       body: d == null
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
-              Text('Your phone and your PC, kept in step over your Wi-Fi. Nothing goes through the internet.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              Tx('Your phone and your PC, kept in step over your Wi-Fi. Nothing goes through the internet.', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 10),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(_isPc ? Icons.computer : Icons.phone_iphone),
-                title: Text('This device: ${(d['device'] as Map?)?['name'] ?? ''}'),
+                title: Tx('This device: {0}', args: [(d['device'] as Map?)?['name'] ?? '']),
                 trailing: TextButton(
                   onPressed: () async {
                     final c = TextEditingController(text: '${(d['device'] as Map?)?['name'] ?? ''}');
-                    final n = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(title: const Text('Name this device'), content: TextField(controller: c, autofocus: true), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Save'))]));
+                    final n = await showDialog<String>(context: context, builder: (ctx) => AlertDialog(title: const Tx('Name this device'), content: TextField(controller: c, autofocus: true), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Tx('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Tx('Save'))]));
                     if (n != null && n.trim().isNotEmpty) await _run(() => api.patch('/sync/device', {'name': n.trim()}));
                   },
-                  child: const Text('Rename'),
+                  child: const Tx('Rename'),
                 ),
               ),
               for (final p in (d['peers'] as List).cast<Map>())
@@ -124,12 +125,12 @@ class _DevicesSettingsState extends State<DevicesSettings> {
                                 ? 'Synced ${fmtDateTime(p['last_sync_at'] as String?)}${(p['pending'] as num? ?? 0) > 0 ? ' · ${p['pending']} to send' : ''}'
                                 : 'Not synced yet'),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      if (p['confirmed'] != true) FilledButton.tonal(onPressed: () => _check('${p['device_id']}', '${p['name']}'), child: const Text('Check number')),
+                      if (p['confirmed'] != true) FilledButton.tonal(onPressed: () => _check('${p['device_id']}', '${p['name']}'), child: const Tx('Check number')),
                       IconButton(
-                        tooltip: 'Forget ${p['name']}',
+                        tooltip: tr('Forget {0}', [p['name']]),
                         icon: const Icon(Icons.close),
                         onPressed: () async {
-                          if (await confirmDialog(context, title: 'Forget ${p['name']}?', body: 'They stop syncing. Nothing already on either device is deleted.', confirm: 'Forget', danger: true)) {
+                          if (await confirmDialog(context, title: tr('Forget {0}?', [p['name']]), body: tr('They stop syncing. Nothing already on either device is deleted.'), confirm: tr('Forget'), danger: true)) {
                             await _run(() => api.delete('/sync/peers/${p['device_id']}'), 'Forgotten');
                           }
                         },
@@ -149,7 +150,7 @@ class _DevicesSettingsState extends State<DevicesSettings> {
                               if (context.mounted) toast(context, n > 0 ? 'Synced $n change${n == 1 ? '' : 's'}${(r['conflicts'] ?? 0) > 0 ? ' · ${r['conflicts']} to check' : ''}' : 'Up to date');
                             }),
                     icon: const Icon(Icons.sync),
-                    label: const Text('Sync now'),
+                    label: const Tx('Sync now'),
                   ),
                 FilledButton.icon(
                   onPressed: () async {
@@ -203,9 +204,9 @@ class _JoinPairingState extends State<_JoinPairing> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pair with my PC')),
+      appBar: AppBar(title: const Tx('Pair with my PC')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        const Text('On your PC, open Carino → Settings → Devices → Pair a phone. Then scan the code it shows.'),
+        const Tx('On your PC, open Carino → Settings → Devices → Pair a phone. Then scan the code it shows.'),
         const SizedBox(height: 12),
         if (_scanning)
           ClipRRect(
@@ -220,19 +221,19 @@ class _JoinPairingState extends State<_JoinPairing> {
                     _join({'link': v});
                   }
                 },
-                errorBuilder: (context, error) => Center(child: Padding(padding: const EdgeInsets.all(16), child: Text('The camera isn’t available. Type the code instead.', textAlign: TextAlign.center))),
+                errorBuilder: (context, error) => Center(child: Padding(padding: const EdgeInsets.all(16), child: Tx('The camera isn’t available. Type the code instead.', textAlign: TextAlign.center))),
               ),
             ),
           ),
         TextButton(onPressed: () => setState(() => _scanning = !_scanning), child: Text(_scanning ? 'Type the code instead' : 'Scan the QR code')),
         if (!_scanning) ...[
-          TextField(controller: _link, decoration: const InputDecoration(labelText: 'Pairing link (from the QR code)', hintText: 'carino-pair:…')),
+          TextField(controller: _link, decoration: InputDecoration(labelText: tr('Pairing link (from the QR code)'), hintText: tr('carino-pair:…'))),
           const SizedBox(height: 10),
-          const Text('…or'),
+          const Tx('…or'),
           const SizedBox(height: 10),
-          TextField(controller: _code, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: 'Code', hintText: 'ABCDE-FGHJK')),
+          TextField(controller: _code, textCapitalization: TextCapitalization.characters, decoration: InputDecoration(labelText: tr('Code'), hintText: tr('ABCDE-FGHJK'))),
           const SizedBox(height: 10),
-          TextField(controller: _address, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'PC address', hintText: '192.168.1.20:47123')),
+          TextField(controller: _address, keyboardType: TextInputType.url, decoration: InputDecoration(labelText: tr('PC address'), hintText: '192.168.1.20:47123')),
           const SizedBox(height: 12),
           FilledButton(
             onPressed: _busy ? null : () => _join(_link.text.trim().isNotEmpty ? {'link': _link.text.trim(), if (_address.text.trim().isNotEmpty) 'address': _address.text.trim()} : {'code': _code.text.trim(), 'address': _address.text.trim()}),
@@ -291,19 +292,19 @@ class _ShowPairingState extends State<_ShowPairing> {
     final p = _p;
     final at = ((p?['offer'] as Map?)?['at'] as List?)?.cast<String>() ?? const [];
     return AlertDialog(
-      title: const Text('Pair a phone'),
+      title: const Tx('Pair a phone'),
       content: p == null
           ? const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()))
           : Column(mainAxisSize: MainAxisSize.min, children: [
-              const Text('On your phone, open Carino → Settings → Devices → Pair with my PC, and scan this:', textAlign: TextAlign.center),
+              const Tx('On your phone, open Carino → Settings → Devices → Pair with my PC, and scan this:', textAlign: TextAlign.center),
               const SizedBox(height: 10),
               Container(color: Colors.white, padding: const EdgeInsets.all(8), child: QrImageView(data: '${p['link']}', size: 220)),
               const SizedBox(height: 8),
               SelectableText('Or type the code ${p['code']}${at.isNotEmpty ? ' and the address ${at.first}' : ''}.', textAlign: TextAlign.center),
               const SizedBox(height: 4),
-              const Text('The code works for 10 minutes.', style: TextStyle(fontSize: 12)),
+              const Tx('The code works for 10 minutes.', style: TextStyle(fontSize: 12)),
             ]),
-      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Tx('Close'))],
     );
   }
 }
@@ -324,24 +325,24 @@ class _Conflicts extends StatelessWidget {
     if (conflicts.isEmpty) return const SizedBox.shrink();
     final api = AppState.read(context).api;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Changed on both devices', style: Theme.of(context).textTheme.titleMedium),
-      const Text('These were edited on both before they could sync. Nothing was overwritten: choose which to keep.', style: TextStyle(fontSize: 12)),
+      Tx('Changed on both devices', style: Theme.of(context).textTheme.titleMedium),
+      const Tx('These were edited on both before they could sync. Nothing was overwritten: choose which to keep.', style: TextStyle(fontSize: 12)),
       for (final c in conflicts)
         Card(
           margin: const EdgeInsets.only(top: 10),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${_tables[c['tbl']] ?? c['tbl']} · with ${c['peer_name'] ?? 'the other device'}', style: const TextStyle(fontSize: 12)),
+              Tx('{0} · with {1}', args: [_tables[c['tbl']] ?? c['tbl'], c['peer_name'] ?? 'the other device'], style: const TextStyle(fontSize: 12)),
               const SizedBox(height: 6),
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('This device', style: TextStyle(fontSize: 11)), Text(_label(c['mine']), style: const TextStyle(fontWeight: FontWeight.w600))])),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Tx('This device', style: TextStyle(fontSize: 11)), Text(_label(c['mine']), style: const TextStyle(fontWeight: FontWeight.w600))])),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${c['peer_name'] ?? 'Other device'}', style: const TextStyle(fontSize: 11)), Text(_label(c['theirs']), style: const TextStyle(fontWeight: FontWeight.w600))])),
               ]),
               const SizedBox(height: 6),
               Wrap(spacing: 8, children: [
-                OutlinedButton(onPressed: () => api.post('/sync/conflicts/${c['id']}', {'keep': 'mine'}).then((_) => onDone()), child: const Text('Keep this device’s')),
-                OutlinedButton(onPressed: () => api.post('/sync/conflicts/${c['id']}', {'keep': 'theirs'}).then((_) => onDone()), child: Text('Keep ${c['peer_name'] ?? 'the other'}’s')),
+                OutlinedButton(onPressed: () => api.post('/sync/conflicts/${c['id']}', {'keep': 'mine'}).then((_) => onDone()), child: const Tx('Keep this device’s')),
+                OutlinedButton(onPressed: () => api.post('/sync/conflicts/${c['id']}', {'keep': 'theirs'}).then((_) => onDone()), child: Tx('Keep {0}’s', args: [c['peer_name'] ?? 'the other'])),
               ]),
             ]),
           ),

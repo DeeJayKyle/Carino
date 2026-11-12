@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 
@@ -130,15 +131,15 @@ class _AiSettingsState extends State<AiSettings> {
     final cs = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     if (_presets == null && widget.compact) return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()));
-    if (_presets == null) return Scaffold(appBar: AppBar(title: const Text('AI service')), body: const Center(child: CircularProgressIndicator()));
+    if (_presets == null) return Scaffold(appBar: AppBar(title: const Tx('AI service')), body: const Center(child: CircularProgressIndicator()));
     final p = _p;
     final shown = _presets!.where((x) => x['hidden'] != true || x['id'] == _form['provider']).toList();
     final models = (p['models'] as List).cast<Map>();
     String mark(String id) => _live == null ? '' : _live!.contains(id) ? ' ✓' : (p['ownAddress'] == true ? ' — not installed' : ' — not available to this key');
     final needsKey = p['keyUrl'] != null && '${p['keyUrl']}'.isNotEmpty && p['ownAddress'] != true;
     final list = ListView(shrinkWrap: widget.compact, physics: widget.compact ? const NeverScrollableScrollPhysics() : null, padding: widget.compact ? EdgeInsets.zero : const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
-        Text('Carino asks an AI service to write its replies. Groq, Google Gemini and OpenRouter have free tiers — pick one and paste its key. Or download a small AI that runs on the phone itself.', style: TextStyle(color: cs.onSurfaceVariant)),
-        if (_keysUnreadable) Card(color: Colors.orange.withValues(alpha: 0.12), margin: const EdgeInsets.only(top: 10), child: const ListTile(leading: Icon(Icons.warning_amber), title: Text('Your saved keys couldn’t be unlocked on this device (its secure key store was reset). Please enter them again.'))),
+        Tx('Carino asks an AI service to write its replies. Groq, Google Gemini and OpenRouter have free tiers — pick one and paste its key. Or download a small AI that runs on the phone itself.', style: TextStyle(color: cs.onSurfaceVariant)),
+        if (_keysUnreadable) Card(color: Colors.orange.withValues(alpha: 0.12), margin: const EdgeInsets.only(top: 10), child: const ListTile(leading: Icon(Icons.warning_amber), title: Tx('Your saved keys couldn’t be unlocked on this device (its secure key store was reset). Please enter them again.'))),
         const SizedBox(height: 12),
         for (final (i, x) in shown.indexed)
           Card(
@@ -164,16 +165,16 @@ class _AiSettingsState extends State<AiSettings> {
         if (p['onDevice'] == true)
           _LocalModels(value: _current, onChange: (id) => setState(() => _form['model'] = id), onReady: (ok) => _localReady != ok ? WidgetsBinding.instance.addPostFrameCallback((_) => setState(() => _localReady = ok)) : null)
         else ...[
-          if (needsKey) TextButton.icon(onPressed: () => Device(AppState.read(context).api).openExternal('${p['keyUrl']}'), icon: const Icon(Icons.open_in_new, size: 16), label: Text('Get a free key: ${'${p['keyUrl']}'.replaceFirst('https://', '')}')),
-          if (p['ownAddress'] == true) TextField(controller: _url, keyboardType: TextInputType.url, decoration: InputDecoration(labelText: 'Address', hintText: '${p['baseUrl']}')),
+          if (needsKey) TextButton.icon(onPressed: () => Device(AppState.read(context).api).openExternal('${p['keyUrl']}'), icon: const Icon(Icons.open_in_new, size: 16), label: Tx('Get a free key: {0}', args: ['${p['keyUrl']}'.replaceFirst('https://', '')])),
+          if (p['ownAddress'] == true) TextField(controller: _url, keyboardType: TextInputType.url, decoration: InputDecoration(labelText: tr('Address'), hintText: '${p['baseUrl']}')),
           const SizedBox(height: 10),
-          TextField(controller: _key, obscureText: true, autocorrect: false, decoration: InputDecoration(labelText: 'API key${p['ownAddress'] == true ? ' (if needed)' : ''}', hintText: 'Paste your key')),
-          if (_protection != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text('🔒 ${_protection == 'android-keystore' ? 'Keys are encrypted and locked with your phone’s secure key store.' : 'Keys are stored encrypted on this device.'} Only the last 4 characters are ever shown.', style: t.bodySmall)),
+          TextField(controller: _key, obscureText: true, autocorrect: false, decoration: InputDecoration(labelText: tr('API key{0}', [p['ownAddress'] == true ? ' (if needed)' : '']), hintText: tr('Paste your key'))),
+          if (_protection != null) Padding(padding: const EdgeInsets.only(top: 4), child: Tx('🔒 {0} Only the last 4 characters are ever shown.', args: [_protection == 'android-keystore' ? 'Keys are encrypted and locked with your phone’s secure key store.' : 'Keys are stored encrypted on this device.'], style: t.bodySmall)),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             initialValue: models.any((m) => m['id'] == _current) || _extra.contains(_current) ? _current : null,
             isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Model (free, best first)'),
+            decoration: InputDecoration(labelText: tr('Model (free, best first)')),
             items: [
               for (final m in models) DropdownMenuItem(value: '${m['id']}', child: Text('${m['label']}${m['vision'] == true ? ' · photos' : ''}${mark('${m['id']}')}', overflow: TextOverflow.ellipsis)),
               for (final id in _extra) DropdownMenuItem(value: id, child: Text('$id ✓', overflow: TextOverflow.ellipsis)),
@@ -183,7 +184,7 @@ class _AiSettingsState extends State<AiSettings> {
           if (_liveError != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(_liveError!, style: TextStyle(color: cs.error, fontSize: 12.5))),
           const SizedBox(height: 8),
           Wrap(spacing: 8, children: [
-            OutlinedButton.icon(onPressed: _busy || _timing || (_key.text.isEmpty && p['ownAddress'] != true) ? null : _check, icon: const Icon(Icons.refresh, size: 18), label: const Text('Check my key')),
+            OutlinedButton.icon(onPressed: _busy || _timing || (_key.text.isEmpty && p['ownAddress'] != true) ? null : _check, icon: const Icon(Icons.refresh, size: 18), label: const Tx('Check my key')),
             OutlinedButton.icon(onPressed: _busy || _timing || (_key.text.isEmpty && p['ownAddress'] != true) ? null : _speedTest, icon: const Icon(Icons.timer_outlined, size: 18), label: Text(_timing ? 'Timing each model…' : 'Test speed')),
           ]),
           if (_speed != null)
@@ -200,13 +201,13 @@ class _AiSettingsState extends State<AiSettings> {
             ),
           ExpansionTile(
             tilePadding: EdgeInsets.zero,
-            title: const Text('Extras (optional)'),
+            title: const Tx('Extras (optional)'),
             children: [
-              TextField(controller: _groq, obscureText: true, decoration: const InputDecoration(labelText: 'Groq key for voice notes', helperText: 'Turns Telegram voice notes into text (free).')),
+              TextField(controller: _groq, obscureText: true, decoration: InputDecoration(labelText: tr('Groq key for voice notes'), helperText: tr('Turns Telegram voice notes into text (free).'))),
               const SizedBox(height: 10),
-              TextField(controller: _brave, obscureText: true, decoration: const InputDecoration(labelText: 'Brave Search key for web research (free tier)')),
+              TextField(controller: _brave, obscureText: true, decoration: InputDecoration(labelText: tr('Brave Search key for web research (free tier)'))),
               const SizedBox(height: 10),
-              TextField(controller: _searx, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: '…or a SearXNG address', hintText: 'https://searx.example.org')),
+              TextField(controller: _searx, keyboardType: TextInputType.url, decoration: InputDecoration(labelText: tr('…or a SearXNG address'), hintText: 'https://searx.example.org')),
               const SizedBox(height: 10),
             ],
           ),
@@ -227,13 +228,13 @@ class _AiSettingsState extends State<AiSettings> {
         if (!widget.compact) ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.auto_awesome_outlined),
-          title: const Text('AI & connections'),
-          subtitle: const Text('Add more services or local AI, test models, choose one per job and set spending limits.'),
+          title: const Tx('AI & connections'),
+          subtitle: const Tx('Add more services or local AI, test models, choose one per job and set spending limits.'),
           onTap: () => openPath(context, '/connections'),
         ),
       ]);
     if (widget.compact) return list;
-    return Scaffold(appBar: AppBar(title: const Text('AI service')), body: list);
+    return Scaffold(appBar: AppBar(title: const Tx('AI service')), body: list);
   }
 }
 
@@ -293,7 +294,7 @@ class _LocalModelsState extends State<_LocalModels> {
     final downloading = s['state'] == 'downloading';
     final free = ((info['storage'] as Map?)?['free']) as num?;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text('Model on this phone', style: Theme.of(context).textTheme.titleSmall),
+      Tx('Model on this phone', style: Theme.of(context).textTheme.titleSmall),
       RadioGroup<String>(
         groupValue: widget.value,
         onChanged: (v) => v == null ? null : widget.onChange(v),
@@ -313,17 +314,17 @@ class _LocalModelsState extends State<_LocalModels> {
                   ),
                   if (s['model'] == m['id'] && downloading) ...[
                     LinearProgressIndicator(value: (s['total'] as num? ?? 0) > 0 ? (s['loaded'] as num) / (s['total'] as num) : null),
-                    Row(children: [Expanded(child: Text('${_gb(s['loaded'] as num? ?? 0)} of ${_gb(s['total'] as num? ?? m['size'] as num)} · keep Carino open', style: const TextStyle(fontSize: 12))), TextButton(onPressed: () => _load({'action': 'cancel'}), child: const Text('Cancel'))]),
+                    Row(children: [Expanded(child: Tx('{0} of {1} · keep Carino open', args: [_gb(s['loaded'] as num? ?? 0), _gb(s['total'] as num? ?? m['size'] as num)], style: const TextStyle(fontSize: 12))), TextButton(onPressed: () => _load({'action': 'cancel'}), child: const Tx('Cancel'))]),
                   ] else if (m['downloaded'] == true)
-                    Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 16), const Text(' On this phone'), const Spacer(), TextButton.icon(onPressed: () => _load({'action': 'remove', 'model': m['id']}), icon: const Icon(Icons.delete_outline, size: 18), label: const Text('Remove'))])
+                    Row(children: [const Icon(Icons.check_circle, color: Colors.green, size: 16), const Tx(' On this phone'), const Spacer(), TextButton.icon(onPressed: () => _load({'action': 'remove', 'model': m['id']}), icon: const Icon(Icons.delete_outline, size: 18), label: const Tx('Remove'))])
                   else
                     Row(children: [
                       FilledButton.tonalIcon(
                         onPressed: downloading || (free != null && free < (m['size'] as num) * 1.1) ? null : () => _load({'action': 'download', 'model': m['id']}),
                         icon: const Icon(Icons.download, size: 18),
-                        label: Text('Download ${_gb(m['size'] as num)}'),
+                        label: Tx('Download {0}', args: [_gb(m['size'] as num)]),
                       ),
-                      if (free != null && free < (m['size'] as num) * 1.1) const Text('  Not enough free space', style: TextStyle(fontSize: 12, color: Colors.orange)),
+                      if (free != null && free < (m['size'] as num) * 1.1) const Tx('  Not enough free space', style: TextStyle(fontSize: 12, color: Colors.orange)),
                     ]),
                   if (s['state'] == 'error' && s['model'] == m['id']) Text('${s['error']}', style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
                 ]),
@@ -331,7 +332,7 @@ class _LocalModelsState extends State<_LocalModels> {
             ),
         ]),
       ),
-      Padding(padding: const EdgeInsets.only(top: 6), child: Text('Use Wi-Fi for the download. After that it works with no internet.${(info['threads'] as num? ?? 1) > 1 ? ' Uses ${info['threads']} processor cores.' : ''}', style: Theme.of(context).textTheme.bodySmall)),
+      Padding(padding: const EdgeInsets.only(top: 6), child: Tx('Use Wi-Fi for the download. After that it works with no internet.{0}', args: [(info['threads'] as num? ?? 1) > 1 ? ' Uses ${info['threads']} processor cores.' : ''], style: Theme.of(context).textTheme.bodySmall)),
     ]);
   }
 }

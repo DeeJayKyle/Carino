@@ -1,0 +1,1098 @@
+0| Sem espaço livre suficiente
+1| Neste celular
+2|0 mantém até você apagar.
+3|Relógio de 12 horas
+5|Código de 3 letras
+6|Um arquivo JSON com suas tarefas, lembretes, memórias, conversas e configurações, salvo em Downloads.
+7|O backup é protegido por uma frase-senha que você escolhe; sem ela ninguém consegue abrir. Cada backup é testado com uma restauração antes de ser guardado. Os logins não são incluídos.
+8|Um pouco atrevido
+9|Uma conversa falada em tempo real pelo OpenAI ou Google Gemini, se você conectou algum. Seu áudio vai para esse serviço durante a chamada.
+12|IA e conexões
+13|Serviço de IA
+14|Chave de API{0}
+15|Cerca de 5 minutos, grátis
+16|Token de acesso
+17|Token de acesso (opcional)
+18|Token de acesso para {0}
+19|Account SID
+20|Conta {0}
+21|Contas
+22|Adicionar
+23|Adicione uma vaga ou bolsa, e o Carino lembra você antes do prazo e de acompanhar depois de se candidatar.
+24|Adicionar um serviço
+25|Adicionar uma etapa
+26|Adicionar conta a pagar
+27|Adicionar meta
+28|Adicionar receita
+29|Adicione acima ou diga ao Carino: “recebi 1,2 mi de salário”.
+30|Adicionar memória
+31|Adicionar dinheiro
+32|Adicione mais serviços ou IA local, teste modelos, escolha um por tarefa e defina limites de gasto.
+33|Adicionar
+34|Adicione um acima ou diga ao Carino o que você gastou.
+35|Depositar ou retirar
+36|Adicione aluguel, mensalidades ou assinaturas, e o Carino avisa quando vencerem.
+37|Completar o que falta
+38|“{0}” adicionado
+39|Endereço
+40|Avançado: usar meu próprio número do WhatsApp Business
+41|Tudo
+42|Todas as categorias
+43|Todas as metas
+44|Todas as conversas vinculadas são desvinculadas e o token salvo é apagado.
+45|Todas as rotinas
+46|Permitir
+47|Permitir alterações (cada uma pergunta antes)
+48|Permitir uso pago
+49|Permitir uso pago de {0}?
+50|Permitir alterações reversíveis sem perguntar
+51|Permitido
+52|Sempre me perguntar antes
+53|Valor
+54|Valor ({0})
+55|Valor pago
+56|Os valores estão em {0}. 
+57|Responder em segundo plano
+58|Idioma do app
+59|Segredo do app
+60|Aparência e acessibilidade
+61|Candidaturas
+62|Aprovações
+63|Aprovar
+64|Apps neste PC
+65|Peça ao Carino para criar uma página ou um app pequeno — um convite, um cardápio, uma lista, um quiz — e ele aparece aqui.
+66|Perguntar antes
+67|Pergunte-me antes
+68|Pedir para fazer isso ({0} alteração(ões))
+69|Pergunte qualquer coisa a {0}.
+70|Pergunte qualquer coisa a {0}…
+71|Perguntado
+72|Nome do assistente
+73|Assistente: {0}
+74|Nome do assistente
+75|Às {0}
+76|Anexar um arquivo
+77|Anexe uma foto, PDF, Word, texto, CSV ou Excel
+78|Token de autenticação
+79|Automático (idioma do celular)
+80|Automático{0}
+81|Voltar
+82|Voltar ao meu desabafo
+83|Backup e restauração
+84|Backup de {0} — aberto e verificado.
+85|Backup feito e verificado: {0} registros, {1} arquivos. Guarde bem sua frase-senha.
+86|Equilibrado
+87|Antes de restaurar, o que está aqui agora é salvo como backup criptografado “Antes da restauração” com a mesma frase-senha, para você poder desfazer.
+88|Caderno criado
+89|Token do bot do @BotFather
+90|Chave do Brave Search para pesquisa na web (grátis)
+91|Resumos
+92|Ligando de {0}
+93|Cancelar
+95|O Carino pede a um serviço de IA para escrever as respostas. Groq, Google Gemini e OpenRouter têm planos grátis — escolha um e cole a chave. Ou baixe uma IA pequena que roda no próprio celular.
+96|O Carino só consegue ler as pastas que você escolher. Seus arquivos ficam onde estão.
+97|O Carino não encontrou tarefas, lembretes nem coisas para lembrar nisso.
+98|O Carino esquece este login do {0}. Nada muda na sua conta.
+99|O Carino ganha um número próprio de WhatsApp para você conversar. Ele usa a plataforma oficial WhatsApp Business da Meta (grátis para conversas que você inicia) e um pequeno relay gratuito que guarda as mensagens até seu celular buscá-las.
+100|O Carino continua respondendo no WhatsApp e no Telegram enquanto você usa outros apps, com uma notificação discreta “Carino está ouvindo”. Se você fechar o Carino, as mensagens esperam até você abrir de novo.
+101|O Carino guarda as mensagens deste grupo por até 7 dias para você poder perguntar “o que eu perdi?”. Só você pode pedir, e desligar apaga o que foi guardado. Avise o grupo. (No Telegram, desative a Group Privacy do bot no @BotFather para ele ver todas as mensagens.)
+102|O Carino poderá escolher os modelos de {0} quando forem os melhores para uma mensagem, e cada uso custa dinheiro na sua conta {1}. Você pode definir um limite de gasto abaixo; ao atingi-lo, o Carino para de usar modelos pagos.
+103|O Carino só age por ferramentas bem delimitadas — sem acesso geral ao computador ou ao terminal. Revogue qualquer ferramenta quando quiser.
+104|O Carino vai lembrar você de acompanhar {0}.
+105|O Carino executa ações de leitura e reversíveis dentro das suas permissões. Exclusões e outras ações grandes sempre esperam você aqui.
+106|O Carino sai da conta, pede ao provedor para revogar o acesso quando possível e apaga o login salvo.
+107|O Carino começa de novo do início.
+108|O Carino para de responder lá. A conversa continua em Conversas.
+109|O Carino para de ler e esquece o que anotou. Seus arquivos não são mexidos.
+110|O Carino para de usar e apaga a chave salva deste aparelho.
+111|O Carino sugeriu estas, mas precisa do seu OK — podem ser sensíveis ou deduzidas.
+112|O Carino fala com {0} direto do seu celular, com seu próprio app de desenvolvedor gratuito — nada passa pelo servidor de outra pessoa.{1}
+113|O Carino se atualiza pelas versões oficiais. Cada download é verificado antes de instalar, e seus dados são mantidos.
+114|O Carino não vai mais saber dessas coisas. Não dá para desfazer.
+115|O Carino vai parar de usar e o token salvo será apagado. As conversas anteriores são mantidas.
+116|O Carino não vai usar nem salvar memórias.
+117|O Carino {0} está pronto para instalar.
+118|Categorias que o Carino pode usar
+119|Categoria
+120|Alterar
+121|Mudar moeda
+122|Alterado nos dois aparelhos
+123|Converse com o Carino no WhatsApp como com um amigo: texto, áudios e fotos. O Carino tem número próprio{0}; vincule o seu com um código.
+124|Conversas
+125|Verificar de novo
+126|Verificar minha chave
+127|Verifique nas configurações do celular se as notificações do Carino estão permitidas.
+128|Verificar agora
+129|Número de verificação
+130|Lista
+131|Escolha alguns. Vou sugerir as ideias certas primeiro.
+132|Clássico
+133|Limpar
+134|Limpar tudo
+135|Limpar todas as notificações?
+136|Fechar
+137|Token de API da Cloudflare
+138|Código
+139|Paleta de cores
+140|Em breve
+141|Compare o número de verificação
+142|Concluído
+143|Conectar
+144|Conectar Twilio
+145|Conectar um app
+146|Conecte suas contas para o Carino ler e agir por você. Enviar e-mails e publicar sempre espera seu OK.
+147|Apps conectados
+148|Ferramentas conectadas
+149|{0} conectado
+150|Grave — exclusões; sempre precisam de aprovação
+151|Continuar
+152|Resumos de conversas
+153|Copiado
+154|Copiar
+155|Copiar para {0} · {1}
+156|Custo
+157|Crie um app no Meta for Developers (ou use o de Meus apps → Facebook) e adicione o WhatsApp. Em WhatsApp → API Setup, a Meta dá um número de teste grátis; adicione seu próprio número de WhatsApp como destinatário. Copie o Phone number ID; crie um token de acesso permanente em Configurações do negócio → Usuários do sistema (com whatsapp_business_messaging); e copie o segredo do app em Configurações do app → Básico.
+158|Limite diário (USD)
+159|Escuro
+160|Formato de data
+161|Dia
+162|Prazo
+163|Recusar
+164|Recusado
+165|Recusado — nada foi alterado.
+166|Padrão
+167|Excluir
+168|Excluir caderno
+169|Excluir permanentemente
+170|Excluir o caderno “{0}”?
+171|Excluir esta candidatura?
+172|Excluir este backup?
+173|Excluir este caderno
+174|Excluir esta conversa?
+175|Excluir este gasto?
+176|Excluir esta página?
+177|Excluir {0} selecionados
+178|Excluir {0} {1}?
+179|Excluir “{0}”?
+180|{0} excluído
+181|{0} memórias excluídas
+182|“{0}” excluído
+183|Apaga todas as tarefas, lembretes, memórias, arquivos, conversas, configurações e sua chave de IA deste celular. Não dá para desfazer.
+184|Vai implantar o relay você mesmo? Defina nele um segredo SETUP_CODE para ninguém reivindicá-lo antes, e digite aqui.
+185|Detalhado
+186|Aparelhos
+187|Diferente
+188|Desconectar
+189|Desconectar {0}
+190|Desconectar {0} ({1})?
+191|Desconectar {0}?
+192|Descobrir
+193|Descobrir ideias
+194|Documento
+195|{0} mostra o mesmo número?
+196|Baixar {0}
+197|Ex.: adicionar tarefas e lembretes quando você pede. Desligue para aprovar um por um.
+198|Editar
+199|Editar ou excluir
+200|Editar gasto
+201|Requisitos — o que pedem e como você atende
+202|Ativar recursos de voz
+203|Encerrar voz
+204|Digite um valor, ex.: 15000 ou 15k
+205|Digite um valor, ex.: 300000 ou 300k
+206|Digite dois preços, como 0.25 e 2
+207|Apagar tudo
+208|Apagar tudo neste celular?
+209|Apagar tudo…
+210|Tudo
+211|Tudo o que o Carino pode usar
+212|Tudo o que foi registrado nele é apagado. O dinheiro pessoal não é mexido.
+213|Tudo — tarefas, lembretes, memórias, arquivos e conversas — fica só neste celular. Nada é vendido ou compartilhado. Quando você conversa, a conversa, as memórias relevantes e o texto anexado vão para o serviço de IA escolhido para ele poder responder.
+214|Exportar todos os dados
+215|Extras (opcional)
+216|Fatos
+217|Falhou
+218|Arquivos
+219|Você encontra isso no console da Twilio. O token de autenticação fica criptografado neste aparelho.
+220|Primeiro faça a configuração única abaixo.
+221|Pastas
+222|Pastas que o Carino pode ler
+223|As pastas podem ser compartilhadas pelo Carino para Windows e pelo app Android.
+224|Para
+225|Para um grupo: adicione {0} ao grupo e envie /link CÓDIGO lá.
+226|Esquecer
+227|Esquecer depois de (opcional)
+228|Deixa pra lá
+229|Esquecer memórias novas depois de (dias)
+230|Esquecer estes dados
+231|Esquecer isto?
+232|Esquecer {0}
+233|Esquecer {0}?
+235|Plano grátis · copie seu endereço pessoal em mcp.zapier.com
+236|Plano grátis · copie seu endereço MCP em composio.dev
+237|Plano grátis · copie seu endereço MCP em mcp.pipedream.com
+238|De
+239|Gere um código abaixo e envie do seu WhatsApp para o número do Carino.
+240|Consiga uma chave grátis: {0}
+241|Consiga uma em {0}. Ela é verificada e guardada criptografada neste aparelho.
+242|Dê ao seu assistente o nome que quiser.
+243|Dê um cérebro para {0}
+244|Meta relacionada (opcional)
+245|Metas
+246|Muita coisa na cabeça? Fale ou digite tudo, em qualquer ordem. O Carino organiza em tarefas, lembretes e coisas para lembrar, e você escolhe o que manter.
+247|Entendi — os rascunhos vão soar como você.
+248|Chave Groq para áudios
+249|Aqui agora
+250|Isto é o que o Carino separou. Desmarque o que não quiser e confira as datas antes de adicionar.
+251|Seu dia
+252|Oi! Vamos configurar tudo.
+253|Histórico
+254|Início
+255|Como o Carino chama você e como responde. As mudanças valem para novas conversas.
+256|Como devo falar com você?
+257|Já tenho um relay
+258|Eu vivo no seu celular e uso um serviço de IA para pensar. Groq e Google Gemini são grátis — escolha um, pegue uma chave em um minuto e cole aqui. Você também pode fazer isso depois em Configurações.
+259|Ideias aparecem aqui quando houver duplicados ou arquivos soltos.
+260|Ideias para começar
+261|Se forem iguais, ninguém está no meio. Se não, não pareie.
+262|Datas importantes
+263|No WhatsApp → Configuration → Webhook, toque em Edit, cole estes dois valores, Verify and save, e depois assine messages.
+264|No backup
+265|No modo voz você pode dizer “pausa”, “repete”, “pula”, “lê meu resumo” ou “para”. Isso é tratado no celular, não vai para a IA.
+266|Entrada, USD por M de tokens
+267|Instalar
+268|Instruções para o Carino
+269|Convidar um amigo
+270|Ele sempre pode ver suas tarefas, notas e conhecimento salvo. Enviar, excluir, publicar e outras ações grandes sempre esperam seu OK.
+271|Ela vai parar de rodar. O histórico continua em Conversas.
+272|A lista, o histórico e os lembretes também saem. Os arquivos anexados ficam no Carino.
+273|As versões anteriores também saem.
+274|O lembrete também para. Os pagamentos anteriores ficam nos seus gastos.
+275|Sou seu assistente pessoal. Lembro do que importa, cuido das suas tarefas e lembretes e faço as coisinhas que você prefere não fazer.
+276|Vaga
+277|Vagas e bolsas: prazos, se você se qualifica, documentos e referências, e quando acompanhar. Ou diga ao Carino “acompanhe esta vaga…” e cole o anúncio.
+278|Guardar um resumo de {0}?
+279|Manter tudo nos meus aparelhos (só modelos locais)
+280|Só nos meus aparelhos
+281|Manter o deste aparelho
+282|Manter o de {0}
+283|Mantém tudo aqui; onde um registro difere, fica o daqui.
+284|Quênia (en-KE)
+285|Separado do seu dinheiro pessoal. 
+286|Chave
+288|Idioma e região
+289|Idioma alterado
+290|Grande
+291|Últimas 24 horas
+292|Últimos 30 dias
+293|Última execução {0} 
+294|Aprender
+295|Deixe vazio para remover este orçamento.
+296|Deixe vazio para responder no idioma em que você escrever.
+297|Deixe o Carino usar seus outros apps — e-mail, agenda, notas, ferramentas de projeto — pelo MCP, o padrão aberto para conectores de IA. O Carino pode ler livremente com eles; tudo o que envia, altera ou exclui espera sua aprovação, a não ser que você diga o contrário.
+298|Deixar o relay verificar também a assinatura da Meta
+299|Vamos configurar suas primeiras rotinas
+300|Claro
+301|Como eu
+302|Link (opcional)
+303|Vincule uma conversa ou grupo com um código de uso único.
+304|Vincular outro WhatsApp
+305|Ouvindo — sem pressa, pausas são normais.
+306|Voz ao vivo
+307|Conversa por voz ao vivo
+308|Registrado a partir da foto de um recibo. Isso continua anotado se você editar.
+309|A memória de longo prazo permite ao Carino lembrar o que importa entre conversas.
+310|Almoço com a Sam
+311|Endereço do servidor MCP
+312|Gerenciar
+313|Gerenciar suas memórias
+314|Memória
+315|A memória está desligada
+316|Memória salva
+317|Mande mensagem ao Carino pelo WhatsApp ou Telegram como para um amigo — texto, áudios e fotos. Adicione o Carino a um grupo da família ou da equipe para ter listas e planos num só lugar. Cada conversa ganha sua própria conversa aqui no Carino.
+318|Mensagem para {0}…
+319|Mensagens
+320|Mensagens (WhatsApp, Telegram)
+321|A Meta entrega as mensagens num endereço web sempre ligado; o relay é esse endereço, na sua própria conta Cloudflare. Crie uma conta Cloudflare grátis, depois em API Tokens toque em Create Token → Edit Cloudflare Workers → Use template → Continue → Create e cole o token aqui. O Carino configura e vincula o relay (o token não é guardado).
+322|Meia-noite
+323|Modelo
+324|Modelo (grátis, o melhor primeiro)
+325|Modelo neste celular
+326|Dinheiro
+327|Orçamento mensal
+328|Orçamentos mensais
+329|Limite mensal (USD)
+330|Mais nomes
+331|Meus apps
+332|Nome
+333|Dê um nome a este aparelho
+334|Nunca mostrado a uma IA online
+335|Novo
+336|Novo caderno
+337|Nova conversa
+338|Novo caderno de dinheiro
+339|Nova rotina
+340|Novo token
+341|Próximo
+342|Próximo mês
+343|Ainda sem serviço de IA
+344|Nenhuma ação ainda
+345|Nenhum app conectado ainda
+346|Nenhuma conta a pagar ainda
+347|Nenhuma alteração ainda
+348|Nenhum duplicado encontrado
+349|Nenhuma meta ainda
+350|Sem limite
+351|Nenhum modelo ainda.
+352|Nenhuma notificação
+353|Nenhum
+354|Nada encontrado. Se você usa Ollama ou LM Studio, abra-o e procure de novo.
+355|Nenhum ainda.
+356|Nenhuma ainda. Escolha uma pasta no seletor de pastas do celular; você pode remover quando quiser.
+357|Normal
+358|Ainda não conectado.
+359|Não está neste aparelho
+360|Não usado: {0}
+361|Nota
+362|Nada criado ainda
+363|Nada muda até você aprovar em Aprovações, e só em pastas onde você permitiu alterações.
+364|Nada encontrado.
+365|Nada devido
+366|Nada registrado ainda
+367|Nada para adicionar
+368|Nada para arrumar
+369|Nada acompanhado ainda
+370|Nada esperando aprovação.
+371|Notificações
+372|Notificações e rotinas
+374|Desligado
+375|No seu PC, abra Carino → Configurações → Aparelhos → Parear um celular. Depois escaneie o código exibido.
+376|No seu celular, abra Carino → Configurações → Aparelhos → Parear com meu PC e escaneie isto:
+377|Só memórias aprovadas são usadas. Você pode ver, editar ou excluir qualquer uma.
+378|Só a IA local lê
+379|Só o que eu escolher
+380|Só quando eu disser “lembre”
+381|Abrir
+382|Abrir @BotFather
+383|Abrir WhatsApp
+384|Abrir conversa
+385|Abrir o anúncio
+386|Abrir a página
+387|Tarefas abertas
+388|Abrir {0}
+389|Abrir só verifica e mostra uma prévia: nada muda ainda.
+390|Opcional. Peça ao Carino no chat para ligar para um estabelecimento, por exemplo para confirmar o horário ou reservar uma mesa. Cada ligação espera sua aprovação, começa dizendo que é uma IA ligando por você e é gravada para as respostas serem anotadas. As ligações usam sua própria conta Twilio e são cobradas pela Twilio.
+391|Opcional. O Carino só escuta enquanto o microfone está ligado e nunca grava em segundo plano. A fala usa o serviço de voz e as vozes do seu celular.
+392|Organização
+393|Outro
+394|Saída
+395|Endereço do PC
+396|Páginas e apps
+397|Pago
+398|Serviço pago: o Carino não vai usar até você permitir uso pago, e você pode definir um limite de gasto.
+399|Parear um celular
+400|Parear com meu PC
+401|Aparelhos pareados
+402|Link de pareamento (do QR code)
+403|Faz parte de
+404|Frase-senha (10+ caracteres)
+405|Frase-senha para {0}
+406|Cole um token de acesso pessoal do GitHub
+407|Cole algumas mensagens ou e-mails que você enviou (sem detalhes privados).
+408|Cole o endereço de um servidor MCP. Muitos apps e serviços de conectores fornecem um.
+409|Cole sua chave
+410|Pagamento
+411|Por mês ({0})
+412|Permissões
+413|Pessoal
+414|Vida pessoal
+415|Ligações telefônicas
+416|Phone number ID
+417|Escolha um nome ou digite o seu. Você pode mudar quando quiser em Configurações.
+418|Escolha uma personalidade. Você pode mudar, ou me ensinar a soar como você, em Configurações.
+419|Escolher o modelo de cada mensagem automaticamente
+420|Planos
+421|Conectores grátis populares
+422|Preferir
+423|Preferências
+424|Mês anterior
+425|Preço
+426|Privacidade
+427|Privacidade nas conversas
+428|Privacidade, dados e backup
+429|Perfil
+430|Perfil e assistente
+431|Projetos e mais
+432|Horário de silêncio
+433|Desabafe tudo
+434|Ler meu resumo em voz alta na primeira vez que eu abrir o Carino a cada dia
+435|Ler respostas em voz alta automaticamente
+436|Só leitura — consulta, não altera nada
+437|Recibo
+438|Ligações recentes
+439|Conversas recentes
+440|Registre dinheiro emprestado ou pego, e os pagamentos conforme chegam.
+441|Reduzir movimento
+442|Referência
+443|E-mail ou telefone da referência
+444|Endereço do relay
+445|Relay: {0}
+446|Os lembretes tocam neste celular, mesmo com o Carino fechado.
+447|Lembretes, resumos e ações com falha aparecem aqui.
+448|Remover
+449|Remover etapa {0}
+450|Remover o app de desenvolvedor?
+451|Remover token
+452|Remover {0}
+453|Remover {0}?
+454|{0} removido
+455|Renomear
+456|Substituir tudo
+457|Troque {0} pelos seus próprios dados.
+458|Respostas às suas mensagens são grátis. A Meta só cobra mensagens que uma empresa inicia após 24 horas de silêncio, e o Carino não envia essas. O relay só guarda as entregas da Meta até seu celular buscá-las (no máximo 7 dias); seu segredo do app e suas respostas nunca passam por ele.
+459|Idioma das respostas
+460|Relatar um problema ou sugerir algo
+461|Requisito
+462|Estilo de resposta
+463|Restaurar
+464|Restaurar um backup
+465|Restaurar de um arquivo…
+466|Restaurar isto
+467|Restaurado como a versão mais recente
+468|Restaurado. {0}
+469|Alterações reversíveis — cria ou edita seus dados
+470|Rotinas
+471|As rotinas rodam sozinhas e mandam uma notificação. Marque as que quiser — dá para mudar ou adicionar mais na página Rotinas.
+472|Salvar
+473|Salvar alterações
+474|Salvar limites
+475|Salvar imagem
+476|Salvar preço
+477|Salvar em Downloads
+478|Salvar o que eu digo; perguntar sobre o sensível ou deduzido
+479|Salvo
+480|Salvo em {0}
+481|Salvo. Aprove para enviar.
+482|Salvo. Agora faça login.
+483|Bolsa
+484|Pesquisar conversas
+485|Pesquisar nos seus arquivos… ex.: “seguro”
+486|Pesquisar memórias
+487|A pesquisa acontece neste aparelho. “Resumir” envia o texto do arquivo ao seu serviço de IA — exceto de pastas mantidas nos seus aparelhos, que só a IA local lê.
+488|Enviar
+489|Enviar um teste
+490|Enviar feedback
+491|Enviar teste
+492|Dados sensíveis e suposições sempre precisam da sua aprovação.
+493|Enviado ao app como token Bearer. Guardado criptografado e nunca mais mostrado.
+494|Serviço
+495|Defina um limite para o mês — para tudo ou só para comer fora — e o Carino avisa em 80% e se passar.
+496|Configurar
+497|Defina algo para juntar dinheiro e vá adicionando.
+498|Configurações
+499|Código de configuração (se houver)
+500|Compartilhar
+501|Compartilhar um link para baixar o Carino
+502|Loja ou pessoa
+503|Curto e direto
+504|Mostrar todos os {0} modelos
+505|Mostrar concluídas
+506|Mostre como você escreve
+507|Entrar
+508|Entrar de novo
+509|Entrar com Linear
+510|Entrar com Notion
+511|Entrar com o app
+512|Contas conectadas
+513|As contas conectadas continuam funcionando até o login expirar.
+514|Pular
+515|Outra coisa…
+516|Soar como eu
+517|Idioma da fala
+518|Velocidade
+519|Gastos
+520|Iniciar uma conversa ao vivo
+521|Status
+522|Etapa {0}
+523|Etapa {0} de {1}
+524|Etapas (opcional)
+525|Parar
+526|Parar a conta “{0}”?
+527|Parar {0}
+528|Resumir
+529|Sincronizar agora
+530|Sistema
+531|Falar
+532|Falar sem as mãos (modo voz)
+533|Toque numa ideia para começar. Nada é enviado, comprado ou excluído sem seu OK.
+535|Diga ao Carino “lembre que…” numa conversa, ou adicione uma aqui.
+536|Testar
+537|Notificação de teste enviada
+538|Testar a voz
+539|Testar {0}?
+540|Tamanho do texto
+541|Os serviços de IA, a IA local e as contas que o Carino pode usar. O Carino só usa o que você configurar aqui, mantém os logins atualizados sozinho e nunca envia conteúdo privado a uma IA online.
+542|A câmera não está disponível. Digite o código.
+543|O código vale por 10 minutos.
+544|O mesmo valor foi registrado há poucos minutos — exclua um se foi registrado duas vezes.
+545|O mesmo conteúdo em mais de um lugar. Para remover as cópias, veja Arrumar.
+546|O token fica criptografado neste aparelho e só é enviado para {0}. Alterações e mensagens esperam seu OK, a não ser que você permita em Configurações → Permissões.
+547|Tema
+548|Foram editados nos dois antes de sincronizar. Nada foi sobrescrito: escolha qual manter.
+549|Não são iguais
+550|São iguais
+551|Eles param de sincronizar. Nada que já está em algum aparelho é apagado.
+552|Esta conta passa a ser exatamente o backup. Tudo o que foi adicionado depois é removido.
+553|Este app não oferece ferramentas.
+554|Este aparelho
+555|Este aparelho: {0}
+556|Esta ideia usa um app conectado (ex.: seu e-mail ou agenda).
+557|Este modelo é pago. Um teste usa cerca de {0} do seu crédito {1}.
+558|Este mês
+559|Esta parte do Carino ainda não está disponível aqui.
+560|Isso apaga permanentemente todas as notificações. Lembretes e rotinas continuam funcionando.
+561|Isso remove permanentemente. Não dá para desfazer.
+562|Esta versão
+563|Hora
+564|Fuso horário
+565|Os horários estão no seu fuso. Uma rotina perdida por mais de três horas é pulada até o dia seguinte.
+566|Título
+567|Para
+568|Para manter uma cópia no Google Drive ou OneDrive, conecte em Meus apps (opcional). A cópia continua criptografada.
+569|Para entender áudios, adicione uma chave Groq grátis em Configurações → Serviço de IA. Texto e fotos funcionam sem ela.
+570|Tarefas
+571|Tarefas e lembretes
+572|Token
+573|Tokens
+574|Acompanhar uma candidatura
+575|Transcrever áudios
+576|Tentar de novo
+577|Desligar horário de silêncio
+578|Desligue para manter os lembretes só no app.
+579|Ligar
+580|Transforma áudios do Telegram em texto (grátis).
+581|Desliga as animações.
+582|Conta Twilio
+583|Uganda (en-UG)
+584|Desfazer
+585|Desfeito
+586|Desvincular
+587|Desvincular {0}?
+588|Animado
+589|Atualizar automaticamente
+590|Atualizações
+591|Atualizando o Carino para {0}… ele reabre em instantes.
+592|Use Wi-Fi para o download. Depois funciona sem internet.{0}
+593|Use um código de 3 letras como UGX, KES ou USD
+594|Usar memória de longo prazo
+595|Usar este
+596|Usado para datas, lembretes, resumos e agendamento em linguagem natural.
+597|Usos
+598|Versão {0} (mais recente)
+599|Versão {0} · {1}
+600|Versões
+601|Voz
+602|Esperando OK
+603|Esperando… (válido por 15 minutos)
+604|Acolhedor
+605|O quê
+606|O que o Carino pode acessar
+607|O que {0} pode tirar das suas mãos?
+608|O que aconteceu, ou o que deixaria o Carino melhor? Por favor, não inclua detalhes privados.
+609|O que ele pode usar
+610|O que o Carino deve fazer a cada vez?
+611|O que o Carino deve lembrar?
+612|Como devo chamar você?
+613|Como você vai me chamar?
+614|Com o que você quer ajuda, {0}?
+616|O WhatsApp não está instalado neste celular.
+617|WhatsApp vinculado
+618|Quando o Carino quer lembrar algo
+619|Desligada, o Carino não lê nem salva memórias.
+620|Para onde foi
+621|Onde conseguir um endereço
+622|Quem responde suas conversas
+623|Trabalho
+624|Trabalho e vida
+625|Trabalho ou negócio
+626|Você
+627|Você entra na própria página de {0} e escolhe o que o Carino pode fazer. Seu login fica neste celular.
+628|Seu número Twilio
+629|Seu segredo do app passa a ficar também na sua própria conta Cloudflare. Desligado: o relay recusa tudo o que não parece uma entrega do WhatsApp para o seu número e limita a frequência de envio de um mesmo endereço.
+630|Sua moeda
+631|Seus dados não estão no backup do próprio Android (ele incluiria a chave dos seus logins). Faça aqui seus próprios backups criptografados.
+632|Seu nome
+633|Seu celular e seu PC, sincronizados pelo seu Wi-Fi. Nada passa pela internet.
+634|Suas rotinas
+635|Suas chaves salvas não puderam ser desbloqueadas neste aparelho (o armazenamento seguro foi redefinido). Digite-as de novo.
+636|Seus logins ficam criptografados neste celular. O Carino pergunta antes de enviar e-mail ou publicar qualquer coisa. Você pode mudar o que ele faz sozinho em Configurações → Permissões.
+637|Suas coisas
+639|data
+640|ex.: 300k
+641|ex.: Africa/Kampala, America/Sao_Paulo
+642|ex.: Preciso encomendar paracetamol até sexta, me lembre de ligar para a mamãe amanhã às 5, a placa da loja quebrou, e tive uma ideia de cartão fidelidade…
+643|ex.: Prefiro um resumo de manhã às 7:00
+644|ex.: Tenho uma farmácia de bairro em Kampala. Use UGX para dinheiro.
+645|ex.: Veja o que terminei nesta semana e salve uma nota curta de conquistas.
+646|ex.: E-mail do trabalho
+647|fato
+648|acompanhar {0}
+649|de “{0}”
+650|meta
+651|talvez não se qualifique
+652|preferência
+653|perfil
+654|projeto
+655|rotina
+656|resumo
+657|{0} KB · criptografado
+658|{0} já pode ser aberto pelo Carino
+659|{0} conectado — {1} ferramenta(s) disponível(is)
+660|{0} cópias · {1} cada
+661|{0} de {1} prontos
+662|{0} de {1} prontos{2}
+663|{0} de {1} · mantenha o Carino aberto
+664|{0} item(ns) precisam da sua atenção
+665|{0} ferramenta(s) · {2}{3}
+666|{0} esperando sua aprovação
+667|{0} · vinculado {1}
+668|{0} · com {1}
+669|{0} · {1} · {2} modelo(s){4}
+670|“{0}” e as mensagens dela serão excluídas.
+671|“{0}” rodou — veja o resultado acima
+672|…ou
+673|…ou um endereço SearXNG
+674|🔒 Conversa privada: respondida só pela IA dos seus aparelhos
+675|🔒 {0} Só os últimos 4 caracteres são mostrados.
+676|🔔 Próximo lembrete: {0} · {1}
+677|Nos seus aparelhos — o conteúdo fica com você
+678|Online
+679|Grátis
+680|Pode custar dinheiro
+681|conectado
+682|token salvo
+683|sem token
+684|ainda falta {0}
+686|Uma nova versão do Carino está pronta.
+687|Uma nota para depois (opcional)
+688|Um caderno separado para um negócio ou projeto: gastos, receitas, contas, dívidas e economias ficam separados do seu dinheiro pessoal.
+689|IA nos seus aparelhos
+690|Serviços de IA
+692|Chave de API
+694|Acessório
+695|Conta excluída
+696|Contas e ferramentas conectadas
+698|Ação esperando aprovação
+699|Histórico de ações
+700|Ativo
+701|Provedor de IA ativo
+702|Adicionar uma dependência
+703|Adicionar um lembrete
+704|Adicionar uma subtarefa
+705|Adicionar uma tarefa
+706|Adicione uma tarefa… ex.: “Me lembre amanhã de manhã de revisar o orçamento”
+707|Adicionar um app
+708|Adicionar orçamento
+709|Adicionar minha localização atual (para lugares próximos)
+710|Adicionar minha localização
+711|Adicionar gasto
+713|Adicionado
+714|Adicionado às suas tarefas
+715|Adicionado · adicionar de novo
+717|Avançado: usar meu próprio app de desenvolvedor
+718|Todas as conversas
+719|Todas as memórias
+720|Dia inteiro
+721|Permitir localização
+722|Permitir alterações reversíveis
+723|Alt 1–7
+724|Valor (
+725|Valor a depositar ou retirar
+726|Os valores estão em
+727|Qualquer prioridade
+728|Tudo o que precisa de aprovação aparece
+731|Candidatura
+733|Aprovações e atividade
+734|Apps
+735|Apps compatíveis podem ser conectados com
+736|Apps com servidor MCP próprio
+737|Arquivado
+738|Perguntar
+739|Pergunte qualquer coisa, planeje seu dia, crie lembretes ou me envie uma foto ou arquivo para eu ver.
+740|Pedir para fazer isso
+741|Pergunta antes de:
+742|Às
+743|Pelo menos 10 caracteres. Uma frase de algumas palavras funciona bem.
+744|Anexar
+748|Automático
+749|Backup de
+750|Frase-senha do backup
+751|Resposta ruim
+752|Antes de restaurar, o que está aqui agora é salvo como backup criptografado “Antes da restauração” com a mesma frase-senha, para você poder desfazer. Fora dos backups:
+753|Beta
+754|Contas a pagar
+755|Bloqueia:
+756|O BotFather responde com um token como
+757|Chave do Brave Search para pesquisa na web (grátis, opcional)
+758|Divida em etapas que o Carino segue em ordem, ex.: “Verificar contas desta semana” e depois “Adicionar uma tarefa para cada uma”.
+759|Orçamentos
+762|Por categoria
+765|Entrou este mês
+766|Pode:
+767|Início do Carino
+768|O Carino está pensando
+769|O Carino precisa de um serviço de IA para conversar.
+770|O Carino lembra você de acompanhar
+771|O Carino executa ações de leitura e reversíveis dentro das permissões que você definir. Exclusões e outras ações importantes sempre esperam você aqui.
+772|O Carino mostra um código de 6 dígitos — envie para o seu novo bot. Pronto. Não é preciso endereço web público.
+773|O Carino sugeriu estas, mas precisa do seu OK — podem ser sensíveis, deduzidas em vez de ditas, ou suas configurações exigem aprovação.
+775|O Carino vai lembrar disso
+776|Categorias
+777|Desafios
+778|Mudar senha
+779|Alterações para conferir
+780|Converse com o Carino no WhatsApp como com um amigo: texto, áudios e fotos. O Carino tem número próprio
+782|Conferir os detalhes
+783|Verifique sua conexão e tente de novo. Seus dados estão seguros.
+784|Escolha uma tarefa da qual esta depende…
+785|Escolha o que fazer com isso. Nada foi enviado ao servidor do Carino ainda.
+790|Nuvem
+791|Conta Cloudflare
+792|Concluído neste aparelho — será sincronizado quando você voltar a ficar online
+793|Confirme nos dois aparelhos. Se os números forem diferentes, há algo no meio: não pareie.
+794|Conexões
+795|Serviços de conectores
+796|Conectores
+799|Opções da conversa
+800|Resumo da conversa
+801|Conversas
+803|Copiar para a nuvem
+804|Não foi possível abrir o que foi compartilhado.
+805|Criar
+808|Ctrl K
+809|Senha atual
+810|Diário
+811|Data e hora (
+812|Dias
+813|Dívidas
+814|Excluir conta
+815|Excluir conta permanentemente
+816|Apagar tudo
+817|Excluir memória
+818|Excluir minha conta…
+819|Excluir este backup
+820|Depende de
+822|Descrição
+823|Computador
+824|App de computador
+825|Desenvolvimento
+826|Descartar minha alteração
+827|Fechar
+828|Nome de exibição
+829|Os números são iguais?
+830|Não se repete
+831|Concluído
+832|Terminei de falar
+833|Baixar
+834|Baixar exportação
+835|Rascunhar uma resposta
+836|Fantasiar
+837|Vence (
+838|Duplicados
+839|Cada um vale
+841|Editar memória
+842|Editar tarefa
+843|E-mail
+844|E-mail ou telefone
+845|Ativar voz
+846|Fim
+847|Encerrar conversa por voz
+848|Enter
+849|Esc
+850|Estimativa (minutos)
+851|Gastos
+852|Exportar
+856|Mais rápido · escolhido
+857|Filtrar por prioridade
+858|Filtrar histórico
+859|Acompanhar
+860|Acompanhamento:
+861|Acompanhamentos
+863|Desta semana. Mantenha o que está certo, esqueça o que não está.
+864|Do seu outro aparelho
+865|Consiga uma chave grátis:
+866|Consiga uma em
+867|Começar
+870|Voltar
+871|Resposta boa
+878|Groq e Google Gemini são grátis: pegue uma chave e cole em
+879|Chave Groq para áudios (grátis, opcional)
+881|Alta
+882|O histórico guarda o que cada ação fez, não todo o conteúdo da conversa.
+883|Como o Carino escolhe um modelo
+884|Como posso ajudar?
+885|Como restaurar
+886|Eu li “
+887|Categorias de ideias
+888|Ideias para você
+889|Se um modelo for desativado, estiver ocupado ou passar do limite grátis, o Carino muda sozinho para o próximo desta lista.
+890|Em
+891|No Chrome e no Edge, a fala é transformada em texto pelo serviço de voz online do fabricante do navegador (Google ou Microsoft). A leitura em voz alta usa as vozes instaladas no seu aparelho.
+893|Em grupos, o Carino só responde quando é mencionado ou respondido, pode adicionar tarefas e lembretes, pesquisar e encontrar lugares — mas não vê suas memórias, tarefas, notas ou documentos.
+894|No modo voz você pode dizer
+895|Receita este mês
+896|Entrada, USD por milhão de tokens
+897|Instale o Carino para Windows no seu PC, abra Configurações → Aparelhos lá e escolha “Parear um celular”.
+898|Aparece no topo do Início em
+899|Ele sempre pode ver suas tarefas, notas e conhecimento salvo. Enviar, excluir, publicar e outras ações importantes sempre esperam seu OK em Aprovações.
+900|Item
+901|Vagas e bolsas que você busca: prazos, se você se qualifica, os documentos e referências de cada uma e quando acompanhar. Ou diga ao Carino: “acompanhe esta vaga…” e cole o anúncio.
+902|Manter
+903|Manter minha alteração
+904|Só nos meus aparelhos — nunca mostrado a uma IA online
+905|Separado do seu dinheiro pessoal: não entra no seu resumo diário nem nos orçamentos.
+906|Atalhos de teclado:
+908|Tipo
+909|Tipo de item
+910|Últimos 7 dias
+911|Última execução
+913|Deixe o relay verificar também a assinatura da Meta, para que mensagens falsas não o encham.
+915|Lista
+916|Ouvindo — sem pressa, pausas são normais. A fala é transcrita pelo serviço de voz do seu navegador.
+917|A voz ao vivo envia seu áudio ao serviço escolhido durante a chamada. As alterações que ela fizer continuam esperando sua aprovação.
+918|Carregando
+919|Carregando…
+920|Só modelos locais
+922|A memória de longo prazo é separada do histórico de conversas. Só memórias aprovadas são usadas, e você pode ver, editar, exportar ou excluir qualquer uma.
+923|Tudo parece em ordem. Ideias aparecem aqui quando houver duplicados ou arquivos soltos.
+924|Baixa
+925|Principal
+926|Navegação principal
+927|Seções principais
+931|Usar meu idioma
+932|Eu
+933|A memória está desligada — o Carino não vai usar nem salvar memórias.
+934|Modo de salvar memórias
+935|Mandar mensagem ao Carino
+939|Modelos
+940|Caderno de dinheiro
+941|Mês
+942|Mensal
+943|Mais opções
+944|Silenciar microfone
+945|Dê o nome “Carino”. Quem pode usar:
+948|Nova senha
+949|Nova senha (10+ caracteres)
+951|Nova subtarefa
+952|Novidades
+953|Próximo lembrete:
+954|Próxima etapa
+955|Nenhum QR code do Carino encontrado. Cole o código.
+956|Sem resposta há 2+ dias ·
+957|Não precisa de resposta
+958|Nenhuma rotina sua ainda
+959|Nenhum item salvo corresponde a “
+960|Sem ferramentas
+961|Sem espaço livre suficiente
+962|Não usado:
+963|Notas
+964|Nada para conferir
+965|Nada para cronometrar.
+966|Notificações ativadas neste aparelho
+968|Alterações offline para revisar
+969|Cópia offline de
+970|Cópia offline neste aparelho
+971|No aparelho
+972|Neste celular
+973|Configuração única
+974|Só conversas que você vincular com um código de uso único são respondidas. Na sua conversa particular, só a sua própria conta é respondida.
+975|Só os últimos 4 caracteres são mostrados.
+976|Só quando eu disser explicitamente “lembre”
+977|Dívidas em aberto
+978|Abrir menu
+979|Tarefas abertas
+981|Abrindo o WhatsApp…
+982|Ou digite o código
+983|Devem a você
+984|Páginas
+985|Pareie seu celular e seu PC para manter tarefas, conversas, dinheiro, candidaturas e arquivos sincronizados e continuar de onde parou. Eles se falam direto pelo seu Wi-Fi, criptografados com uma chave que só os dois aparelhos têm. Aprovações e rotinas ficam no aparelho onde foram configuradas.
+986|QR code de pareamento
+987|Frase-senha para
+988|Senha
+989|Senha alterada. Os outros aparelhos foram desconectados.
+990|Cole um token se o app forneceu um
+991|Por mês (
+992|Pessoal e trabalho
+993|Pessoal ou trabalho
+994|Notificações do celular
+995|Fotos
+996|Escolha uma ideia abaixo ou crie uma do zero. Você também pode pedir ao Carino no chat: “toda sexta às 16:30, registre minhas conquistas”.
+997|Escolher o modelo automaticamente
+998|Prioridade
+1002|O push não está configurado no servidor. Execute
+1003|Notificações push
+1004|Atalhos para começar
+1005|Fim do horário de silêncio
+1006|Início do horário de silêncio
+1007|Limitado
+1008|Leitura + alterações na fila
+1009|Leitura e escrita
+1010|Ler meu resumo em voz alta todo dia
+1011|Ler respostas em voz alta
+1012|Lê:
+1013|Foto do recibo
+1014|Recomendado:
+1015|Gravando… a fala é transcrita pelo serviço de voz do seu navegador.
+1017|Endereço de redirecionamento
+1018|Contato da referência
+1019|Cadastrar
+1020|Código de configuração do relay
+1021|Relay:
+1022|Lembre disso
+1023|Lembrado
+1024|Lembrete agendado
+1025|Lembretes
+1026|Renomear conversa
+1027|Repetir a cada N
+1028|Repete
+1029|Substituir
+1030|Responder a
+1032|Retenção
+1033|Dias de retenção
+1034|Tentar de novo
+1035|Revisar
+1036|Horário da rotina
+1037|página Rotinas
+1039|Salário ou prêmio
+1041|Salvar instruções
+1042|Salvar tarefa
+1043|Salvo neste aparelho — será sincronizado quando a conexão voltar.
+1044|Salvo neste aparelho — será sincronizado quando você voltar a ficar online
+1045|Metas de economia
+1046|Diga oi.
+1047|Diga “pausa”, “repete”, “lê meu resumo” ou “para”. Usa o serviço de voz e as vozes do seu navegador (escolha uma voz em Configurações → Voz). Tudo fica salvo nesta conversa.
+1048|Resumos agendados a partir dos seus dados reais, além das suas próprias rotinas. Gerencie todos e veja ideias na
+1049|Agendado:
+1050|Pesquisar
+1051|Pesquisar no Carino
+1052|Pesquisar conversas
+1053|Pesquisar arquivos
+1054|Pesquise nos seus arquivos… ex.: “seguro” ou “paracetamol”
+1055|Pesquisar tarefas
+1056|Pesquise tarefas, memórias, conversas… ou digite um comando
+1057|A pesquisa acontece neste aparelho. “Resumir” envia o texto do arquivo ao seu serviço de IA para escrever o resumo — exceto de pastas mantidas nos seus aparelhos, que só a IA local lê.
+1058|Me lembrar neste horário
+1059|Enviar notificações push
+1060|Enviado para
+1061|Enviado ao app como token Bearer. Ele fica criptografado no seu servidor Carino e nunca mais é mostrado.
+1062|No servidor
+1063|Defina uma data de vencimento para a próxima ocorrência poder ser agendada.
+1064|Seção de configurações
+1065|Seções de configurações
+1066|Configurações → Serviço de IA
+1069|Compartilhar com o Carino
+1070|Compartilhado com o Carino
+1071|Shift Enter
+1072|Mostrar tudo
+1073|Mostrar concluídas
+1074|Mostrar mais
+1075|Mostra só suas tarefas do Carino. Para vê-las no Google Agenda ou no Outlook, ative o feed de agenda em Configurações.
+1077|Sair
+1078|Sair de todos os outros aparelhos
+1079|O login não foi concluído:
+1080|Os cadastros estão fechados neste servidor.
+1081|Conectado —
+1082|Aparelhos conectados
+1083|Adiar
+1084|Outra coisa
+1085|Algo precisa de você
+1086|Ordenar
+1087|Ordenar: vencimento
+1088|Ordenar: mais recentes
+1089|Ordenar: prioridade
+1090|Fontes
+1091|Gasto
+1092|Gasto do limite
+1093|Começar a conversa
+1094|Fica neste aparelho: respondido por
+1095|Parar de gerar
+1096|Parado.
+1097|Aparelhos inscritos
+1098|Subtarefas
+1099|Resumir e lembrar
+1100|Resumindo…
+1101|Resumo
+1102|Passe pelas ideias e toque em uma para começar.
+1103|Sincronizar
+1104|Tags (separadas por vírgula)
+1105|Falar sem as mãos
+1106|Fale com o Carino pelos seus apps de mensagem
+1108|Toque para falar sem as mãos
+1110|Tarefa
+1111|Tarefa excluída
+1112|Tarefas
+1113|Token do bot do Telegram
+1114|Telegram conectado — agora envie o código para o seu bot
+1115|Diga à Meta onde entregar.
+1116|Teste
+1117|A câmera não está disponível. Cole ou digite o código.
+1118|O código vale por 10 minutos. Depois, escolha “Número de verificação” ao lado do celular para comparar.
+1119|A cópia continua criptografada com sua frase-senha: Google ou Microsoft não conseguem lê-la.
+1120|O outro app não compartilhou nenhum conteúdo.
+1122|Coisas que o Carino faz por você num horário — no servidor, mesmo com o app fechado. Os resultados chegam como notificação e na conversa da própria rotina. Tudo o que precisa da sua aprovação espera por você.
+1123|O endereço deste PC não é conhecido aqui. No app do Windows ele é preenchido para você.
+1124|Este navegador não consegue ouvir. O modo voz funciona no Chrome e no Edge (no Android e no Windows). Você ainda pode digitar no chat.
+1125|Este navegador não suporta push web. Os lembretes vão aparecer no app.
+1126|Este aparelho:
+1129|Esta tela não abriu
+1130|Isso foi alterado em outro lugar desde que você abriu. Confira em “Alterações para conferir”.
+1131|Esta semana
+1132|Arrumar
+1134|Tempo economizado
+1135|Os horários estão no seu fuso (Configurações → Região). Uma rotina perdida por mais de três horas — por exemplo porque o servidor estava desligado — é pulada até o dia seguinte.
+1136|Para manter uma cópia no Google Drive ou OneDrive, conecte em Meus apps (opcional).
+1138|Hoje
+1139|Amanhã
+1140|Ferramentas
+1141|Ative em Configurações
+1142|Desligado
+1143|Transforma áudios do Telegram em texto
+1144|Tipo
+1145|Digite DELETE para confirmar
+1146|Digite uma mensagem abaixo.
+1147|Digite o nome de um modelo…
+1149|Indisponível
+1151|Atualizar
+1152|Use Wi-Fi para o download. Depois funciona sem internet.
+1153|Usar aparelho
+1155|Usado
+1159|Token de verificação
+1160|Conversa por voz
+1161|A entrada por voz não está disponível neste navegador (funciona no Chrome e no Edge). Você ainda pode digitar.
+1162|Esperando aprovação
+1163|Semanal
+1164|O que o Carino lembra
+1165|O que
+1166|Com o que você quer ajuda,
+1167|O que você gasta e seus orçamentos mensais. Diga ao Carino no chat — “gastei 15k no almoço” — ou envie a foto de um recibo.
+1170|Quando
+1171|Ao entrar, o Google diz que o app não foi verificado — é normal para o seu próprio app. Toque em
+1172|Contas de trabalho ou escola podem precisar que o administrador de TI permita o app.
+1173|Escrever
+1175|O plano grátis do X permite cerca de 500 posts por mês e pouquíssimas leituras.
+1176|Anual
+1177|Você também tem
+1178|Você deve
+1181|Seus dados
+1182|Seu dia num relance
+1183|Sua própria resposta
+1184|Seu próprio servidor
+1185|Sua senha
+1186|Seu desabafo
+1187|Seu relay
+1189|“pausa”
+1190|“lê meu resumo”
+1191|“repete”
+1192|“pula”
+1193|“para”
+1194|…ou um endereço SearXNG (grátis, opcional)

@@ -575,7 +575,7 @@ export function dataRoutes() {
     return c.json({
       channels: rows.map((ch) => ({ ...channels.presentChannel(db(c), ch, c.var.services.now()), webhook_url: ch.kind === 'whatsapp' ? webhookUrl(c.var.services, ch) : undefined })),
       transcription: transcriptionConfigured(c.var.services),
-      // Carino's shared WhatsApp number, if this build has one (link with a code, like Toqi).
+      // Carino's shared WhatsApp number, if this build has one (link with a code).
       shared_whatsapp: shared,
       publicUrl: c.var.services.config.PUBLIC_URL,
     });

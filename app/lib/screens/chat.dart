@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'dart:io' show Platform;
 import 'dart:convert';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -283,7 +284,7 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         title: Text('${_conv?['title'] ?? 'Chat'}', maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
-          if (lo == 0 && _voiceOn) IconButton(tooltip: 'Live voice conversation', icon: const Icon(Icons.graphic_eq), onPressed: () => openPath(context, '/live')),
+          if (lo == 0 && _voiceOn) IconButton(tooltip: tr('Live voice conversation'), icon: const Icon(Icons.graphic_eq), onPressed: () => openPath(context, '/live')),
           IconButton(
             tooltip: lo == 2 ? 'This chat used content you keep on your devices, so it stays private' : lo == 1 ? 'Private: only AI on your devices' : 'Make this chat private',
             isSelected: lo > 0,
@@ -308,7 +309,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   Expanded(
                     child: _messages.isEmpty && _streaming == null
-                        ? Center(child: Text('Ask ${AppState.of(context).assistantName} anything.', style: TextStyle(color: cs.onSurfaceVariant)))
+                        ? Center(child: Tx('Ask {0} anything.', args: [AppState.of(context).assistantName], style: TextStyle(color: cs.onSurfaceVariant)))
                         : ListView(
                             controller: _scroll,
                             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
@@ -326,8 +327,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         title: Text(_speaking ? 'Speaking…' : _dict!.listening ? (_dict!.interim.isEmpty ? 'Listening…' : _dict!.interim) : _streaming != null ? 'Thinking…' : 'Tap the mic to talk', style: TextStyle(color: cs.onPrimaryContainer)),
                         subtitle: _dict!.error != null ? Text(_dict!.error!, style: TextStyle(color: cs.error)) : null,
                         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                          if (!_dict!.listening && !_speaking && _streaming == null) IconButton(tooltip: 'Talk', onPressed: _dict!.start, icon: const Icon(Icons.mic)),
-                          TextButton(onPressed: _toggleVoiceMode, child: const Text('End voice')),
+                          if (!_dict!.listening && !_speaking && _streaming == null) IconButton(tooltip: tr('Talk'), onPressed: _dict!.start, icon: const Icon(Icons.mic)),
+                          TextButton(onPressed: _toggleVoiceMode, child: const Tx('End voice')),
                         ]),
                       ),
                     ),
@@ -346,7 +347,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   if (lo > 0)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
-                      child: Text('🔒 Private chat: answered only by AI on your devices', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary)),
+                      child: Tx('🔒 Private chat: answered only by AI on your devices', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary)),
                     ),
                 ]),
     );
@@ -498,7 +499,7 @@ class _Composer extends StatelessWidget {
             ),
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
             IconButton(
-              tooltip: 'Attach a photo, PDF, Word, text, CSV or Excel file',
+              tooltip: tr('Attach a photo, PDF, Word, text, CSV or Excel file'),
               onPressed: uploading || files.length >= 5 ? null : onAttach,
               icon: uploading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.attach_file),
             ),
@@ -516,14 +517,14 @@ class _Composer extends StatelessWidget {
                 minLines: 1,
                 maxLines: 6,
                 textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(hintText: 'Message ${AppState.of(context).assistantName}…'),
+                decoration: InputDecoration(hintText: tr('Message {0}…', [AppState.of(context).assistantName])),
               ),
             ),
-            if (onVoiceMode != null && !busy) IconButton(tooltip: 'Talk hands-free (voice mode)', onPressed: onVoiceMode, icon: const Icon(Icons.record_voice_over_outlined)),
+            if (onVoiceMode != null && !busy) IconButton(tooltip: tr('Talk hands-free (voice mode)'), onPressed: onVoiceMode, icon: const Icon(Icons.record_voice_over_outlined)),
             const SizedBox(width: 4),
             busy
-                ? IconButton.filledTonal(onPressed: onStop, icon: const Icon(Icons.stop_rounded), tooltip: 'Stop')
-                : IconButton.filled(onPressed: () => onSend(), icon: const Icon(Icons.arrow_upward_rounded), tooltip: 'Send'),
+                ? IconButton.filledTonal(onPressed: onStop, icon: const Icon(Icons.stop_rounded), tooltip: tr('Stop'))
+                : IconButton.filled(onPressed: () => onSend(), icon: const Icon(Icons.arrow_upward_rounded), tooltip: tr('Send')),
           ]),
         ]),
       ),
@@ -571,7 +572,7 @@ class _AskCardState extends State<_AskCard> {
               padding: const EdgeInsets.only(top: 8),
               child: TextField(
                 controller: _other,
-                decoration: const InputDecoration(hintText: 'Something else…', isDense: true),
+                decoration: InputDecoration(hintText: tr('Something else…'), isDense: true),
                 onSubmitted: (v) { if (v.trim().isNotEmpty) send(v.trim()); },
               ),
             ),
@@ -580,7 +581,7 @@ class _AskCardState extends State<_AskCard> {
               alignment: Alignment.centerRight,
               child: FilledButton.tonal(
                 onPressed: _picked.isEmpty && _other.text.trim().isEmpty ? null : () => send([..._picked, if (_other.text.trim().isNotEmpty) _other.text.trim()].join(', ')),
-                child: const Text('Send'),
+                child: const Tx('Send'),
               ),
             ),
         ]),
@@ -653,7 +654,7 @@ class _MadeCard extends StatelessWidget {
     if (r['page_id'] != null) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 6),
-        child: FilledButton.tonalIcon(onPressed: () => openPath(context, '/pages/${r['page_id']}'), icon: const Icon(Icons.web_outlined, size: 18), label: const Text('Open the page')),
+        child: FilledButton.tonalIcon(onPressed: () => openPath(context, '/pages/${r['page_id']}'), icon: const Icon(Icons.web_outlined, size: 18), label: const Tx('Open the page')),
       );
     }
     final id = '${r['document_id']}';
@@ -671,7 +672,7 @@ class _MadeCard extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 6),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           ClipRRect(borderRadius: BorderRadius.circular(14), child: ApiImage('/documents/$id/preview', width: 260, height: 260)),
-          TextButton.icon(onPressed: save, icon: const Icon(Icons.download, size: 16), label: const Text('Save picture')),
+          TextButton.icon(onPressed: save, icon: const Icon(Icons.download, size: 16), label: const Tx('Save picture')),
         ]),
       );
     }
@@ -682,7 +683,7 @@ class _MadeCard extends StatelessWidget {
           dense: true,
           leading: Icon(r['kind'] == 'video' ? Icons.movie_outlined : Icons.description_outlined),
           title: Text('${r['filename'] ?? 'File'}'),
-          trailing: TextButton(onPressed: save, child: const Text('Save')),
+          trailing: TextButton(onPressed: save, child: const Tx('Save')),
         ),
       ),
     );
@@ -721,7 +722,7 @@ class _StickerCardState extends State<_StickerCard> {
         'stickers': stickers,
       };
       final r = await _channel.invokeMethod<String>('addStickerPack', {'pack': jsonEncode(pack)});
-      if (mounted && r == 'no_whatsapp') toast(context, 'WhatsApp isn’t installed on this phone.', error: true);
+      if (mounted && r == 'no_whatsapp') toast(context, tr('WhatsApp isn’t installed on this phone.'), error: true);
     } catch (e) {
       if (mounted) toast(context, errorText(e), error: true);
     } finally {
@@ -768,12 +769,12 @@ class _ShareCard extends StatelessWidget {
             TextButton.icon(
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: text));
-                if (context.mounted) toast(context, 'Copied');
+                if (context.mounted) toast(context, tr('Copied'));
               },
               icon: const Icon(Icons.copy, size: 16),
-              label: const Text('Copy'),
+              label: const Tx('Copy'),
             ),
-            FilledButton.tonalIcon(onPressed: () => Device(api).shareText(text), icon: const Icon(Icons.share, size: 16), label: const Text('Share')),
+            FilledButton.tonalIcon(onPressed: () => Device(api).shareText(text), icon: const Icon(Icons.share, size: 16), label: const Tx('Share')),
           ]),
         ]),
       ),

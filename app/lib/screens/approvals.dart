@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../l10n.dart';
 
 import 'package:flutter/material.dart';
 
@@ -22,29 +23,29 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
   Widget build(BuildContext context) {
     final app = AppState.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Approvals')),
+      appBar: AppBar(title: const Tx('Approvals')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
-        Text('Carino runs read-only and reversible actions within your permissions. Deletions and other big actions always wait here for you.',
+        Tx('Carino runs read-only and reversible actions within your permissions. Deletions and other big actions always wait here for you.',
             style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
         Loader<List>(
           reloadKey: _bump,
           load: () async => ((await app.api.get('/actions?status=pending')) as Map)['actions'] as List,
           builder: (context, list, _) => list.isEmpty
-              ? const Card(child: ListTile(leading: Icon(Icons.check_circle, color: Colors.green), title: Text('Nothing waiting for approval.')))
+              ? const Card(child: ListTile(leading: Icon(Icons.check_circle, color: Colors.green), title: Tx('Nothing waiting for approval.')))
               : Column(children: [for (final a in list) ApprovalCard(action: Map<String, dynamic>.from(a as Map), onDecided: () => setState(() => _bump++))]),
         ),
         const SizedBox(height: 22),
         Row(children: [
-          Expanded(child: Text('History', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600))),
+          Expanded(child: Tx('History', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600))),
           DropdownButton<String>(
             value: _filter,
             underline: const SizedBox(),
             items: const [
-              DropdownMenuItem(value: '', child: Text('All')),
-              DropdownMenuItem(value: 'executed', child: Text('Completed')),
-              DropdownMenuItem(value: 'failed', child: Text('Failed')),
-              DropdownMenuItem(value: 'rejected', child: Text('Declined')),
+              DropdownMenuItem(value: '', child: Tx('All')),
+              DropdownMenuItem(value: 'executed', child: Tx('Completed')),
+              DropdownMenuItem(value: 'failed', child: Tx('Failed')),
+              DropdownMenuItem(value: 'rejected', child: Tx('Declined')),
             ],
             onChanged: (v) => setState(() => _filter = v ?? ''),
           ),
@@ -54,7 +55,7 @@ class _ApprovalsScreenState extends State<ApprovalsScreen> {
           load: () async => ((await app.api.get('/actions?limit=200${_filter.isEmpty ? '' : '&status=$_filter'}')) as Map)['actions'] as List,
           builder: (context, list, _) {
             final done = list.where((a) => (a as Map)['status'] != 'pending').toList();
-            if (done.isEmpty) return const EmptyView(icon: Icons.schedule, title: 'No actions yet');
+            if (done.isEmpty) return EmptyView(icon: Icons.schedule, title: tr('No actions yet'));
             return Card(
               child: Column(children: [
                 for (final a in done.cast<Map>())
@@ -112,7 +113,7 @@ class _ApprovalCardState extends State<ApprovalCard> {
         a['summary'] = out['summary'];
         _edit = null;
       });
-      toast(context, 'Saved. Approve it to send.');
+      toast(context, tr('Saved. Approve it to send.'));
     } catch (e) {
       if (mounted) toast(context, errorText(e), error: true);
     } finally {
@@ -129,7 +130,7 @@ class _ApprovalCardState extends State<ApprovalCard> {
       if (kind == 'approve') {
         toast(context, out['status'] == 'executed' ? 'Done: ${a['summary']}' : 'Failed: ${out['error']}', error: out['status'] != 'executed');
       } else {
-        toast(context, 'Declined — nothing was changed.');
+        toast(context, tr('Declined — nothing was changed.'));
       }
       widget.onDecided();
     } catch (e) {
@@ -193,7 +194,7 @@ class _ApprovalCardState extends State<ApprovalCard> {
                     ),
                   ),
                 Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  TextButton(onPressed: () => setState(() => _edit = null), child: const Text('Cancel')),
+                  TextButton(onPressed: () => setState(() => _edit = null), child: const Tx('Cancel')),
                   FilledButton.tonal(onPressed: _busy != null ? null : _saveEdit, child: Text(_busy == 'edit' ? 'Saving…' : 'Save changes')),
                 ]),
               ]),
@@ -211,11 +212,11 @@ class _ApprovalCardState extends State<ApprovalCard> {
               TextButton.icon(
                 onPressed: _busy != null ? null : () => setState(() => _edit = {for (final k in _editable) k: TextEditingController(text: '${_input[k]}')}),
                 icon: const Icon(Icons.edit_outlined, size: 16),
-                label: const Text('Edit'),
+                label: const Tx('Edit'),
               ),
             TextButton(onPressed: () => setState(() => _details = !_details), child: Text(_details ? 'Hide details' : 'Details')),
             const SizedBox(width: 4),
-            OutlinedButton(onPressed: _busy != null ? null : () => _decide('reject'), child: const Text('Decline')),
+            OutlinedButton(onPressed: _busy != null ? null : () => _decide('reject'), child: const Tx('Decline')),
             const SizedBox(width: 8),
             FilledButton(
               style: destructive ? FilledButton.styleFrom(backgroundColor: cs.error, foregroundColor: cs.onError) : null,

@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 import { useMemo, useState } from 'react';
 import { Shell } from '../components/Shell';
 import { Icon } from '../components/Icon';
@@ -32,18 +33,18 @@ export default function Discover() {
   const shown = cards.filter((c) => active === 'All' || (active === 'For you' ? c.forYou : c.category === active));
 
   return (
-    <Shell title="Discover">
+    <Shell title={t('Discover')}>
       <div className="page">
         <div className="discover-hero">
           <Avatar size={84} accessory={accessory} />
           <div>
-            <h1>What can {name} take off your plate?</h1>
-            <p className="sub">Swipe through ideas and tap one to start. {name} asks for anything it needs, and nothing is sent, bought or deleted without your OK.</p>
+            <h1>{t('What can')}{' '}{name} {t('take off your plate?')}</h1>
+            <p className="sub">{t('Swipe through ideas and tap one to start.')}{' '}{name} {t('asks for anything it needs, and nothing is sent, bought or deleted without your OK.')}</p>
           </div>
         </div>
         {loading ? <Loading /> : error ? <ErrorBox error={error} retry={reload} /> : (
           <>
-            <div className="tabs" role="tablist" aria-label="Categories">
+            <div className="tabs" role="tablist" aria-label={t('Categories')}>
               {cats.map((c) => <button key={c} role="tab" aria-selected={active === c} className={active === c ? 'on' : ''} onClick={() => setCat(c)}>{c}</button>)}
             </div>
             <div className="discover-grid" role="list">
