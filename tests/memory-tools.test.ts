@@ -105,8 +105,9 @@ describe('tool registry and approvals', () => {
       expect(s.input_schema.type).toBe('object');
       expect(s.description.length).toBeGreaterThan(20);
     }
-    // Built-in tools that need the user's approval: deletions, and changing or adding files in their own folders.
-    expect(TOOLS.filter((t) => t.risk === 'consequential').map((t) => t.name).filter((n) => !n.startsWith('delete_')).sort()).toEqual(['change_local_files', 'save_spreadsheet_to_folder']);
+    // Built-in tools that need the user's approval: deletions, changing or adding files in their own
+    // folders, deleting a skill, and pressing a pay/order/send button on a website.
+    expect(TOOLS.filter((t) => t.risk === 'consequential').map((t) => t.name).filter((n) => !n.startsWith('delete_')).sort()).toEqual(['browse_confirm', 'change_local_files', 'save_spreadsheet_to_folder', 'skill_delete']);
   });
 
   it('offers a smaller core tool set for local models', () => {

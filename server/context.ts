@@ -26,6 +26,8 @@ export interface Services {
     openApp(id: string, root?: string, rel?: string): Promise<void>;
     openFile(root: string, rel: string): Promise<void>;
   };
+  /** A browser Carino can drive (a hidden WebView on the phone or the PC); absent on the PC server. */
+  browser?: import('./services/browser.ts').BrowserHost;
   /** The device's internet connection (the app sets this; absent = assume online). */
   online?: () => boolean;
   /** Phone app only: holds the session token, since in-app API calls carry no cookies. */

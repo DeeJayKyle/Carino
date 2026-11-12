@@ -519,7 +519,32 @@ class NativeBridge {
         }
     }
 
+    // ---------- The agent's hidden browser (AgentBrowser) ----------
+
+    private AgentBrowser agentBrowser;
+
+    private AgentBrowser agentBrowser() {
+        if (agentBrowser == null) agentBrowser = new AgentBrowser(activity, this);
+        return agentBrowser;
+    }
+
+    @JavascriptInterface
+    public void browserOpen(String id, String url) {
+        agentBrowser().open(id, url);
+    }
+
+    @JavascriptInterface
+    public void browserEval(String id, String script) {
+        agentBrowser().eval(id, script);
+    }
+
+    @JavascriptInterface
+    public void browserBack(String id) {
+        agentBrowser().back(id);
+    }
+
     void shutdown() {
+        if (agentBrowser != null) agentBrowser.destroy();
         pool.shutdownNow();
         if (recognizer != null) recognizer.destroy();
         if (tts != null) tts.shutdown();

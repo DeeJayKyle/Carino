@@ -8,7 +8,7 @@ import { configureSqlite, type DatabaseSync } from './shims/sqlite.ts';
 import { existsSync, flushFiles, loadFiles, preloadFiles, readFileSync, rmSync, seedFile } from './shims/fs.ts';
 import { Vault, openConfig, sealConfig, type VaultPlatform } from './vault.ts';
 import { idbDeleteAll, idbGet, idbWrite } from './idb.ts';
-import { makeNetFetch, notify, setAlarms, setPlaceAlerts, setWidgetData, takeReminderEvents, isNative, keepListening, pickFolder, forgetFolder, canPickFolders, saveFile, shareFile, shareText, openExternal, openSignIn, appInfo, askPlacesPermission, speakNative, stopSpeakingNative, listen, stopListening } from './native.ts';
+import { makeNetFetch, notify, setAlarms, setPlaceAlerts, setWidgetData, takeReminderEvents, isNative, keepListening, pickFolder, forgetFolder, canPickFolders, saveFile, shareFile, shareText, openExternal, openSignIn, appInfo, askPlacesPermission, speakNative, stopSpeakingNative, listen, stopListening, phoneBrowser } from './native.ts';
 import { getSettings } from '../server/services/settings.ts';
 import { addDays, localDate, safeTimeZone, startOfLocalDay } from '../server/services/time.ts';
 import { firePlaceReminder } from '../server/services/tasks.ts';
@@ -617,6 +617,12 @@ async function boot() {
       scheduleSave();
     });
   }
+  // A hidden browser the agent can use (phone: the Flutter edition's WebView; PC: WebView2).
+  services.browser = phoneBrowser() ?? (tauri?.core?.invoke && (globalThis as any).__carinoHost ? {
+    open: async (url: string) => { await tauri.core.invoke('browser_open', { url }); },
+    eval: async (script: string) => String(await tauri.core.invoke('browser_eval', { script })),
+    back: async () => { await tauri.core.invoke('browser_back'); },
+  } : undefined);
   // Android: folders picked in the system's folder picker.
   const nb = (globalThis as any).CarinoNative;
   if (nb?.folderList) {

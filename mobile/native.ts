@@ -26,6 +26,10 @@ interface Bridge {
   oauthListen(): string;
   keepListening(on: boolean): void;
   appInfo(): string;
+  /** The hidden browser the agent drives (Flutter edition). Each answers through __hn.browser. */
+  browserOpen?(id: string, url: string): void;
+  browserEval?(id: string, script: string): void;
+  browserBack?(id: string): void;
 }
 
 const bridge = (globalThis as any).CarinoNative as Bridge | undefined;
@@ -59,7 +63,42 @@ let speakDone: (() => void) | null = null;
   oauth: (query: string) => window.dispatchEvent(new CustomEvent('carino-oauth', { detail: query })),
   // The background listener's nudge to collect new messages while the app is hidden.
   tick: () => window.dispatchEvent(new Event('carino-tick')),
+  // The hidden browser answered: { ok, value } or { error }.
+  browser: (id: string, json: string) => {
+    const p = browserWaiting.get(id);
+    browserWaiting.delete(id);
+    if (!p) return;
+    try {
+      const r = JSON.parse(json);
+      if (r.error) p.fail(new Error(r.error));
+      else p.done(r.value ?? '');
+    } catch (e) {
+      p.fail(e as Error);
+    }
+  },
 };
+
+const browserWaiting = new Map<string, { done: (v: string) => void; fail: (e: Error) => void }>();
+let browserSeq = 0;
+
+/** The phone's hidden browser for the agent (services.browser), when this app has one. */
+export function phoneBrowser(): import('../server/services/browser.ts').BrowserHost | undefined {
+  const b = bridge;
+  if (!b?.browserOpen || !b.browserEval || !b.browserBack) return undefined;
+  const ask = (start: (id: string) => void, timeoutMs = 30_000) => new Promise<string>((done, fail) => {
+    const id = `b${++browserSeq}`;
+    browserWaiting.set(id, { done, fail });
+    setTimeout(() => {
+      if (browserWaiting.delete(id)) fail(new Error('The page took too long.'));
+    }, timeoutMs);
+    start(id);
+  });
+  return {
+    open: async (url) => { await ask((id) => b.browserOpen!(id, url), 45_000); },
+    eval: (script) => ask((id) => b.browserEval!(id, script)),
+    back: async () => { await ask((id) => b.browserBack!(id)); },
+  };
+}
 
 let seq = 0;
 

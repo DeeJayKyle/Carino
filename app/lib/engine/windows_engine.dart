@@ -57,6 +57,7 @@ class WindowsEngine extends LinkedEngine implements HostActions {
   final _syncWaiting = <int, Completer<String>>{};
   var _syncSeq = 0;
   HttpServer? _signIn;
+  WebviewController? _agent;
 
   WindowsEngine() {
     _start();
@@ -176,11 +177,44 @@ class WindowsEngine extends LinkedEngine implements HostActions {
         return vaultSeal(s('plain'));
       case 'vault_open':
         return vaultOpen(s('sealed'));
+      case 'browser_open':
+        return _agentOpen(s('url'));
+      case 'browser_eval':
+        final v = await (await _agentView()).executeScript(s('script'));
+        return v is String ? v : jsonEncode(v);
+      case 'browser_back':
+        final c = await _agentView();
+        final done = c.loadingState.firstWhere((st) => st == LoadingState.navigationCompleted).timeout(const Duration(seconds: 30));
+        await c.goBack();
+        await done;
+        return null;
       case 'probe_local_ai':
         return probeLocalAi((a['port'] as num).toInt(), s('path'));
       default:
         throw HostError('Unknown command $cmd');
     }
+  }
+
+  /// The agent's hidden browser for websites: a separate WebView2 that never sees Carino's bridge.
+  Future<WebviewController> _agentView() async {
+    final existing = _agent;
+    if (existing != null) return existing;
+    final c = WebviewController();
+    await c.initialize();
+    await c.setPopupWindowPolicy(WebviewPopupWindowPolicy.deny);
+    return _agent = c;
+  }
+
+  Future<String> _agentOpen(String url) async {
+    final u = Uri.tryParse(url);
+    if (u == null || !(u.scheme == 'https' || u.scheme == 'http')) throw const HostError('Only web pages can be opened.');
+    final c = await _agentView();
+    final done = c.loadingState.firstWhere((st) => st == LoadingState.navigationCompleted).timeout(const Duration(seconds: 45));
+    await c.loadUrl(url);
+    await done;
+    // A little time for scripts that draw the page after loading.
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    return url;
   }
 
   @override
@@ -239,6 +273,7 @@ class WindowsEngine extends LinkedEngine implements HostActions {
   Future<void> dispose() async {
     await _listener?.stop();
     await _signIn?.close(force: true);
+    await _agent?.dispose();
     await controller.dispose();
   }
 }

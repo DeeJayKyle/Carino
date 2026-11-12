@@ -28,6 +28,7 @@ import { sha256 } from '../auth.ts';
 import { findConnectorTool, callConnectorTool, TOOL_PREFIX } from '../services/connectors.ts';
 import { McpError } from '../services/mcp.ts';
 import { APP_TOOLS, findAppTool, AppError } from '../services/apps/index.ts';
+import { AGENT_TOOLS } from './agent-tools.ts';
 
 export type Risk = 'read' | 'reversible' | 'consequential';
 
@@ -958,6 +959,7 @@ export const TOOLS: ToolDef[] = [
     summarize: (i, ctx) => `Forget: "${ctx.services.db.getOwned('memories', ctx.userId, i.memory_id)?.content ?? 'unknown memory'}"`,
     run: (i, ctx) => memory.deleteMemory(ctx.services.db, ctx.userId, i.memory_id),
   }),
+  ...AGENT_TOOLS,
 ];
 
 for (const t of [...TOOLS, ...APP_TOOLS]) if (t.risk === 'consequential') CONSEQUENTIAL_GUARD.add(t.name);
