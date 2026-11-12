@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'app_state.dart';
 import 'nav.dart';
+import 'screens/web_screen.dart';
 import 'engine/android_engine.dart';
 import 'engine/engine.dart';
 import 'screens/chats.dart';
@@ -96,6 +97,14 @@ class _StartupState extends State<Startup> {
       nav.popUntil((r) => !(r.settings.name ?? '').startsWith('web:'));
       return;
     }
+    if (path == 'show') {
+      WebScreen.reveal(ctx, 'shared');
+      return;
+    }
+    if (path.startsWith('event:')) {
+      AppState.read(ctx).changed();
+      return;
+    }
     openPath(ctx, path);
   }
 
@@ -181,7 +190,7 @@ class UnavailableEngine implements Engine {
   @override
   Future<void> openWebScreen(String path) async {}
   @override
-  Future<EngineResponse> send(String method, String path, {Object? body, Upload? upload}) => Future.error(const ApiError(0, 'Not available'));
+  Future<EngineResponse> send(String method, String path, {Object? body, Upload? upload, Map<String, String>? headers}) => Future.error(const ApiError(0, 'Not available'));
   @override
   Future<String> startPath() async => '/';
   @override

@@ -35,6 +35,10 @@ class AndroidEngine implements Engine {
         if (!_ready.isCompleted) _ready.complete();
       case 'back':
         _opens.add('back');
+      case 'show':
+        _opens.add('show');
+      case 'event':
+        _opens.add('event:${m['name']}');
       case 'done':
         final b64 = m['b64'] as String?;
         _pending.remove(id)?.complete(EngineResponse(
@@ -84,13 +88,13 @@ class AndroidEngine implements Engine {
   String _id() => 'f${++_seq}';
 
   @override
-  Future<EngineResponse> send(String method, String path, {Object? body, Upload? upload}) async {
+  Future<EngineResponse> send(String method, String path, {Object? body, Upload? upload, Map<String, String>? headers}) async {
     await ready;
     final id = _id();
     final c = Completer<EngineResponse>();
     _pending[id] = c;
     await _channel.invokeMethod('request', {
-      'json': jsonEncode({'id': id, 'method': method, 'path': path, 'body': ?body, 'upload': ?upload?.toJson()}),
+      'json': jsonEncode({'id': id, 'method': method, 'path': path, 'body': ?body, 'upload': ?upload?.toJson(), 'headers': ?headers}),
     });
     return c.future.timeout(const Duration(minutes: 5), onTimeout: () {
       _pending.remove(id);

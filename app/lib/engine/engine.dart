@@ -9,7 +9,7 @@ abstract class Engine {
   Future<void> get ready;
 
   /// One API request; [path] is under /api (e.g. "/tasks?view=today").
-  Future<EngineResponse> send(String method, String path, {Object? body, Upload? upload});
+  Future<EngineResponse> send(String method, String path, {Object? body, Upload? upload, Map<String, String>? headers});
 
   /// A streamed request (Server-Sent Events), e.g. a chat reply. Cancelling the subscription stops it.
   Stream<SseEvent> stream(String method, String path, {Object? body});
@@ -116,11 +116,20 @@ class Api {
 
   Future<dynamic> get(String path) => _json('GET', path);
   Future<dynamic> post(String path, [Object? body]) => _json('POST', path, body ?? const {});
-  Future<dynamic> patch(String path, Object body) => _json('PATCH', path, body);
+  Future<dynamic> patch(String path, Object body, {Map<String, String>? headers}) => _json('PATCH', path, body, headers);
+  Future<dynamic> put(String path, Object body) => _json('PUT', path, body);
   Future<dynamic> delete(String path) => _json('DELETE', path);
 
-  Future<dynamic> _json(String method, String path, [Object? body]) async {
-    final r = await engine.send(method, path, body: body);
+  /// Uploads a file to Carino's documents (chat attachments, application files…).
+  Future<Map<String, dynamic>> upload(Upload file) async {
+    final r = await engine.send('POST', '/documents', upload: file);
+    final data = r.json;
+    if (!r.ok) throw ApiError(r.status, (data is Map ? data['error'] as String? : null) ?? 'The file couldn’t be added.');
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  Future<dynamic> _json(String method, String path, [Object? body, Map<String, String>? headers]) async {
+    final r = await engine.send(method, path, body: body, headers: headers);
     dynamic data;
     try {
       data = r.json;

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'app_state.dart';
+import 'screens/applications.dart';
 import 'screens/approvals.dart';
 import 'screens/chat.dart';
 import 'screens/discover.dart';
+import 'screens/files.dart';
 import 'screens/memory.dart';
+import 'screens/money.dart';
 import 'screens/notifications.dart';
+import 'screens/routines.dart';
 import 'screens/web_screen.dart';
 
 /// Where each page lives: a Flutter screen, or (until it's rebuilt) the engine's own web page.
@@ -17,6 +21,10 @@ final Map<String, ScreenFor> flutterScreens = {
   '/notifications': (_) => const NotificationsScreen(),
   '/memory': (u) => MemoryScreen(initialStatus: u.queryParameters['status'] ?? 'active'),
   '/discover': (_) => const DiscoverScreen(),
+  '/money': (_) => const MoneyScreen(),
+  '/applications': (_) => const ApplicationsScreen(),
+  '/files': (_) => const FilesScreen(),
+  '/routines': (u) => RoutinesScreen(idea: u.queryParameters['idea']),
 };
 
 /// Tabs of the main screen, by path.

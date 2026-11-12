@@ -8,7 +8,7 @@ import { configureSqlite, type DatabaseSync } from './shims/sqlite.ts';
 import { existsSync, flushFiles, loadFiles, preloadFiles, readFileSync, rmSync, seedFile } from './shims/fs.ts';
 import { Vault, openConfig, sealConfig, type VaultPlatform } from './vault.ts';
 import { idbDeleteAll, idbGet, idbWrite } from './idb.ts';
-import { makeNetFetch, notify, setAlarms, setPlaceAlerts, setWidgetData, takeReminderEvents, isNative, keepListening } from './native.ts';
+import { makeNetFetch, notify, setAlarms, setPlaceAlerts, setWidgetData, takeReminderEvents, isNative, keepListening, pickFolder, forgetFolder, canPickFolders, saveFile, shareFile, shareText, openExternal, openSignIn, appInfo, askPlacesPermission } from './native.ts';
 import { getSettings } from '../server/services/settings.ts';
 import { addDays, localDate, safeTimeZone, startOfLocalDay } from '../server/services/time.ts';
 import { firePlaceReminder } from '../server/services/tasks.ts';
@@ -411,6 +411,23 @@ async function deviceRoute(req: Request, path: string): Promise<Response> {
     services.db.run("DELETE FROM connection_status WHERE kind = 'ai' AND ref = ?", id);
     scheduleSave();
     return json({ removed: true });
+  }
+  // The phone's own abilities, for the Flutter screens: a fixed list, nothing else can be called.
+  if (path === '/api/device/native' && req.method === 'POST') {
+    const b = (await req.json().catch(() => ({}))) as Record<string, any>;
+    const fromB64 = (b64: string, type: string) => new Blob([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], { type });
+    switch (b.action) {
+      case 'info': return json({ ...appInfo(), canPickFolders: canPickFolders(), native: isNative });
+      case 'pickFolder': return json({ folder: await pickFolder() });
+      case 'forgetFolder': forgetFolder(String(b.root ?? '')); return json({ ok: true });
+      case 'saveFile': return json({ message: await saveFile(fromB64(String(b.b64 ?? ''), String(b.mime ?? 'application/octet-stream')), String(b.name ?? 'file')) });
+      case 'shareFile': return json({ message: await shareFile(fromB64(String(b.b64 ?? ''), String(b.mime ?? 'application/octet-stream')), String(b.name ?? 'file'), String(b.text ?? '')) });
+      case 'shareText': await shareText(String(b.text ?? '')); return json({ ok: true });
+      case 'openExternal': openExternal(String(b.url ?? '')); return json({ ok: true });
+      case 'openSignIn': return json({ error: openSignIn(String(b.url ?? '')) });
+      case 'askPlacesPermission': return json({ permission: await askPlacesPermission() });
+      default: return json({ error: 'Unknown action' }, 400);
+    }
   }
   if (path === '/api/device/discover') {
     return json({ found: await discoverHere() });

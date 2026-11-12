@@ -40,7 +40,7 @@ class FakeEngine implements Engine {
   }
 
   @override
-  Future<EngineResponse> send(String method, String path, {Object? body, Upload? upload}) async {
+  Future<EngineResponse> send(String method, String path, {Object? body, Upload? upload, Map<String, String>? headers}) async {
     final key = '$method $path';
     calls.add(key);
     bodies[key] = body;

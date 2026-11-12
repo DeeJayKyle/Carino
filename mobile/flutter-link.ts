@@ -11,6 +11,8 @@ export interface LinkRequest {
   /** Path under /api, e.g. "/tasks?view=today". */
   path: string;
   body?: unknown;
+  /** Extra headers, e.g. x-base-version for an edit that must not overwrite a change made elsewhere. */
+  headers?: Record<string, string>;
   /** A file upload: multipart form with these files (base64) and fields. */
   upload?: { files: { field: string; name: string; mime: string; b64: string }[]; fields?: Record<string, string> };
 }
@@ -35,7 +37,9 @@ export function makeLink(handle: (req: Request) => Promise<Response>, post: Post
     const ac = new AbortController();
     running.set(r.id, ac);
     try {
-      const headers: Record<string, string> = { 'x-carino': '1' };
+      const headers: Record<string, string> = {};
+      for (const [k, v] of Object.entries(r.headers ?? {})) if (/^x-(base-version|op-id)$/i.test(k)) headers[k.toLowerCase()] = String(v);
+      headers['x-carino'] = '1';
       let body: BodyInit | undefined;
       if (r.upload) {
         const form = new FormData();
@@ -84,6 +88,8 @@ export function startFlutterLink(handle: (req: Request) => Promise<Response>) {
   if (!native?.post) return false;
   const post: Post = (m) => native.post(JSON.stringify(m));
   (globalThis as any).__carinoFlutter = makeLink(handle, post, location.origin);
+  // Things that changed outside a Flutter request (a sign-in finished in the browser).
+  for (const name of ['carino-apps-changed']) window.addEventListener(name, () => post({ type: 'event', name }));
   post({ type: 'ready' });
   return true;
 }

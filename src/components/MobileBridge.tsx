@@ -19,6 +19,8 @@ async function openShared() {
   await cache.put(`/share-data/${id}/meta`, new Response(JSON.stringify(meta), { headers: { 'content-type': 'application/json' } }));
   await Promise.all(files.map((f) => cache.put(`/share-data/${id}/file/${f.index}`, new Response(f.bytes, { headers: { 'content-type': f.type || 'application/octet-stream' } }))));
   navigate(`/share?id=${id}`);
+  // Inside the Flutter app: bring this web screen forward.
+  (window as any).CarinoFlutter?.post(JSON.stringify({ type: 'show' }));
 }
 
 /** Phone app glue: notification taps, the Share menu, and links that can't open inside the app. */

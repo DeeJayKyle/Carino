@@ -16,6 +16,12 @@ class WebScreen extends StatefulWidget {
     }
     await app.engine.openWebScreen(path);
     if (!context.mounted) return;
+    await reveal(context, path);
+  }
+
+  /// Brings the engine's current web page forward without navigating it (e.g. the Share screen).
+  static Future<void> reveal(BuildContext context, [String path = '']) async {
+    final app = AppState.read(context);
     await Navigator.of(context).push(PageRouteBuilder<void>(
       opaque: false,
       transitionDuration: Duration.zero,
