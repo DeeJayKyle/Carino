@@ -13,6 +13,7 @@ import { indexEntity } from '../services/indexer.ts';
 import { connectorToolSpecs } from '../services/connectors.ts';
 import { appToolSpecs } from '../services/apps/index.ts';
 import { selectProvider } from './router.ts';
+import { recordFailure, recordSuccess } from './health.ts';
 import { markConversationLocalOnly } from '../services/localonly.ts';
 
 export const MAX_TOOL_ROUNDS = 8;
@@ -59,7 +60,7 @@ export function buildSystemPrompt(user: SessionUser, settings: Settings): string
     '- When the user has to pick between a few clear options, call ask_user with short answers instead of listing them, and end your turn.',
     '- Skills: before a multi-step job, check skill_list for a saved way to do it and follow it (skill_view). After finishing a job the user is likely to repeat, offer to save it as a skill.',
     '- browse lets you use websites. Read pages yourself, fill in forms for the user, but never enter passwords or card details, and anything that pays, orders, books, sends or deletes goes through browse_confirm (the user approves it).',
-    '- Use run_code for exact arithmetic, dates and data crunching instead of doing it in your head. Use search_past_chats when the user refers to an earlier conversation. Hand big research jobs to delegate.',
+    '- Use run_code for exact arithmetic, dates and data crunching instead of doing it in your head. Use search_past_chats when the user refers to an earlier conversation. Hand big research jobs to delegate; for jobs with separate parts, use team so different models work on them at the same time and cross-check each other.',
     '- For reminders and due dates, use parse_datetime when phrasing is vague and confirm the interpreted local date/time with the user before scheduling if anything is ambiguous.',
     '- Deletions and other consequential actions are queued for the user\'s approval. When a tool result says "pending_approval", tell the user it is waiting for their confirmation in the approval card — do not say it is done.',
     '- Memory: save only durable, useful information the user states or asks you to remember. Do not turn every statement into a memory. Mark deductions as inferred. Sensitive details (health, finances, IDs, beliefs) are held for approval automatically — tell the user when that happens.',
@@ -248,6 +249,7 @@ export async function runTurn(
   let info = provider.info();
   let routeReason = choice.reason;
   const fallbacks = [...choice.fallbacks];
+  let currentRef: string | null = choice.ref;
   const limit = settings.ai.dailyTokenLimit ?? services.config.DAILY_TOKEN_LIMIT;
   if (limit > 0 && usageToday(services, user.id) >= limit) {
     throw new ProviderError('rate_limited', `You have reached your daily AI usage limit (${limit.toLocaleString()} tokens in 24 hours). Raise it in Settings → AI, or try again later.`);
@@ -314,11 +316,16 @@ export async function runTurn(
             system, messages, tools, signal: opts.signal,
             onText: (delta) => { streamed += delta; opts.emit({ type: 'text', delta }); },
           });
+          recordSuccess(services, currentRef);
           break;
         } catch (err) {
-          const switchable = err instanceof ProviderError && err.kind !== 'aborted' && err.kind !== 'bad_request' && err.kind !== 'refused';
+          const aborted = err instanceof ProviderError && err.kind === 'aborted';
+          // Self-troubleshooting: work out why, rest that model, fix or report what it can.
+          const why = aborted ? null : recordFailure(services, user.id, currentRef, err);
+          const switchable = err instanceof ProviderError && !aborted && err.kind !== 'refused' && (err.kind !== 'bad_request' || why?.cause === 'gone');
           if (!switchable || streamed || !fallbacks.length) throw err;
           const next = fallbacks.shift()!;
+          currentRef = next.ref;
           const was = info.label;
           provider = next.provider();
           info = provider.info();

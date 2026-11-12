@@ -184,6 +184,24 @@ export const AGENT_TOOLS: ToolDef[] = [
     run: (i) => runCode(i.code, i.input),
   }),
   def({
+    name: 'team',
+    description: 'Split a bigger job into 2–5 independent parts that run at the same time, each on the AI model best suited to it (and different models where possible), with an optional cross-check by another model. Use for jobs with separable parts, e.g. "research three suppliers and draft an email" or "compare these options from several angles". Each part must be self-contained. Members can only look things up; they cannot change anything.',
+    risk: 'read',
+    input: z.object({
+      goal: z.string().min(10).max(1000),
+      parts: z.array(z.object({
+        task: z.string().min(10).max(2000),
+        kind: z.enum(['everyday', 'complex', 'code', 'writing', 'research']).optional().describe('What sort of job this part is, to pick a suitable model'),
+      })).min(2).max(5),
+      cross_check: z.boolean().optional().describe('Have another model check the results for mistakes and disagreements (default true)'),
+    }),
+    summarize: (i) => `Team of ${i.parts.length}: ${i.goal.slice(0, 80)}${i.goal.length > 80 ? '…' : ''}`,
+    run: async (i, ctx) => {
+      const { runTeam } = await import('../ai/team.ts');
+      return runTeam(ctx, i.goal, i.parts, HELPER_TOOLS, i.cross_check !== false);
+    },
+  }),
+  def({
     name: 'delegate',
     description: 'Hand a self-contained research or analysis job to a focused helper that works on its own and reports back (it can search the web, read pages, search the user\'s notes and earlier chats, and run calculations, but cannot change anything). Use for jobs with several lookups, e.g. "compare these three phones", so your own reply stays short.',
     risk: 'read',

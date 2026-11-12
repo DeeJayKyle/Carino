@@ -32,6 +32,8 @@ export interface CatalogModel {
   status: string;
   last_error: string | null;
   tested_at: string | null;
+  /** Resting after a failure until this time (self-healing, ai/health.ts). */
+  retry_after: string | null;
 }
 
 export function present(r: Row, conns: Map<string, ConnectionSpec>): CatalogModel {
@@ -41,7 +43,7 @@ export function present(r: Row, conns: Map<string, ConnectionSpec>): CatalogMode
     ref: modelRef(r.conn_id, r.model), conn_id: r.conn_id, model: r.model, label: r.label, connection: conns.get(r.conn_id)?.label ?? r.conn_id,
     local: !!r.local, paid: r.paid === null || r.paid === undefined ? null : !!r.paid, price_in: r.price_in, price_out: r.price_out,
     caps: parseJson<Caps>(r.caps, {}), scores, quality: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null,
-    latency_ms: r.latency_ms, status: r.status, last_error: r.last_error, tested_at: r.tested_at,
+    latency_ms: r.latency_ms, status: r.status, last_error: r.last_error, tested_at: r.tested_at, retry_after: r.retry_after ?? null,
   };
 }
 

@@ -281,3 +281,58 @@ describe('accounts', () => {
     expect(r2).toMatchObject({ deleted: true, revoked: false, manage_url: expect.stringContaining('x.com') });
   });
 });
+
+describe('self-healing and teamwork', () => {
+  it('rests a model that failed, so the next message goes straight to a working one', async () => {
+    const c = await signup(ctx);
+    world({ cloud: [{ id: 'cloud-main', mode: 'down' }, { id: 'cloud-spare' }] });
+    // Even the user's own pick for everyday chat rests while it is failing.
+    updateSettings(ctx.services.db, c.user.id, { ai: { roles: { everyday: 'openai_compat::cloud-main' } } });
+    const conv = (await c.post('/api/conversations', {})).data;
+    const first = await send(c, conv.id, 'Hi');
+    expect(first.events.some((e: any) => e.event === 'switch')).toBe(true);
+    const row = ctx.services.db.get("SELECT retry_after, fail_count FROM ai_models WHERE model = 'cloud-main'");
+    expect(row?.fail_count).toBe(1);
+    expect(String(row?.retry_after) > ctx.services.now().toISOString()).toBe(true);
+    const second = await send(c, conv.id, 'Hello again');
+    expect(second.events.some((e: any) => e.event === 'switch')).toBe(false);
+    expect(second.msg.content).not.toMatch(/cloud-main/);
+  });
+
+  it('tells the user once when a service rejects its key, and stops using it', async () => {
+    const c = await signup(ctx);
+    world({ cloud: [{ id: 'cloud-main', mode: 'reject' }, { id: 'cloud-spare', mode: 'reject' }] });
+    const conv = (await c.post('/api/conversations', {})).data;
+    await send(c, conv.id, 'Hi');
+    await send(c, conv.id, 'Hi again');
+    const notes = ctx.services.db.all("SELECT title FROM notifications WHERE user_id = ? AND kind = 'ai_problem'", c.user.id);
+    expect(notes).toHaveLength(1);
+    expect(String(notes[0].title)).toMatch(/needs you/);
+  });
+
+  it('gives each kind of job its own model type', async () => {
+    const { roleFor } = await import('../server/ai/router.ts');
+    const base = { attachments: 0, historyChars: 0, images: 0 };
+    expect(roleFor({ ...base, text: 'Why does this Python function throw a KeyError?' })).toBe('code');
+    expect(roleFor({ ...base, text: 'Compare the latest phones under 300 dollars' })).toBe('research');
+    expect(roleFor({ ...base, text: 'Write a warm thank-you letter to my landlord for fixing the roof' })).toBe('writing');
+    expect(roleFor({ ...base, text: 'Hi!' })).toBe('everyday');
+  });
+
+  it('runs the parts of a job at the same time on different models, then cross-checks', async () => {
+    const c = await signup(ctx);
+    const { ready } = world();
+    await ready();
+    updateSettings(ctx.services.db, c.user.id, { ai: { approvedPaid: ['c_paid'] } });
+    const { executeTool, makeContext } = await import('../server/tools/registry.ts');
+    const out: any = await executeTool('team', {
+      goal: 'Help me choose a laptop',
+      parts: [{ task: 'Research battery life of the two laptops', kind: 'research' }, { task: 'Write a short pros and cons list for each laptop', kind: 'writing' }],
+    }, makeContext(ctx.services, c.user.id, null));
+    expect(out.status).toBe('executed');
+    const models = out.result.parts.map((p: any) => p.model);
+    expect(models.every(Boolean)).toBe(true);
+    expect(new Set(models).size).toBe(2);
+    expect(out.result.review?.notes).toBeTruthy();
+  });
+});

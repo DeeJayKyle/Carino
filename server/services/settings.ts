@@ -38,6 +38,9 @@ export const settingsSchema = z.object({
     roles: z.object({
       everyday: z.string().max(240).optional(),
       complex: z.string().max(240).optional(),
+      code: z.string().max(240).optional(),
+      writing: z.string().max(240).optional(),
+      research: z.string().max(240).optional(),
       vision: z.string().max(240).optional(),
       offline: z.string().max(240).optional(),
     }).default({}),

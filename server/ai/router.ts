@@ -4,6 +4,7 @@ import type { AIProvider } from './types.ts';
 import { ProviderError } from './types.ts';
 import { listCatalog, spentUsd, syncCatalog, type CatalogModel } from './catalog.ts';
 import { modelRef, parseRef, type RouteSignals } from './providers.ts';
+import { resting } from './health.ts';
 
 /**
  * Picks the model for a message among the ones the user allowed. The hard rules are never
@@ -17,7 +18,7 @@ import { modelRef, parseRef, type RouteSignals } from './providers.ts';
  * everyday → quick and cheap), the user's preference (privacy, balanced, speed), and test results.
  */
 
-export type Role = 'everyday' | 'complex' | 'vision' | 'offline';
+export type Role = 'everyday' | 'complex' | 'code' | 'writing' | 'research' | 'vision' | 'offline';
 
 export interface Choice {
   provider: AIProvider;
@@ -33,13 +34,24 @@ export interface Signals extends RouteSignals {
   localOnly?: boolean;
   /** The device has no internet right now. */
   offline?: boolean;
+  /** Force a job type (teamwork assigns each part its own). */
+  role?: Role;
+  /** Prefer other models than these (so team members differ when they can). */
+  avoid?: string[];
 }
 
+const CODE = /\b(code|coding|program|script|function|bug|debug|error message|stack trace|regex|sql|python|javascript|typescript|java|kotlin|dart|flutter|html|css|api|json|compile|refactor)\b|```/i;
+const WRITING = /\b(write|rewrite|draft|essay|letter|email|cover letter|poem|story|caption|post|speech|tone|proofread|edit my|polish|summari[sz]e)\b/i;
+const RESEARCH = /\b(research|compare|comparison|find out|look up|latest|news|sources|evidence|study|studies|review of|pros and cons|which is better|investigate)\b/i;
 const COMPLEX = /\b(analy[sz]e|analysis|research|compare|plan|strategy|report|summari[sz]e|draft|write|essay|code|debug|calculate|forecast|budget|explain why|step[- ]by[- ]step|spreadsheet|proposal|cover letter|application)\b/i;
 
 export function roleFor(s: Signals): Role {
   if (s.offline) return 'offline';
+  if (s.role) return s.role;
   if (s.images) return 'vision';
+  if (CODE.test(s.text)) return 'code';
+  if (RESEARCH.test(s.text)) return 'research';
+  if (WRITING.test(s.text) && s.text.length > 40) return 'writing';
   if (s.historyChars > 40_000 || s.attachments > 0 || s.text.length > 600 || COMPLEX.test(s.text)) return 'complex';
   return 'everyday';
 }
@@ -81,13 +93,18 @@ export function blockedReason(m: CatalogModel, settings: Settings, main: string 
 }
 
 function score(m: CatalogModel, role: Role, prefer: Settings['ai']['prefer']): number {
-  const q = m.quality ?? (m.local ? 0.45 : 0.6); // untested: a guess
+  const fit = role === 'code' || role === 'research' ? m.scores.reason ?? m.scores.tools : role === 'writing' ? m.scores.basic ?? m.scores.extract : undefined;
+  const base = m.quality ?? (m.local ? 0.45 : 0.6); // untested: a guess
+  const q = fit !== undefined ? (base + fit) / 2 : base;
   const speed = m.latency_ms ? Math.max(0, 1 - m.latency_ms / 15_000) : 0.4;
   const free = m.paid === false ? 1 : 0;
   const local = m.local ? 1 : 0;
   const w = {
     everyday: { q: 0.4, speed: 0.35, free: 0.15, local: 0.1 },
     complex: { q: 0.75, speed: 0.1, free: 0.1, local: 0.05 },
+    code: { q: 0.8, speed: 0.1, free: 0.05, local: 0.05 },
+    writing: { q: 0.6, speed: 0.2, free: 0.15, local: 0.05 },
+    research: { q: 0.7, speed: 0.15, free: 0.1, local: 0.05 },
     vision: { q: 0.7, speed: 0.2, free: 0.1, local: 0 },
     offline: { q: 0.5, speed: 0.5, free: 0, local: 0 },
   }[role];
@@ -107,6 +124,10 @@ export function chooseModel(services: Services, userId: string, settings: Settin
     // Carino works through tools; a model shown not to call them is used only if nothing else is left.
     .filter((m, _i, arr) => m.caps.tools !== false || arr.every((x) => x.caps.tools === false))
     .filter((m) => !needsVision || m.caps.vision !== false);
+  // Models resting after a failure (ai/health.ts) are skipped while anything else can answer.
+  const now = services.now();
+  const awake = usable.filter((m) => !resting(m, now));
+  if (awake.length) usable.splice(0, usable.length, ...awake);
   const build = (m: CatalogModel) => () => reg.providerFor(m.conn_id, m.model, {
     vision: m.caps.vision ?? (needsVision ? true : undefined), tools: m.caps.tools !== false,
     pricing: m.price_in !== null && m.price_out !== null ? { input: m.price_in, output: m.price_out } : undefined,
@@ -126,7 +147,8 @@ export function chooseModel(services: Services, userId: string, settings: Settin
   const pinned = settings.ai.roles[role] ? usable.find((m) => m.ref === settings.ai.roles[role]) : undefined;
   const mainFits = !settings.ai.autoSelect && main ? usable.find((m) => m.ref === main) : undefined;
   const ranked = [...usable].sort((a, b) => score(b, role, settings.ai.prefer) - score(a, role, settings.ai.prefer));
-  const pick = pinned ?? mainFits ?? (settings.ai.autoSelect ? ranked[0] : usable.find((m) => m.ref === main) ?? ranked[0]);
+  const fresh = s.avoid?.length ? ranked.find((m) => !s.avoid!.includes(m.ref)) : undefined;
+  const pick = (s.avoid?.length && fresh && !pinned ? fresh : undefined) ?? pinned ?? mainFits ?? (settings.ai.autoSelect ? ranked[0] : usable.find((m) => m.ref === main) ?? ranked[0]);
   const rest = ranked.filter((m) => m !== pick).slice(0, 3);
   const label = (m: CatalogModel) => `${m.label ?? m.model} (${m.connection})`;
   const reason = pinned ? `Your choice for ${ROLE_TEXT[role]}`
@@ -163,7 +185,7 @@ export function selectProvider(services: Services, userId: string, settings: Set
   return { provider, ref: modelRef(info.id, info.model), reason: localOnly && settings.ai.localOnly === false ? 'Kept on your devices' : reason, fallbacks: [], role: roleFor(s) };
 }
 
-export const ROLE_TEXT: Record<Role, string> = { everyday: 'everyday chat', complex: 'complex tasks', vision: 'photos', offline: 'offline use' };
+export const ROLE_TEXT: Record<Role, string> = { everyday: 'everyday chat', complex: 'complex tasks', code: 'coding', writing: 'writing', research: 'research', vision: 'photos', offline: 'offline use' };
 
 /**
  * The model recommended for each job, from the allowed models and their test results.
@@ -174,8 +196,8 @@ export function recommend(services: Services, userId: string, settings: Settings
   const main = mainRef(services, settings);
   const budget = budgetState(services, userId, settings);
   const all = listCatalog(services);
-  const out: Record<Role, { ref: string; label: string; why: string } | null> = { everyday: null, complex: null, vision: null, offline: null };
-  for (const role of ['everyday', 'complex', 'vision', 'offline'] as Role[]) {
+  const out: Record<Role, { ref: string; label: string; why: string } | null> = { everyday: null, complex: null, code: null, writing: null, research: null, vision: null, offline: null };
+  for (const role of ['everyday', 'complex', 'code', 'writing', 'research', 'vision', 'offline'] as Role[]) {
     const s: Signals = { text: '', attachments: 0, historyChars: 0, images: role === 'vision' ? 1 : 0, offline: role === 'offline' };
     const ok = all.filter((m) => !blockedReason(m, { ...settings, ai: { ...settings.ai, localOnly: false } }, main, budget, s))
       .filter((m) => (role !== 'vision' || m.caps.vision === true) && (role !== 'offline' || m.local) && m.caps.tools !== false);
