@@ -99,6 +99,19 @@ export const PRESETS: Preset[] = [
     ],
   }),
   preset({
+    id: 'huggingface', label: 'Hugging Face', free: 'One token for hundreds of open models (Llama, Qwen, DeepSeek, Gemma and more). Small free monthly credit; a PRO account gets more.',
+    // Inference Providers: one OpenAI-compatible address that routes each model to a provider serving it.
+    baseUrl: 'https://router.huggingface.co/v1', keyUrl: 'https://huggingface.co/settings/tokens/new?ownUserPermissions=inference.serverless.write&tokenType=fineGrained',
+    models: [
+      { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B — best' },
+      { id: 'deepseek-ai/DeepSeek-V3.1', label: 'DeepSeek V3.1', family: 'DeepSeek' },
+      { id: 'Qwen/Qwen3-235B-A22B-Instruct-2507', label: 'Qwen 3 235B', family: 'Qwen' },
+      { id: 'meta-llama/Llama-3.3-70B-Instruct', label: 'Llama 3.3 70B', family: 'Llama' },
+      { id: 'google/gemma-3-27b-it', label: 'Gemma 3 27B — reads photos', vision: true },
+      { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B — fastest' },
+    ],
+  }),
+  preset({
     id: 'mistral', label: 'Mistral', free: 'Free “Experiment” plan (your chats may be used for training).',
     baseUrl: 'https://api.mistral.ai/v1', keyUrl: 'https://console.mistral.ai/api-keys',
     models: [

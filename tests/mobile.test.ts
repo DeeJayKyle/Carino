@@ -91,6 +91,10 @@ describe('free AI models', () => {
     expect(PRESETS.find((p) => p.id === 'gemini')!.models.map((m) => m.id)).not.toContain('gemini-2.5-flash');
     expect(PRESETS.find((p) => p.id === 'groq')!.models.map((m) => m.id)).not.toContain('llama-3.3-70b-versatile');
     expect(PRESETS.find((p) => p.id === 'openrouter')!.models.every((m) => m.id.endsWith(':free') || m.id === 'openrouter/free')).toBe(true);
+    const hf = PRESETS.find((p) => p.id === 'huggingface')!;
+    expect(hf.baseUrl).toBe('https://router.huggingface.co/v1');
+    expect(hf.keyUrl).toMatch(/^https:\/\/huggingface\.co\/settings\/tokens/);
+    expect(hf.models.length).toBeGreaterThan(3);
     // DeepSeek and Qwen are reachable through a free service.
     const families = shown.flatMap((p) => p.models.map((m) => m.family));
     expect(families).toContain('DeepSeek');

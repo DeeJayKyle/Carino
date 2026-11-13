@@ -59,7 +59,7 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
   const liveIds = live?.provider === p.id && live.ids.length ? new Set(live.ids) : null;
   const works = (id: string) => (liveIds ? liveIds.has(id) : undefined);
   // Free models the service offers that aren't in our list (OpenRouter's change often; a PC has its own).
-  const extra = liveIds ? [...liveIds].filter((id) => !p.models.some((m) => m.id === id) && (p.id === 'openrouter' || p.ownAddress)) : [];
+  const extra = liveIds ? [...liveIds].filter((id) => !p.models.some((m) => m.id === id) && (p.id === 'openrouter' || p.id === 'huggingface' || p.ownAddress)) : [];
   const current = form.model || p.model;
   const inList = p.models.some((m) => m.id === current) || extra.includes(current);
 
@@ -71,7 +71,7 @@ export function DeviceAI({ onSaved, compact = false }: { onSaved?: () => void; c
       // Keep the choice if it works; otherwise move to the best free model that does.
       const ids = new Set<string>(r.models ?? []);
       if (ids.size && !ids.has(current)) {
-        const best = p.models.find((m) => ids.has(m.id))?.id ?? (p.ownAddress || p.id === 'openrouter' ? [...ids][0] : undefined);
+        const best = p.models.find((m) => ids.has(m.id))?.id ?? (p.ownAddress || p.id === 'openrouter' || p.id === 'huggingface' ? [...ids][0] : undefined);
         if (best) set({ model: best });
       }
     } catch (e: any) {

@@ -75,7 +75,7 @@ class _AiSettingsState extends State<AiSettings> {
         _live = ids;
         _liveError = r['error'] as String?;
         if (ids.isNotEmpty && !ids.contains(_current)) {
-          final best = (_p['models'] as List).cast<Map>().map((m) => '${m['id']}').where(ids.contains).firstOrNull ?? (_p['ownAddress'] == true || _p['id'] == 'openrouter' ? ids.first : null);
+          final best = (_p['models'] as List).cast<Map>().map((m) => '${m['id']}').where(ids.contains).firstOrNull ?? (_p['ownAddress'] == true || _p['id'] == 'openrouter' || _p['id'] == 'huggingface' ? ids.first : null);
           if (best != null) _form['model'] = best;
         }
       });
@@ -105,7 +105,7 @@ class _AiSettingsState extends State<AiSettings> {
     }
   }
 
-  List<String> get _extra => _live == null ? const [] : _live!.where((id) => !(_p['models'] as List).any((m) => (m as Map)['id'] == id) && (_p['id'] == 'openrouter' || _p['ownAddress'] == true)).toList();
+  List<String> get _extra => _live == null ? const [] : _live!.where((id) => !(_p['models'] as List).any((m) => (m as Map)['id'] == id) && (_p['id'] == 'openrouter' || _p['id'] == 'huggingface' || _p['ownAddress'] == true)).toList();
 
   Future<void> _save() async {
     final app = AppState.read(context);
